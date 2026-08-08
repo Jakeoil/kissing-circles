@@ -22,18 +22,34 @@ stays exactly integral to unlimited depth, and tangencies remain perfect at zoom
 where a float implementation visibly comes apart. Floats appear only in the renderer,
 converted per circle at draw time.
 
+## Running it
+
+ES modules need a real origin, so open it over HTTP rather than from the filesystem:
+
+```sh
+python3 -m http.server 8000     # then visit http://localhost:8000/
+```
+
+Drag to pan, wheel or pinch to zoom, double-click to zoom in. `0` resets the view,
+`+`/`-` zoom, arrows pan, `l` toggles the curvature labels. Zooming in generates new
+detail on the fly rather than regenerating from scratch.
+
 ## Status
 
-Phase 1 complete: the math core and its test suite.
+Phases 1 and 2 complete: the math core, the generator, and a checkpoint viewer.
 
 | Module | Purpose |
 |---|---|
 | `src/math/gaussian.js` | Gaussian integers over BigInt |
 | `src/math/circle.js` | Augmented curvature-center coordinates; the Descartes reflection |
 | `src/math/descartes.js` | The theorem, exact validation, named root quadruples |
+| `src/math/packing.js` | Budgeted, resumable generation with screen-space pruning |
+| `src/render/viewport.js` | World-to-screen transform |
+| `src/render/renderer.js` | Canvas 2D drawing — provisional, Phase 3 replaces it |
+| `src/render/palette.js` | Colour by curvature or by depth |
 
-Nothing renders yet. That's deliberate — the plan's one hard dependency is that the math
-is verified before a pixel is drawn.
+The renderer and the viewer are a checkpoint, not the finished article: Phase 3 brings
+proper level-of-detail and typography, Phase 4 the desktop interaction.
 
 ## Tests
 
@@ -46,7 +62,10 @@ npm test          # or: node --test test/*.test.js
 The suite checks the augmented invariant and the full Lagarias–Mallows–Wilks matrix
 identity in exact BigInt arithmetic across every quadruple visited in a generated
 packing, verifies all six pairwise tangencies without square roots, and drives one
-chain of reflections past curvature 2^53 to confirm nothing drifts.
+chain of reflections past curvature 2^53 to confirm nothing drifts. It also holds the
+generator to the naive reference implementation in `test/helpers/`, and checks that
+refining a packing step by step lands on exactly the same set of circles as generating
+it outright — the property deep zoom depends on.
 
 `src/math/` imports nothing from the renderer or the UI and runs under bare Node with no
 DOM. The test suite is what enforces that.
