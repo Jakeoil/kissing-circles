@@ -1,0 +1,10 @@
+{
+  "name": "kissing-circles",
+  "version": "0.1.0",
+  "description": "Exact integral Apollonian circle packings, in the browser.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

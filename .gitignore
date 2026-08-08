@@ -1,0 +1,7 @@
+# The original Android/Kotlin project. Kept locally for reference only.
+# It has its own git repository and its own remote; it is not part of this one.
+DynamicKissingCircles/
+
+node_modules/
+.DS_Store
+*.log
