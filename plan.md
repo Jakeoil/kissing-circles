@@ -369,6 +369,19 @@ visible and must be generated on demand.
   orbit rather than a recursion.
 
 ### Phase 7 — GitHub Pages
+
+> **Deployed: https://jakeoil.github.io/kissing-circles/**
+>
+> The no-build-step decision from §5 paid off exactly as intended: Pages serves the
+> repository verbatim, there is no Actions workflow and no `gh-pages` branch, and
+> `git push` is the entire deployment. Added `.nojekyll`, a canonical URL, and Open
+> Graph tags with a preview image generated from the running app.
+>
+> Verified against the deployed site rather than the local copy: modules and the
+> self-hosted font load, `document.fonts.check` confirms Caladea is the font actually
+> in use, the analysis panel reports the same misses (78, 159, 207, …), and a
+> deep-zoom shared link round-trips at zoom 9357. No console errors, no failed
+> requests.
 - New public repo, Pages serving from `main` at root.
 - No build step means no Actions workflow and no `gh-pages` branch — push is deploy.
 - Add a `<link rel="canonical">` and an OG image (a rendered packing) so shared links
