@@ -20,19 +20,15 @@ export const NUMERAL_FONT =
   '"Caladea", Cambria, Charter, "Source Serif 4", Georgia, "Times New Roman", serif';
 
 /**
- * Cap height of a numeral as a fraction of the circle's radius.
+ * How much of the circle a numeral spans, as a fraction of the diameter measured
+ * across the numeral's bounding box.
  *
- * Fitting purely by the bounding box — the obvious approach — makes a single digit
- * enormous, because one narrow glyph leaves room to grow until it hits the circle
- * diagonally. At that point a numeral spans about 70% of the diameter and the
- * picture reads as digits with circles around them rather than a packing. Driving
- * the size from cap height instead keeps every numeral to the same visual weight
- * regardless of how many digits it has.
+ * This is deliberately a *constant ratio to the circle*: a numeral is set as large
+ * as it can be and still fit, so it always bears the same relation to the circle it
+ * labels. Wider numerals are therefore set smaller — a six-digit curvature shrinks
+ * until its box fits — but the numeral always fills its circle the same way.
  */
-const CAP_FRACTION = 0.8;
-
-/** How much of the radius the whole numeral box may span, as a safety constraint. */
-const BOX_FRACTION = 0.92;
+const BOX_FRACTION = 0.86;
 
 /** Screen radius below which no numeral is attempted. */
 const MIN_RADIUS = 12;
@@ -109,12 +105,14 @@ export function digitMetrics(ctx, family = NUMERAL_FONT) {
 /**
  * The size a numeral should be set at inside a circle, or 0 if it should be skipped.
  *
- * Three constraints, whichever is tightest:
- *   - cap height is a fixed fraction of the radius, so all numerals read alike
- *   - the whole box fits within the circle, measured by its half-diagonal, so a long
- *     curvature shrinks rather than spilling over the edge
- *   - the numeral stays a modest fraction of the viewport, so a circle bigger than
- *     the window does not get a numeral bigger than the window
+ * The numeral is set as large as it can be and still fit inside the circle: with the
+ * measured box w wide and h tall, the largest size whose half-diagonal stays within
+ * the radius is 2*r/hypot(w, h). That keeps a constant relation between numeral and
+ * circle, and makes a long curvature shrink rather than spill over the edge.
+ *
+ * The one exception is the viewport ceiling, which only engages for a circle bigger
+ * than the window — where holding the ratio would mean a glyph larger than the
+ * screen.
  *
  * @param {number} radius screen radius
  * @param {number} digits how many characters the numeral has
@@ -125,12 +123,11 @@ export function digitMetrics(ctx, family = NUMERAL_FONT) {
 export function numeralSize(radius, digits, metrics, ceiling = Infinity) {
   if (radius < MIN_RADIUS) return 0;
 
-  const byCap = (CAP_FRACTION * radius) / metrics.height;
   const byBox =
     (2 * radius * BOX_FRACTION) /
     Math.hypot(digits * metrics.advance, metrics.height);
 
-  const size = Math.round(Math.min(byCap, byBox, ceiling) * 100) / 100;
+  const size = Math.round(Math.min(byBox, ceiling) * 100) / 100;
   return size < MIN_SIZE ? 0 : size;
 }
 

@@ -2,6 +2,7 @@
 
 import { Circle } from './circle.js';
 import { Gaussian } from './gaussian.js';
+import { Rational, ZERO as RZERO, lcm } from './rational.js';
 
 /**
  * Descartes' Circle Theorem, its complex extension, and the root quadruples we
@@ -270,13 +271,264 @@ export function validateQuad(quad) {
 }
 
 /**
+ * Build a root quadruple from four curvatures.
+ *
+ * The construction runs in exact rational arithmetic:
+ *
+ *   1. Check the Descartes relation.
+ *   2. Place the circles from their pairwise distances. Two circles of curvature
+ *      b1, b2 are tangent exactly when their centers are |b1 + b2| / |b1 * b2|
+ *      apart, which is rational, so the whole placement is rational — the only
+ *      irrational step would be a square root, and for an integral quadruple that
+ *      square root comes out rational too. If it does not, the quadruple is
+ *      reported as non-integral rather than silently rounded.
+ *   3. Translate into integral position. The natural placement is very rarely
+ *      integral: (-3, 5, 8, 8) lands on curvature-center products of 0, 2/3,
+ *      -4/3 + i and -4/3 - i. Translating by 2/3 turns those into -2, 4, 4 + i and
+ *      4 - i. Since a translation by c sends b*z to b*z + b*c, and the products
+ *      share a denominator D, it is enough to search the D translations c = u/D.
+ *   4. Derive the co-curvatures from the invariant and check they are integers.
+ *   5. Validate the result like any other quadruple.
+ *
+ * @param {(number|bigint)[]} curvatures four curvatures
+ * @returns {{ok: true, quad: Circle[]}|{ok: false, reason: string}}
+ */
+export function rootFromCurvatures(curvatures) {
+  if (curvatures.length !== 4) {
+    return { ok: false, reason: `expected 4 curvatures, got ${curvatures.length}` };
+  }
+
+  /** @type {bigint[]} */
+  const b = curvatures.map((v) => BigInt(v));
+
+  if (!descartesReal(b[0], b[1], b[2], b[3])) {
+    const s = b.reduce((a, v) => a + v, 0n);
+    const q = b.reduce((a, v) => a + v * v, 0n);
+    return {
+      ok: false,
+      reason:
+        `${b.join(', ')} is not a Descartes quadruple: ` +
+        `(sum)^2 = ${s * s} but 2*(sum of squares) = ${2n * q}`,
+    };
+  }
+
+  if (b.some((v) => v === 0n)) {
+    return {
+      ok: false,
+      reason:
+        'quadruples containing a line (curvature 0) are not constructible this way; ' +
+        'use the named strip packing',
+    };
+  }
+
+  // The placement puts the first two circles on the real axis, which fixes the
+  // orientation of the whole configuration — and only some orientations are
+  // integral. (-6, 11, 14, 15) has no integral placement starting from that pair
+  // but does starting from -6 and 14. Rather than reason about which frame is the
+  // right one, try all of them; there are only 24.
+  /** @type {string} */
+  let reason = 'no integral placement was found in any ordering';
+
+  for (const order of orderings()) {
+    const attempt = place(order.map((i) => b[i]));
+    if (attempt.ok) return { ok: true, quad: reorder(attempt.quad, b) };
+    // Keep the most specific complaint to report if every ordering fails.
+    if (!/no rational placement|no translation/.test(attempt.reason)) {
+      reason = attempt.reason;
+    }
+  }
+
+  return { ok: false, reason };
+}
+
+/** @type {number[][]|null} */
+let cachedOrderings = null;
+
+/** @returns {number[][]} the 24 permutations of 0..3, identity first */
+function orderings() {
+  if (cachedOrderings !== null) return cachedOrderings;
+  /** @type {number[][]} */
+  const out = [];
+  /** @param {number[]} rest @param {number[]} acc */
+  const walk = (rest, acc) => {
+    if (rest.length === 0) {
+      out.push(acc);
+      return;
+    }
+    for (let i = 0; i < rest.length; i++) {
+      walk([...rest.slice(0, i), ...rest.slice(i + 1)], [...acc, rest[i]]);
+    }
+  };
+  walk([0, 1, 2, 3], []);
+  cachedOrderings = out;
+  return out;
+}
+
+/**
+ * Put a constructed quadruple back into the order the caller asked for.
+ * @param {Circle[]} quad
+ * @param {bigint[]} wanted curvatures in the requested order
+ * @returns {Circle[]}
+ */
+function reorder(quad, wanted) {
+  const pool = quad.slice();
+  return wanted.map((b) => {
+    const i = pool.findIndex((c) => c.b === b);
+    return pool.splice(i, 1)[0];
+  });
+}
+
+/**
+ * Place four curvatures in the frame where the first two lie on the real axis.
+ * @param {bigint[]} b
+ * @returns {{ok: true, quad: Circle[]}|{ok: false, reason: string}}
+ */
+function place(b) {
+  // Pairwise center distances, exactly.
+  /** @param {number} i @param {number} j */
+  const dist = (i, j) => {
+    const num = b[i] + b[j];
+    const den = b[i] * b[j];
+    return new Rational(num < 0n ? -num : num, den < 0n ? -den : den);
+  };
+
+  const d01 = dist(0, 1);
+  if (d01.isZero()) {
+    return { ok: false, reason: 'the first two circles coincide; reorder the curvatures' };
+  }
+
+  const two = Rational.of(2);
+  /** @type {{x: Rational, y: Rational}[]} */
+  const z = [
+    { x: RZERO, y: RZERO },
+    { x: d01, y: RZERO },
+  ];
+
+  // Circles 3 and 4 sit at the intersection of two distance constraints.
+  for (const k of [2, 3]) {
+    const r0 = dist(0, k);
+    const r1 = dist(1, k);
+    const x = r0.square().sub(r1.square()).add(d01.square()).div(two.mul(d01));
+    const ySq = r0.square().sub(x.square());
+    const y = ySq.sqrt();
+    if (y === null) {
+      return {
+        ok: false,
+        reason: `circle ${k + 1} has no rational placement, so this quadruple is not integral`,
+      };
+    }
+    z.push({ x, y });
+  }
+
+  // Two mirror images satisfy the constraints for the fourth circle; pick the one
+  // that is also the right distance from the third.
+  const wanted = dist(2, 3).square();
+  const apart = (/** @type {Rational} */ sign) => {
+    const dy = z[3].y.mul(sign).sub(z[2].y);
+    return z[3].x.sub(z[2].x).square().add(dy.square());
+  };
+  if (!apart(Rational.of(1)).equals(wanted)) {
+    if (!apart(Rational.of(-1)).equals(wanted)) {
+      return { ok: false, reason: 'the four circles cannot be placed mutually tangent' };
+    }
+    z[3] = { x: z[3].x, y: z[3].y.neg() };
+  }
+
+  // Curvature-center products, still rational.
+  const prod = z.map((p, i) => ({
+    x: p.x.mul(new Rational(b[i])),
+    y: p.y.mul(new Rational(b[i])),
+  }));
+
+  const placed = translateToIntegers(b, prod);
+  if (placed === null) {
+    return {
+      ok: false,
+      reason: 'no translation puts this quadruple on the Gaussian integers',
+    };
+  }
+
+  /** @type {Circle[]} */
+  const quad = [];
+  for (let i = 0; i < 4; i++) {
+    const bz = new Gaussian(placed[i].x, placed[i].y);
+    const num = bz.normSq() - 1n;
+    if (num % b[i] !== 0n) {
+      return { ok: false, reason: `circle ${i + 1} has no integral co-curvature` };
+    }
+    quad.push(new Circle(num / b[i], b[i], bz));
+  }
+
+  const check = validateQuad(quad);
+  if (!check.ok) {
+    return { ok: false, reason: `constructed quadruple failed validation: ${check.errors[0]}` };
+  }
+
+  return { ok: true, quad };
+}
+
+/**
+ * Find a translation making every curvature-center product a Gaussian integer.
+ *
+ * A translation by c sends b*z to b*z + b*c, so with all products written over a
+ * common denominator D it suffices to try c = u/D for u in [0, D): shifting u by D
+ * moves c by a whole unit, which changes each product by the integer b, and cannot
+ * change whether it is integral. The two axes are independent.
+ *
+ * @param {bigint[]} b
+ * @param {{x: Rational, y: Rational}[]} prod
+ * @returns {{x: bigint, y: bigint}[]|null}
+ */
+function translateToIntegers(b, prod) {
+  let D = 1n;
+  for (const p of prod) {
+    D = lcm(D, p.x.d);
+    D = lcm(D, p.y.d);
+  }
+  if (D > 1000000n) return null;
+
+  /**
+   * @param {(p: {x: Rational, y: Rational}) => Rational} axis
+   * @returns {bigint|null} the shift numerator over D
+   */
+  const solve = (axis) => {
+    for (let u = 0n; u < D; u++) {
+      let ok = true;
+      for (let i = 0; i < 4 && ok; i++) {
+        const scaled = axis(prod[i]).mul(new Rational(D));
+        if (!scaled.isInteger()) return null;
+        if ((b[i] * u + scaled.n) % D !== 0n) ok = false;
+      }
+      if (ok) return u;
+    }
+    return null;
+  };
+
+  const u = solve((p) => p.x);
+  const v = solve((p) => p.y);
+  if (u === null || v === null) return null;
+
+  return prod.map((p, i) => ({
+    x: (p.x.mul(new Rational(D)).n + b[i] * u) / D,
+    y: (p.y.mul(new Rational(D)).n + b[i] * v) / D,
+  }));
+}
+
+/**
+ * Build a named root, failing loudly at load time rather than shipping a broken one.
+ * @param {number[]} curvatures
+ * @returns {Circle[]}
+ */
+function built(curvatures) {
+  const r = rootFromCurvatures(curvatures);
+  if (!r.ok) throw new Error(`cannot build root (${curvatures.join(', ')}): ${r.reason}`);
+  return r.quad;
+}
+
+/**
  * Named root quadruples, each an integral Descartes quadruple in augmented
  * coordinates. Every one of these is checked against validateQuad by the test
  * suite, so a typo here cannot survive to the renderer.
- *
- * Constructing an arbitrary root from four curvatures requires a square root in
- * Z[i] to place the centers; that is deferred until the UI needs custom quadruple
- * entry. Until then, generation starts from one of these.
  *
  * @type {Record<string, {name: string, description: string, quad: Circle[]}>}
  */
@@ -294,6 +546,26 @@ export const ROOTS = {
       Circle.of(0, 2, 1, 0), //   center ( 1/2, 0), radius 1/2
       Circle.of(1, 3, 0, 2), //   center (0, 2/3),  radius 1/3
     ],
+  },
+
+  /**
+   * Further primitive integral packings, built by rootFromCurvatures and checked
+   * against validateQuad by the test suite like the hand-derived ones.
+   */
+  '2367': {
+    name: '(-2, 3, 6, 7)',
+    description: 'A primitive integral packing.',
+    quad: /** @type {Circle[]} */ (built([-2, 3, 6, 7])),
+  },
+  '3588': {
+    name: '(-3, 5, 8, 8)',
+    description: 'A primitive integral packing.',
+    quad: /** @type {Circle[]} */ (built([-3, 5, 8, 8])),
+  },
+  '611415': {
+    name: '(-6, 11, 14, 15)',
+    description: 'A primitive integral packing.',
+    quad: /** @type {Circle[]} */ (built([-6, 11, 14, 15])),
   },
 
   /**

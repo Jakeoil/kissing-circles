@@ -374,24 +374,24 @@ describe('renderer', () => {
       assert.ok(checked > 5, `only checked ${checked} numerals`);
     });
 
-    test('a single digit does not swallow its circle', () => {
-      // Fitting purely by bounding box let one narrow glyph grow until it hit the
-      // circle diagonally, at about 70% of the diameter. Sizing by cap height keeps
-      // a numeral to a readable label instead of the dominant object in the frame.
+    test('a numeral is set as large as it can be and still fit', () => {
+      // The intended look: the numeral bears a constant relation to its circle,
+      // filling it rather than sitting inside it as a small caption.
       const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
       const r = 200;
       const size = numeralSize(r, 1, metrics);
-      const capHeight = size * metrics.height;
+      const w = 1 * metrics.advance * size;
+      const h = metrics.height * size;
 
-      assert.ok(capHeight / (2 * r) < 0.5, `digit spans ${(capHeight / (2 * r)) * 100}%`);
-      assert.ok(capHeight / (2 * r) > 0.25, 'but should still be comfortably legible');
+      assert.ok(h / (2 * r) > 0.6, `a single digit spans only ${(h / (2 * r)) * 100}%`);
+      assert.ok(Math.hypot(w, h) / 2 <= r, 'and must still fit');
     });
 
-    test('numerals of different lengths keep a consistent cap height', () => {
-      // Up to the point where width forces a long numeral to shrink, one digit and
-      // two digits should be set at the same size — not wildly different ones.
+    test('the ratio to the circle is the same at any scale', () => {
       const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
-      assert.equal(numeralSize(200, 1, metrics), numeralSize(200, 2, metrics));
+      const small = numeralSize(50, 2, metrics) / 50;
+      const large = numeralSize(500, 2, metrics) / 500;
+      assert.ok(Math.abs(small - large) < 1e-3, `${small} vs ${large}`);
     });
 
     test('a long numeral shrinks to fit rather than overflowing', () => {

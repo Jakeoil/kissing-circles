@@ -109,13 +109,65 @@
         white-space: nowrap;
       }
 
-      select {
+      select,
+      input[type='text'] {
         background: var(--input);
         color: var(--text);
         border: 1px solid var(--edge);
         border-radius: 5px;
         padding: 3px 6px;
         font: inherit;
+      }
+
+      input[type='text'] {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      }
+
+      #error {
+        flex-basis: 100%;
+        color: #f85149;
+        font-size: 12px;
+      }
+      #error:empty { display: none; }
+
+      #depth-readout {
+        color: var(--dim);
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12px;
+      }
+
+      /* The hover readout: exact values for the circle under the cursor. */
+      #readout {
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);
+        min-width: 210px;
+        max-width: 300px;
+      }
+      #readout[hidden] { display: none; }
+      #readout table {
+        border-collapse: collapse;
+        font-size: 12px;
+        width: 100%;
+      }
+      #readout th {
+        text-align: left;
+        font-weight: 400;
+        color: var(--dim);
+        padding: 1px 10px 1px 0;
+        vertical-align: baseline;
+        white-space: nowrap;
+      }
+      #readout td {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        text-align: right;
+        padding: 1px 0;
+        word-break: break-all;
+      }
+      #readout .curvature td {
+        font-size: 17px;
+        font-family: var(--numeral-font);
+        font-weight: 700;
       }
 
       #hud {
@@ -143,9 +195,18 @@
         padding: 0 4px;
       }
 
-      @media (max-width: 760px) {
+      @media (max-width: 900px) {
         #help { display: none; }
-        #controls { font-size: 12px; }
+        #controls { font-size: 12px; max-width: calc(100% - 24px); }
+        /* The readout becomes a strip along the bottom rather than a side panel. */
+        #readout {
+          top: auto;
+          bottom: 58px;
+          left: 12px;
+          right: 12px;
+          transform: none;
+          max-width: none;
+        }
       }
     </style>
   </head>
@@ -155,10 +216,11 @@
     <div id="controls" class="panel">
       <label>
         packing
-        <select id="root">
-          <option value="apollonian">(-1, 2, 2, 3)</option>
-          <option value="strip">(0, 0, 1, 1) strip</option>
-        </select>
+        <select id="root"></select>
+      </label>
+      <label>
+        custom
+        <input id="custom" type="text" size="12" placeholder="-6,11,14,15" />
       </label>
       <label>
         color by
@@ -179,13 +241,18 @@
         <input type="checkbox" id="labels" checked />
         curvatures
       </label>
+      <span id="depth-readout">depth all</span>
+      <div id="error"></div>
     </div>
+
+    <div id="readout" class="panel" hidden></div>
 
     <div id="help" class="panel">
       <b>drag</b> to pan · <b>wheel</b> or <b>pinch</b> to zoom · <b>double-click</b> to
       zoom in<br />
-      <kbd>0</kbd> reset · <kbd>+</kbd> <kbd>-</kbd> zoom · <kbd>↑↓←→</kbd> pan ·
-      <kbd>l</kbd> labels · <kbd>t</kbd> theme
+      <kbd>0</kbd> reset · <kbd>+</kbd> <kbd>-</kbd> zoom · <kbd>↑↓←→</kbd> pan<br />
+      <kbd>[</kbd> <kbd>]</kbd> depth · <kbd>l</kbd> labels · <kbd>c</kbd> color ·
+      <kbd>t</kbd> theme · <kbd>space</kbd> pause
     </div>
 
     <div id="hud" class="panel">starting…</div>

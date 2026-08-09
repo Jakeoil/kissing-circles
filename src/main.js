@@ -1,9 +1,10 @@
 // @ts-check
 
 import { Packing } from './math/packing.js';
-import { ROOTS } from './math/descartes.js';
+import { ROOTS, rootFromCurvatures } from './math/descartes.js';
 import { Viewport } from './render/viewport.js';
 import { draw, resetFontMetrics } from './render/renderer.js';
+import { describe } from './ui/readout.js';
 
 /**
  * The viewer.
@@ -14,11 +15,24 @@ import { draw, resetFontMetrics } from './render/renderer.js';
  * entry, and shareable URLs.
  */
 
-/** Initial framing for each root, since a packing does not carry its own view. */
-const VIEWS = {
-  apollonian: { minX: -1.05, minY: -1.05, maxX: 1.05, maxY: 1.05 },
-  strip: { minX: -3.2, minY: -0.6, maxX: 3.2, maxY: 2.6 },
-};
+/**
+ * Framing for a root, since a packing does not carry its own view.
+ *
+ * For a bounded packing the bounding circle is the frame. For the strip, and for
+ * anything else without one, fall back to a fixed window.
+ *
+ * @param {import('./math/circle.js').Circle[]} quad
+ * @returns {{minX: number, minY: number, maxX: number, maxY: number}}
+ */
+function framing(quad) {
+  const bounding = quad.find((c) => c.b < 0n);
+  if (bounding) {
+    const f = bounding.toFloat();
+    const r = Math.abs(f.r) * 1.05;
+    return { minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r };
+  }
+  return { minX: -3.2, minY: -0.6, maxX: 3.2, maxY: 2.6 };
+}
 
 /** Screen pixels below which a circle is not worth generating. */
 const RESOLUTION = 0.4;
@@ -36,25 +50,53 @@ const rootSelect = /** @type {HTMLSelectElement} */ (document.getElementById('ro
 const colorSelect = /** @type {HTMLSelectElement} */ (document.getElementById('color'));
 const themeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('theme'));
 const labelToggle = /** @type {HTMLInputElement} */ (document.getElementById('labels'));
+const customInput = /** @type {HTMLInputElement} */ (document.getElementById('custom'));
+const errorBox = /** @type {HTMLElement} */ (document.getElementById('error'));
+const readout = /** @type {HTMLElement} */ (document.getElementById('readout'));
+const depthReadout = /** @type {HTMLElement} */ (document.getElementById('depth-readout'));
 
 const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
 
 /** @type {Packing} */
 let packing;
-/** @type {keyof typeof VIEWS} */
-let rootName = 'apollonian';
+/** @type {import('./math/circle.js').Circle[]} */
+let rootQuad = ROOTS.apollonian.quad;
+/** @type {{minX: number, minY: number, maxX: number, maxY: number}} */
+let home = framing(rootQuad);
 let viewDirty = true;
 let refineAt = 0;
 
+/** Display-only depth limit; 0 means show everything. */
+let displayDepth = 0;
+/** Generation is paused, so the packing can be watched at a fixed level of detail. */
+let paused = false;
+/** Index of the circle under the cursor, or -1. */
+let hovered = -1;
+/** Indices drawn last frame, for hit-testing against what is actually on screen. */
+let visible = /** @type {number[]} */ ([]);
+/** Last cursor position in screen coordinates, or null when it left the canvas. */
+let cursor = /** @type {{x: number, y: number}|null} */ (null);
+
+for (const [key, root] of Object.entries(ROOTS)) {
+  const option = document.createElement('option');
+  option.value = key;
+  option.textContent = root.name;
+  rootSelect.append(option);
+}
+rootSelect.value = 'apollonian';
+
 /**
- * Start over from a named root.
- * @param {keyof typeof VIEWS} name
+ * Start over from a root quadruple.
+ * @param {import('./math/circle.js').Circle[]} quad
  */
-function load(name) {
-  rootName = name;
-  packing = new Packing(ROOTS[name].quad, limits());
-  view.fit(VIEWS[name], 0.11);
+function load(quad) {
+  rootQuad = quad;
+  home = framing(quad);
+  packing = new Packing(quad, limits());
+  view.fit(home, 0.11);
   packing.refine(limits());
+  hovered = -1;
+  displayDepth = 0;
   viewDirty = true;
 }
 
@@ -118,6 +160,56 @@ function moved() {
   refineAt = performance.now() + 90;
 }
 
+// --------------------------------------------------------------------- readout
+
+/**
+ * Update the panel describing the circle under the cursor.
+ *
+ * Hit-testing runs against the indices drawn last frame rather than the whole
+ * packing: that is bounded by what is on screen — a few thousand — instead of the
+ * hundreds of thousands a deep zoom accumulates, and it can never report a circle
+ * the user cannot see.
+ */
+function updateReadout() {
+  if (cursor === null || packing === undefined) {
+    hovered = -1;
+    readout.hidden = true;
+    return;
+  }
+
+  const w = view.screenToWorld(cursor.x, cursor.y);
+  const found = packing.pick(w.x, w.y, visible);
+
+  if (found === hovered) return;
+  hovered = found;
+  viewDirty = true;
+
+  if (found < 0) {
+    readout.hidden = true;
+    return;
+  }
+
+  const rows = describe(packing, found);
+  const table = document.createElement('table');
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    if (row.label === 'curvature') tr.className = 'curvature';
+    const th = document.createElement('th');
+    th.textContent = row.label;
+    const td = document.createElement('td');
+    td.textContent = row.value;
+    tr.append(th, td);
+    table.append(tr);
+  }
+  readout.replaceChildren(table);
+  readout.hidden = false;
+}
+
+/** @param {string} message */
+function showError(message) {
+  errorBox.textContent = message;
+}
+
 // ---------------------------------------------------------------- interaction
 
 /** @type {Map<number, {x: number, y: number}>} */
@@ -131,8 +223,14 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
   const prev = pointers.get(e.pointerId);
-  if (!prev) return;
+  if (!prev) {
+    updateReadout();
+    return;
+  }
   const next = { x: e.clientX, y: e.clientY };
 
   if (pointers.size === 1) {
@@ -159,6 +257,10 @@ for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
   canvas.addEventListener(type, (e) => {
     pointers.delete(/** @type {PointerEvent} */ (e).pointerId);
     pinchSpan = pointers.size === 2 ? span() : 0;
+    if (type === 'pointerleave') {
+      cursor = null;
+      updateReadout();
+    }
   });
 }
 
@@ -181,10 +283,15 @@ canvas.addEventListener('dblclick', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
+  // Leave form controls alone: a select does type-ahead on letters, and the custom
+  // quadruple field needs digits, commas and minus signs to reach it intact.
+  const tag = /** @type {HTMLElement|null} */ (e.target)?.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
   const step = 60;
   switch (e.key) {
     case '0':
-      view.fit(VIEWS[rootName], 0.11);
+      view.fit(home, 0.11);
       break;
     case '+':
     case '=':
@@ -212,6 +319,22 @@ window.addEventListener('keydown', (e) => {
       themeSelect.value = activeTheme() === 'dark' ? 'light' : 'dark';
       applyTheme();
       break;
+    case 'c':
+      colorSelect.value = colorSelect.value === 'curvature' ? 'depth' : 'curvature';
+      break;
+    case '[':
+      // Peel the packing back a level at a time. This is a display filter, not a
+      // generation limit — nothing is discarded, so it is instant and reversible.
+      displayDepth =
+        displayDepth === 0 ? Math.max(packing.maxDepthReached - 1, 0) : Math.max(displayDepth - 1, 0);
+      break;
+    case ']':
+      displayDepth = displayDepth === 0 ? 0 : displayDepth + 1;
+      if (displayDepth > packing.maxDepthReached) displayDepth = 0;
+      break;
+    case ' ':
+      paused = !paused;
+      break;
     default:
       return;
   }
@@ -231,9 +354,50 @@ function midpoint() {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-rootSelect.addEventListener('change', () =>
-  load(/** @type {keyof typeof VIEWS} */ (rootSelect.value)),
-);
+rootSelect.addEventListener('change', () => {
+  showError('');
+  customInput.value = '';
+  load(ROOTS[rootSelect.value].quad);
+});
+
+/**
+ * Custom root entry: four curvatures, validated against Descartes' theorem and then
+ * placed exactly. Errors are shown rather than swallowed — an invalid quadruple is
+ * the most interesting thing a user can type here.
+ */
+function applyCustom() {
+  const text = customInput.value.trim();
+  if (text === '') {
+    showError('');
+    return;
+  }
+
+  const parts = text.split(/[\s,]+/).filter(Boolean);
+  if (parts.length !== 4) {
+    showError(`expected four curvatures, got ${parts.length}`);
+    return;
+  }
+  if (!parts.every((p) => /^-?\d+$/.test(p))) {
+    showError('curvatures must be whole numbers');
+    return;
+  }
+
+  const result = rootFromCurvatures(parts.map((p) => BigInt(p)));
+  if (!result.ok) {
+    showError(result.reason);
+    return;
+  }
+
+  showError('');
+  rootSelect.selectedIndex = -1;
+  load(result.quad);
+}
+
+customInput.addEventListener('change', applyCustom);
+customInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') applyCustom();
+  e.stopPropagation();
+});
 colorSelect.addEventListener('change', () => {
   viewDirty = true;
 });
@@ -293,10 +457,8 @@ function frame() {
     packing.refine(limits());
   }
 
-  let grew = 0;
-  if (!packing.done) {
-    grew = packing.grow(BUDGET).added;
-    if (grew > 0) viewDirty = true;
+  if (!paused && !packing.done) {
+    if (packing.grow(BUDGET).added > 0) viewDirty = true;
   }
 
   if (viewDirty) {
@@ -305,7 +467,13 @@ function frame() {
       colorMode: /** @type {'curvature'|'depth'} */ (colorSelect.value),
       theme: activeTheme(),
       labels: labelToggle.checked,
+      maxDepth: displayDepth,
+      highlight: hovered,
     });
+    visible = stats.visible;
+    // What is under the cursor changes when the view does, not only when the
+    // pointer moves.
+    updateReadout();
     report(stats);
   }
 
@@ -315,13 +483,17 @@ function frame() {
 /** @param {{drawn: number, skipped: number, labeled: number}} stats */
 function report(stats) {
   const s = packing.stats();
+
+  depthReadout.textContent =
+    displayDepth === 0 ? `depth all` : `depth ≤ ${displayDepth}`;
+
   hud.textContent = [
     `circles ${s.count.toLocaleString()}`,
     `drawn ${stats.drawn.toLocaleString()}`,
     `depth ${s.maxDepth}`,
     `max curvature ${s.maxCurvature.toLocaleString()}`,
     `zoom ${view.scale.toPrecision(4)}`,
-    `labels ${stats.labeled}`,
+    paused ? 'paused' : '',
     s.done ? (s.deferred > 0 ? `${s.deferred.toLocaleString()} deferred` : 'complete') : 'generating…',
     intervalCount < 5 ? '' : `${fps().toFixed(0)} fps`,
   ]
@@ -332,5 +504,5 @@ function report(stats) {
 themeSelect.value = themePreference();
 applyTheme();
 resize();
-load('apollonian');
+load(ROOTS.apollonian.quad);
 requestAnimationFrame(frame);

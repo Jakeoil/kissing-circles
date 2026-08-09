@@ -152,11 +152,18 @@ export class Packing {
     this.r = new Float64Array(1024);
     /** @type {Int32Array} */
     this.depth = new Int32Array(1024);
+    /**
+     * The three circles each circle was reflected in, three entries per index.
+     * -1 for the four circles of the root, which were not reflected into being.
+     * @type {Int32Array}
+     */
+    this.parents = new Int32Array(1024 * 3).fill(-1);
     /** @type {number} */
     this.count = 0;
 
-    /** @type {Set<string>} */
-    this._seen = new Set();
+    /** @type {Map<string, number>} key to index, so a circle's parents can be
+     * recorded as indices rather than as objects */
+    this._seen = new Map();
     /** @type {Frame[]} branches still to expand */
     this._stack = [];
     /** @type {Frame[]} branches pruned by resolution or viewport, kept for refine() */
@@ -249,9 +256,16 @@ export class Packing {
     let added = 0;
 
     if (born < 0) {
-      for (const c of quad) added += this._emit(c, depth) ? 1 : 0;
+      for (const c of quad) added += this._emit(c, depth, null) ? 1 : 0;
     } else {
-      added += this._emit(quad[born], depth) ? 1 : 0;
+      // The three circles this one was reflected in are already recorded: they came
+      // from the frame above, which emitted before expanding.
+      /** @type {number[]} */
+      const triple = [];
+      for (let j = 0; j < 4; j++) {
+        if (j !== born) triple.push(this._seen.get(quad[j].key()) ?? -1);
+      }
+      added += this._emit(quad[born], depth, triple) ? 1 : 0;
     }
 
     for (let i = 0; i < 4; i++) {
@@ -319,22 +333,28 @@ export class Packing {
    * Record a circle, unless an identical one is already present.
    * @param {Circle} circle
    * @param {number} depth
+   * @param {number[]|null} triple indices of the three circles it was reflected in
    * @returns {boolean} true when it was new
    */
-  _emit(circle, depth) {
+  _emit(circle, depth, triple) {
     const key = circle.key();
     if (this._seen.has(key)) return false;
-    this._seen.add(key);
 
     if (this.count === this.x.length) this._grow();
 
     const f = circle.toFloat();
     const i = this.count;
+    this._seen.set(key, i);
     this.circles[i] = circle;
     this.x[i] = f.x;
     this.y[i] = f.y;
     this.r[i] = f.r;
     this.depth[i] = depth;
+    if (triple !== null) {
+      this.parents[i * 3] = triple[0];
+      this.parents[i * 3 + 1] = triple[1];
+      this.parents[i * 3 + 2] = triple[2];
+    }
     this.count++;
 
     if (depth > this.maxDepthReached) this.maxDepthReached = depth;
@@ -351,14 +371,63 @@ export class Packing {
     const y = new Float64Array(n);
     const r = new Float64Array(n);
     const depth = new Int32Array(n);
+    const parents = new Int32Array(n * 3).fill(-1);
     x.set(this.x);
     y.set(this.y);
     r.set(this.r);
     depth.set(this.depth);
+    parents.set(this.parents);
     this.x = x;
     this.y = y;
     this.r = r;
     this.depth = depth;
+    this.parents = parents;
+  }
+
+  /**
+   * The three circles a circle was reflected in to produce it, as indices.
+   * Empty for the four circles of the root.
+   *
+   * Together with the circle itself these form its generating Descartes quadruple —
+   * which is what a reader wants when asking where a curvature came from.
+   *
+   * @param {number} i
+   * @returns {number[]}
+   */
+  parentsOf(i) {
+    const a = this.parents[i * 3];
+    if (a < 0) return [];
+    return [a, this.parents[i * 3 + 1], this.parents[i * 3 + 2]];
+  }
+
+  /**
+   * The circle whose disk contains a world point, or -1.
+   *
+   * Interiors in an Apollonian packing are disjoint, so at most one ordinary circle
+   * can contain a point and the first hit is the answer. A bounding circle contains
+   * everything, so it is only returned when nothing else matched.
+   *
+   * @param {number} wx
+   * @param {number} wy
+   * @param {number[]} [among] indices to consider; defaults to the whole packing
+   * @returns {number}
+   */
+  pick(wx, wy, among) {
+    let bounding = -1;
+    const n = among ? among.length : this.count;
+
+    for (let k = 0; k < n; k++) {
+      const i = among ? among[k] : k;
+      const r = this.r[i];
+      if (!Number.isFinite(r)) continue;
+      const dx = wx - this.x[i];
+      const dy = wy - this.y[i];
+      if (dx * dx + dy * dy > r * r) continue;
+      if (r < 0) bounding = i;
+      else return i;
+    }
+
+    return bounding;
   }
 
   /** @returns {object} a summary, for the UI and for tests */

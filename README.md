@@ -31,8 +31,15 @@ python3 -m http.server 8000     # then visit http://localhost:8000/
 ```
 
 Drag to pan, wheel or pinch to zoom, double-click to zoom in. `0` resets the view,
-`+`/`-` zoom, arrows pan, `l` toggles the curvature labels, `t` switches the theme.
+`+`/`-` zoom, arrows pan, `[`/`]` peel the packing back a level at a time, `l` toggles
+the curvature labels, `c` the color mode, `t` the theme, and `space` pauses generation.
 Zooming in generates new detail on the fly rather than regenerating from scratch.
+
+Hovering a circle reports it exactly: curvature, radius, center as a reduced Gaussian
+rational, co-curvature, depth, and the Descartes quadruple it was reflected out of.
+
+The **custom** field takes four curvatures — `-6,11,14,15` — and builds that packing,
+or explains why it cannot.
 
 Light and dark themes both ship; the selector follows the system setting by default
 and remembers an explicit choice.
@@ -49,7 +56,8 @@ font.
 
 ## Status
 
-Phases 1 through 3 complete: the math core, the generator, and the renderer.
+Phases 1 through 4 complete: the math core, the generator, the renderer, and the
+research interaction.
 
 | Module | Purpose |
 |---|---|
@@ -61,12 +69,14 @@ Phases 1 through 3 complete: the math core, the generator, and the renderer.
 | `src/render/renderer.js` | Canvas 2D drawing, batched by color |
 | `src/render/labels.js` | Curvature numerals, measured from the font |
 | `src/render/palette.js` | Color by curvature or by depth, light and dark |
+| `src/math/rational.js` | Exact rationals, for constructing a root from curvatures |
+| `src/ui/readout.js` | Exact formatting for the hover panel |
 
 Measured at 1400x900 on a Retina backing store: 8.3 ms per frame, about 120 fps, with
 3,300 circles on screen and the view moving every frame.
 
-Phase 4 is the research interaction — hover readouts giving a circle's exact curvature
-and generating quadruple, custom root quadruple entry, and shareable URLs.
+Still to come: deep-zoom refinement across frames (Phase 5), and export, curvature
+analysis and shareable URLs (Phase 6).
 
 ## Tests
 

@@ -7,7 +7,7 @@
  * Magenta) were the same value, and several — AntiqueWhite, Azure, BlanchedAlmond,
  * LemonChiffon — that were near-invisible against the white background it drew on.
  * This replaces it with a generated ramp: fixed saturation and lightness, hues
- * spread by the golden angle so consecutive indices land far apart on the wheel.
+ * spread by a step chosen to separate the residues a packing actually produces.
  *
  * A small fixed number of colors matters for more than looks. The renderer batches
  * circles by color into one path per bucket, so the bucket count is also the number
@@ -54,6 +54,7 @@ function hue(i, saturation, lightness) {
  * @property {string} rim the edge of a bounding circle, which would otherwise be
  *   hard to pick out against the page
  * @property {string} line straight lines, in packings that have them
+ * @property {string} highlight outline for the circle under the cursor
  * @property {string[]} fills one per bucket
  * @property {string[]} labels numerals, one per bucket
  */
@@ -64,6 +65,7 @@ function hue(i, saturation, lightness) {
  * @param {string} spec.interior
  * @param {string} spec.rim
  * @param {string} spec.line
+ * @param {string} spec.highlight
  * @param {number} spec.fillS
  * @param {number} spec.fillL
  * @param {number} spec.labelS
@@ -76,6 +78,7 @@ function build(spec) {
     interior: spec.interior,
     rim: spec.rim,
     line: spec.line,
+    highlight: spec.highlight,
     fills: Array.from({ length: BUCKETS }, (_, i) => hue(i, spec.fillS, spec.fillL)),
     labels: Array.from({ length: BUCKETS }, (_, i) => hue(i, spec.labelS, spec.labelL)),
   };
@@ -93,6 +96,7 @@ export const THEMES = {
     interior: '#1b222c',
     rim: '#3d4655',
     line: '#8b949e',
+    highlight: '#ffffff',
     fillS: 62,
     fillL: 58,
     labelS: 72,
@@ -103,6 +107,7 @@ export const THEMES = {
     interior: '#ffffff',
     rim: '#b6bfcb',
     line: '#57606a',
+    highlight: '#1f2328',
     fillS: 66,
     fillL: 74,
     labelS: 78,

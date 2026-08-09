@@ -254,10 +254,6 @@ curvatures, at 60fps while panning.
 > 3,300 circles on screen and the view moving every frame. Four things only became
 > visible once the page was actually rendered and looked at:
 >
-> - **Numerals sized by bounding box grow absurdly.** One narrow glyph keeps growing
->   until it hits the circle diagonally, so a single digit spanned ~70% of the
->   diameter and the picture read as digits with circles around them. Sizing from cap
->   height instead gives every numeral the same visual weight.
 > - **A circle larger than the window got a numeral larger than the window.** Zooming
 >   inside a big circle scaled its label with the circle. Labels are now capped to a
 >   fraction of the viewport.
@@ -273,6 +269,15 @@ curvatures, at 60fps while panning.
 > The reported "17 fps" that prompted the performance work was an artifact: the HUD
 > used an exponential average starting from zero, which takes hundreds of frames to
 > climb. It now reports a median over a short window.
+>
+> **Numeral size is a design decision, and it is settled.** A numeral is set as large
+> as it can be and still fit inside its circle, so it bears a *constant ratio to the
+> circle it labels*. I briefly changed this to a fixed cap height, which makes every
+> numeral the same visual weight regardless of digit count; that was wrong for this
+> project and has been reverted. Longer curvatures shrink to fit — that is the "as
+> long as they fit" part — but the relation to the circle is otherwise fixed. The
+> viewport ceiling is the sole exception, and only engages for a circle bigger than
+> the window.
 
 ### Phase 4 — Interaction, desktop-first
 The Android version was touch-only. Desktop gets the better experience:
@@ -290,6 +295,37 @@ The Android version was touch-only. Desktop gets the better experience:
 
 **Done when:** it's genuinely more pleasant on a desktop than the phone version was, and
 still works on a phone.
+
+> **Built.** The hover readout gives a circle's curvature, radius, center as a reduced
+> Gaussian rational, co-curvature, depth, and the quadruple it was reflected out of.
+> That needed two additions: the generator now records each circle's parent triple as
+> indices, and hit-testing runs against the indices drawn last frame — bounded by
+> what is on screen rather than by the hundreds of thousands a deep zoom accumulates,
+> and so incapable of reporting a circle the user cannot see.
+>
+> **Custom roots turned out to be constructible after all.** Phase 1 deferred this,
+> expecting it to need a square root in ℤ[i]. It does not. Placing four curvatures
+> from their pairwise distances is entirely rational — `|zᵢ − zⱼ| = |bᵢ+bⱼ| / |bᵢbⱼ|`
+> — and the one square root that appears comes out rational for an integral
+> quadruple. Two things make it work:
+>
+> - **A translation search.** The natural placement is almost never integral:
+>   `(−3,5,8,8)` lands on `0, 2/3, −4/3+i, −4/3−i`. Since translating by `c` sends
+>   `b·z` to `b·z + b·c`, and the products share a denominator `D`, only the `D`
+>   translations `c = u/D` need trying. Here `c = 2/3` gives `−2, 4, 4+i, 4−i`.
+> - **An ordering search.** Placing the first two circles on the real axis fixes the
+>   orientation, and only some orientations are integral. `(−6,11,14,15)` has no
+>   integral placement from that pair but does from `−6` and `14`. There are only 24
+>   orderings, so try them all.
+>
+> Everything is verified by `validateQuad` before it is returned, so a constructed
+> root is held to the same standard as a hand-derived one. `(−2,3,6,7)`, `(−3,5,8,8)`
+> and `(−6,11,14,15)` now ship as named roots, built at load time.
+>
+> The depth control became a *display* filter rather than a generation limit —
+> nothing is discarded, so peeling back to depth ≤ 1 and forward again is instant and
+> lossless. It shows the root quadruple and its four children, which is a better
+> explanation of the recursion than any diagram.
 
 ### Phase 5 — Deep zoom
 The payoff of exact arithmetic. As you zoom in, circles pruned as sub-pixel become
