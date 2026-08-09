@@ -609,10 +609,16 @@ This is the part to plan for rather than discover. Three assumptions in the curr
 renderer hold only because an Apollonian gasket never subdivides a disk:
 
 1. **Draw order does not matter.** Interiors are disjoint today, so circles can be
-   batched by colour and painted in any order. Once a disk contains circles, painting
-   is strictly largest-first or the contents vanish. Batching by colour then conflicts
-   with ordering by size; the likely answer is to bucket by depth and batch by colour
-   *within* a depth.
+   batched by colour and painted in any order. Once a disk contains circles, that
+   fails completely.
+
+   > **Settled, and more simply than this predicted.** I expected to bucket by depth
+   > and batch by colour within a depth. The real answer is not to fill at all: the
+   > arrangement is drawn as **outlines**, which need no ordering, keep the colour
+   > batching intact, and are how these pictures are conventionally drawn. Filled, the
+   > arrangement is a solid mass with no structure visible whatsoever — see the lab
+   > page. `draw()` now takes `style: 'fill' | 'stroke'`, defaulting to `fill` so the
+   > packing is untouched.
 2. **`pick` can return the first hit.** With nesting it must return the *smallest*
    containing circle, which means scanning all candidates rather than stopping early.
 3. **The bounding circle is the only negative curvature.** Probably still true, but the
@@ -624,12 +630,22 @@ None of these is hard. All three are silent if missed.
 
 Ordered so each step is verifiable before the next depends on it.
 
-1. **The Möbius action, in `src/math/mobius.js`.** Pure arithmetic, no renderer, no
-   mode. Tests: the seven generators, `det M = −1` preserved, a circle from the current
-   packing carried through a generator word and back by the inverse.
-2. **A Schmidt generator**, producing the arrangement from `𝒥` and the seven maps.
-   Verified by curvature: every one even, and the classic gasket's curvatures present
-   after the factor of two.
+1. ~~**The Möbius action, in `src/math/mobius.js`.**~~ **Done.** The seven generators
+   plus S and I, the action by adjugate conjugation, and words in the generators.
+   Schmidt's Lemma 1.1 turned out to be the ideal test material — `S³ = I`,
+   `V_{j+1} = S Vⱼ S⁻¹`, `det Vⱼ = 1`, `det Eⱼ = i`, `det C = −i`, `Vⱼ⁻¹ = conj(Vⱼ)` —
+   because together those identities pin every entry down, so a transcription error
+   cannot survive. 19 tests.
+2. ~~**A Schmidt generator.**~~ **Done**, in `src/math/schmidt.js`. Regions are a
+   matrix and a type; a region's circle is its matrix applied to the real line.
+   Verified by curvature — **every curvature it produces is even**, which is Schmidt's
+   ρ(F) ∈ 2ℕ₀ arrived at independently, and the strongest available check that the
+   construction is right. Region counts match `(3·5ⁿ − 1)/2` exactly: 1, 7, 37, 187,
+   937, 4687. Note the gasket branches by 3 per generation and this by 5. 15 tests.
+
+   It returns the same shape as a `Packing` — `circles`, `x`, `y`, `r`, `depth`,
+   `count` — so the existing renderer draws it with no changes at all. That is the
+   §7.1 thesis holding up under its first real test.
 3. **Mode infrastructure**, once there are two real generators to abstract over — not
    before. Abstracting over one implementation is guesswork.
 4. **The renderer's nesting work** (§8.3), driven by the arrangement actually rendering
@@ -644,9 +660,13 @@ Ordered so each step is verifiable before the next depends on it.
 
 ### 8.5 What this does not answer
 
-- Whether the arrangement is *legible* at the resolutions we draw at. It is far denser
-  than a gasket, and it may simply look like noise until zoomed. Worth a lab page with
-  a few hundred circles before committing to a mode.
+- ~~Whether the arrangement is *legible*.~~ **Answered by `labs/schmidt.html`, and the
+  answer had teeth.** Filled, it is a featureless slab — every structure hidden, because
+  the circles nest. Stroked, it is immediately the familiar picture: lines at integer
+  heights, cusps at the Gaussian rationals, nested families tightening toward them. So
+  legibility was never about density; it was about fill versus outline. Generation 7 is
+  97,782 circles built in 320 ms. This is exactly what the lab page was for, and it
+  overturned a prediction in §8.3 within minutes of existing.
 - Whether curvature-mod-24 colouring means anything in the arrangement. The analysis
   panel assumes a single gasket; it may need a different question entirely.
 - Memory. The arrangement grows faster than a gasket, and circles are still never

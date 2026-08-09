@@ -18,6 +18,11 @@ import { drawLabels, LABEL_MIN_RADIUS } from './labels.js';
  * Draw order does not matter among ordinary circles: the interiors of an Apollonian
  * packing are disjoint, so nothing occludes anything. The one exception is a
  * bounding circle, which contains the whole packing and so is filled first.
+ *
+ * That freedom is exactly what `style: 'stroke'` exists for. A Schmidt arrangement's
+ * circles *nest*, so filling them paints the whole picture into a solid mass — the
+ * assumption above simply does not hold there. Outlines have no such problem, need no
+ * ordering, and are how these arrangements are conventionally drawn.
  */
 
 const TAU = Math.PI * 2;
@@ -71,6 +76,7 @@ let scratchDepthBuckets = new Uint8Array(1024);
  * @property {number} [minPixels] skip circles smaller than this on screen
  * @property {number} [maxDepth] hide circles deeper than this; 0 for no limit
  * @property {number} [highlight] index of a circle to outline, or -1
+ * @property {'fill'|'stroke'} [style] how circles are drawn
  */
 
 /**
@@ -87,6 +93,7 @@ export function draw(ctx, packing, view, options = {}) {
   const minPixels = options.minPixels ?? 0.35;
   const maxDepth = options.maxDepth ?? 0;
   const highlight = options.highlight ?? -1;
+  const style = options.style ?? 'fill';
 
   const { width, height, scale, tx, ty } = view;
 
@@ -141,7 +148,7 @@ export function draw(ctx, packing, view, options = {}) {
       continue;
     }
 
-    if (r < 0) {
+    if (r < 0 && style === 'fill') {
       // A bounding circle: fill it as the backdrop its contents sit on.
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, TAU);
@@ -161,21 +168,28 @@ export function draw(ctx, packing, view, options = {}) {
     drawn++;
   }
 
+  if (style === 'stroke') ctx.lineWidth = 1;
+
   for (let b = 0; b < BUCKETS; b++) {
     const indices = scratchBuckets[b];
     if (indices.length === 0) continue;
 
     ctx.beginPath();
     for (const i of indices) {
-      const sr = rs[i] * scale;
+      const sr = Math.abs(rs[i]) * scale;
       const sx = xs[i] * scale + tx;
       const sy = ys[i] * scale + ty;
       // moveTo before each arc, or the subpaths get joined by stray line segments.
       ctx.moveTo(sx + sr, sy);
       ctx.arc(sx, sy, sr, 0, TAU);
     }
-    ctx.fillStyle = palette.fills[b];
-    ctx.fill();
+    if (style === 'stroke') {
+      ctx.strokeStyle = palette.fills[b];
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = palette.fills[b];
+      ctx.fill();
+    }
   }
 
   if (scratchLines.length > 0) {

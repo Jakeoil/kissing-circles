@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>lab — Schmidt arrangement</title>
+    <link rel="icon" href="data:," />
+    <style>
+      /*
+        A lab page (plan.md §7.1): one question, no polish, not linked from the app,
+        and nothing in src/ depends on it. The question here is §8.5's — is the
+        arrangement legible at the resolutions we draw at, or does it read as noise?
+      */
+      html, body { margin: 0; height: 100%; background: #0d1117; color: #c9d1d9;
+                   font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+              touch-action: none; cursor: grab; }
+      #view:active { cursor: grabbing; }
+      .panel { position: fixed; background: #161b22cc; border: 1px solid #30363d;
+               border-radius: 8px; padding: 10px 12px; backdrop-filter: blur(12px); }
+      #controls { top: 12px; left: 12px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+      label { display: flex; gap: 6px; align-items: center; color: #8b949e; white-space: nowrap; }
+      #hud { bottom: 12px; left: 12px; right: 12px; color: #8b949e;
+             font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+      input[type=range] { width: 120px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <div id="controls" class="panel">
+      <label>generations <input id="gen" type="range" min="1" max="9" value="5" /> <b id="genv">5</b></label>
+      <label>color <select id="color"><option value="depth">generation</option><option value="curvature">curvature</option></select></label>
+      <label>draw <select id="style"><option value="stroke">outlines</option><option value="fill">filled</option></select></label>
+      <label><input type="checkbox" id="labels" /> curvatures</label>
+      <label><input type="checkbox" id="gasket" /> gasket over it</label>
+    </div>
+    <div id="hud">…</div>
+
+    <script type="module">
+      import { arrangement, regionCount } from '../src/math/schmidt.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { draw } from '../src/render/renderer.js';
+      import { generate } from '../src/math/packing.js';
+      import { ROOTS } from '../src/math/descartes.js';
+
+      const canvas = document.getElementById('view');
+      const ctx = canvas.getContext('2d');
+      const hud = document.getElementById('hud');
+      const genInput = document.getElementById('gen');
+      const genOut = document.getElementById('genv');
+      const colorSelect = document.getElementById('color');
+      const labelToggle = document.getElementById('labels');
+      const styleSelect = document.getElementById('style');
+      const gasketToggle = document.getElementById('gasket');
+
+      const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
+      let model = null;
+      let dirty = true;
+
+      function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(canvas.clientWidth * dpr);
+        canvas.height = Math.round(canvas.clientHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(canvas.clientWidth, canvas.clientHeight);
+        dirty = true;
+      }
+
+      function build() {
+        const n = Number(genInput.value);
+        genOut.textContent = String(n);
+        const t0 = performance.now();
+
+        if (gasketToggle.checked) {
+          // The gasket in Schmidt's normalization: curvatures doubled.
+          const p = generate(ROOTS.apollonian.quad, { maxCurvature: 400n });
+          model = p;
+          model.__label = `gasket, ${p.count} circles`;
+        } else {
+          const a = arrangement({ maxGeneration: n, maxCurvature: 4000n });
+          model = a;
+          model.__label =
+            `${a.count.toLocaleString()} circles from ${regionCount(n).toLocaleString()} regions`;
+        }
+        model.__ms = Math.round(performance.now() - t0);
+        dirty = true;
+      }
+
+      // The arrangement lives on the upper half plane around [0,1]; frame that.
+      function home() {
+        return gasketToggle.checked
+          ? { minX: -1.1, minY: -1.1, maxX: 1.1, maxY: 1.1 }
+          : { minX: -0.6, minY: -0.15, maxX: 1.6, maxY: 1.25 };
+      }
+
+      let dragging = false;
+      let last = null;
+      canvas.addEventListener('pointerdown', (e) => { dragging = true; last = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+      canvas.addEventListener('pointerup', () => { dragging = false; });
+      canvas.addEventListener('pointermove', (e) => {
+        if (!dragging || !last) return;
+        view.panBy(e.clientX - last.x, e.clientY - last.y);
+        last = { x: e.clientX, y: e.clientY };
+        dirty = true;
+      });
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const r = canvas.getBoundingClientRect();
+        view.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016));
+        dirty = true;
+      }, { passive: false });
+
+      for (const el of [genInput, gasketToggle]) el.addEventListener('input', () => { build(); view.fit(home(), 0.08); });
+      for (const el of [colorSelect, labelToggle, styleSelect]) el.addEventListener('change', () => { dirty = true; });
+      window.addEventListener('resize', resize);
+      window.addEventListener('keydown', (e) => { if (e.key === '0') { view.fit(home(), 0.08); dirty = true; } });
+
+      function frame() {
+        if (dirty && model) {
+          dirty = false;
+          const stats = draw(ctx, model, view, {
+            colorMode: colorSelect.value,
+            theme: 'dark',
+            labels: labelToggle.checked,
+            style: styleSelect.value,
+          });
+          const even = (() => {
+            let odd = 0;
+            for (let i = 0; i < model.count; i++) if (model.circles[i].b % 2n !== 0n) odd++;
+            return odd;
+          })();
+          hud.textContent = [
+            model.__label,
+            `drawn ${stats.drawn.toLocaleString()}`,
+            `built in ${model.__ms} ms`,
+            `zoom ${view.scale.toPrecision(4)}`,
+            gasketToggle.checked ? '' : `odd curvatures: ${even}`,
+          ].filter(Boolean).join('   ');
+        }
+        requestAnimationFrame(frame);
+      }
+
+      resize();
+      build();
+      view.fit(home(), 0.08);
+      requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>
