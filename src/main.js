@@ -4,6 +4,8 @@ import { Packing } from './math/packing.js';
 import { ROOTS, rootFromCurvatures } from './math/descartes.js';
 import { Viewport } from './render/viewport.js';
 import { draw, resetFontMetrics } from './render/renderer.js';
+import { setNumeralFont } from './render/labels.js';
+import { FONTS, DEFAULT_FONT, font as fontById, ensureLoaded } from './render/fonts.js';
 import { describe } from './ui/readout.js';
 import { analyze } from './math/analysis.js';
 import { encode, decode, encodeCurvatures, decodeCurvatures } from './ui/share.js';
@@ -53,6 +55,7 @@ const hud = /** @type {HTMLElement} */ (document.getElementById('hud'));
 const rootSelect = /** @type {HTMLSelectElement} */ (document.getElementById('root'));
 const colorSelect = /** @type {HTMLSelectElement} */ (document.getElementById('color'));
 const themeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('theme'));
+const fontSelect = /** @type {HTMLSelectElement} */ (document.getElementById('font'));
 const labelToggle = /** @type {HTMLInputElement} */ (document.getElementById('labels'));
 const customInput = /** @type {HTMLInputElement} */ (document.getElementById('custom'));
 const errorBox = /** @type {HTMLElement} */ (document.getElementById('error'));
@@ -124,6 +127,58 @@ function limits() {
     bounds: view.visibleBounds(MARGIN),
   };
 }
+
+// ------------------------------------------------------------------ numerals
+
+const FONT_KEY = 'kc-font';
+
+for (const f of FONTS) {
+  const option = document.createElement('option');
+  option.value = f.id;
+  option.textContent = f.label;
+  fontSelect.append(option);
+}
+
+/** @returns {string} */
+function fontPreference() {
+  try {
+    const saved = localStorage.getItem(FONT_KEY);
+    if (saved && FONTS.some((f) => f.id === saved)) return saved;
+  } catch {
+    // Storage unavailable; the default is fine.
+  }
+  return DEFAULT_FONT;
+}
+
+/**
+ * Switch the numeral face.
+ *
+ * A self-hosted face is not fetched until something asks for it, and canvas falls
+ * back silently rather than waiting — so the font has to be loaded before the first
+ * draw, or that frame is both drawn and *measured* in the wrong typeface.
+ *
+ * @param {string} id
+ */
+async function applyFont(id) {
+  const chosen = fontById(id);
+  fontSelect.value = chosen.id;
+  document.documentElement.style.setProperty('--numeral-font', chosen.stack);
+  try {
+    localStorage.setItem(FONT_KEY, chosen.id);
+  } catch {
+    // Not fatal.
+  }
+
+  await ensureLoaded(chosen.id);
+  setNumeralFont(chosen.id);
+  resetFontMetrics();
+  viewDirty = true;
+}
+
+fontSelect.addEventListener('change', () => {
+  applyFont(fontSelect.value);
+  syncURL();
+});
 
 // ----------------------------------------------------------------------- theme
 
@@ -331,6 +386,7 @@ function shareFragment() {
     color: /** @type {'curvature'|'depth'} */ (colorSelect.value),
     labels: labelToggle.checked,
     depth: displayDepth,
+    font: fontSelect.value,
   });
 }
 
@@ -364,6 +420,7 @@ function restoreFromURL() {
   colorSelect.value = state.color;
   labelToggle.checked = state.labels;
   displayDepth = state.depth;
+  if (state.font) applyFont(state.font);
   view.scale = state.scale;
   view.centerOn(state.cx, state.cy);
   packing.refine(limits());
@@ -712,6 +769,7 @@ function report(stats) {
 
 themeSelect.value = themePreference();
 applyTheme();
+applyFont(fontPreference());
 resize();
 load(ROOTS.apollonian.quad, 'apollonian');
 if (!restoreFromURL()) syncURL();

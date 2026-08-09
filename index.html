@@ -38,6 +38,24 @@
     </script>
 
     <style>
+      /* Numeral faces. See assets/FONTS.md — the -onum files have oldstyle figures
+         frozen in, because canvas cannot select the OpenType feature itself. */
+      @font-face {
+        font-family: 'EB Garamond';
+        font-display: swap;
+        src: url('./assets/ebgaramond-onum.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Crimson Pro';
+        font-display: swap;
+        src: url('./assets/crimsonpro-onum.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'STIX Two Text';
+        font-display: swap;
+        src: url('./assets/stixtwotext-onum.woff2') format('woff2');
+      }
+
       /* Caladea: metric-compatible with Cambria, Apache 2.0. See assets/README.md. */
       @font-face {
         font-family: 'Caladea';
@@ -55,8 +73,8 @@
       }
 
       :root {
-        --numeral-font: 'Caladea', Cambria, Charter, 'Source Serif 4', Georgia,
-          'Times New Roman', serif;
+        /* Kept in step with the numeral picker by main.js. */
+        --numeral-font: 'Times New Roman', Times, serif;
       }
 
       :root[data-theme='light'] {
@@ -348,6 +366,10 @@
           <option value="curvature">curvature</option>
           <option value="depth">depth</option>
         </select>
+      </label>
+      <label>
+        numerals
+        <select id="font"></select>
       </label>
       <label>
         theme

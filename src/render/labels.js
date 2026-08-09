@@ -12,12 +12,26 @@
  * the Kotlin.
  */
 
+import { font as fontById, DEFAULT_FONT } from './fonts.js';
+
 /**
- * The numeral font. Caladea is metric-compatible with Cambria and ships with the
- * project; the rest is what a browser falls back to if it somehow fails to load.
+ * The font stack currently in use. Set by the caller; everything below measures it
+ * rather than assuming anything about it.
+ * @type {string}
  */
-export const NUMERAL_FONT =
-  '"Caladea", Cambria, Charter, "Source Serif 4", Georgia, "Times New Roman", serif';
+export let NUMERAL_FONT = fontById(DEFAULT_FONT).stack;
+
+/**
+ * Choose the numeral font. Invalidates the cached metrics, since they describe the
+ * previous face.
+ * @param {string} id
+ */
+export function setNumeralFont(id) {
+  const next = fontById(id).stack;
+  if (next === NUMERAL_FONT) return;
+  NUMERAL_FONT = next;
+  resetFontMetrics();
+}
 
 /**
  * How much of the circle a numeral spans, as a fraction of the diameter measured
@@ -165,11 +179,17 @@ export function drawLabels(ctx, packing, view, candidates, buckets, palette) {
     }
 
     ctx.font = `700 ${size}px ${NUMERAL_FONT}`;
-    ctx.fillText(
-      text,
-      packing.x[i] * scale + tx,
-      packing.y[i] * scale + ty + metrics.center * size,
-    );
+
+    // Center on this numeral's own box, not on the average over all ten digits.
+    // With oldstyle figures the difference is visible: "11" has no descender while
+    // "39" has two, so a shared offset leaves one of them sitting wrong.
+    const box = ctx.measureText(text);
+    const rise =
+      box.actualBoundingBoxAscent === undefined
+        ? metrics.center * size
+        : (box.actualBoundingBoxAscent - box.actualBoundingBoxDescent) / 2;
+
+    ctx.fillText(text, packing.x[i] * scale + tx, packing.y[i] * scale + ty + rise);
     drawn++;
   }
 

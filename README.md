@@ -58,10 +58,13 @@ and remembers an explicit choice.
 ## Numerals
 
 Reading integer curvatures off the picture is the point of the tool, so the numerals
-get some care. The font is self-hosted rather than left to a system stack — see
-[assets/README.md](assets/README.md) for why, and for how to swap it. Sizing and
+get some care. Six faces are selectable in the app — Times New Roman by default, plus
+Georgia, EB Garamond, Crimson Pro and STIX Two Text with **oldstyle figures**, and
+Caladea. See [assets/FONTS.md](assets/FONTS.md) for the mechanics, including why
+oldstyle has to be frozen into the font rather than asked for at draw time. Sizing and
 placement are measured at runtime from the font's own digit bounding box, so numerals
-sit on their optical center rather than on the em box. A numeral is set as large as it
+sit on their optical center rather than on the em box — each on its own measured box,
+which matters once figures have descenders. A numeral is set as large as it
 can be and still fit, so it bears a constant ratio to its circle at every zoom level —
 zooming in grows the numeral exactly as it grows the circle. Longer curvatures are set
 smaller so their box still fits. Nothing in `src/` names a specific font.

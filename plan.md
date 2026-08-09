@@ -428,7 +428,110 @@ behind it.
 
 ---
 
-## 7. References
+## 7. Rendering
+
+Two open questions, answered here so the answers stop being re-litigated: **how the app
+is structured as the mathematics grows**, and **what the numerals look like**.
+
+### 7.1 One page, or a page per view?
+
+The app is going to grow modes that are not simply "the same picture with different
+numbers": the Schmidt arrangement, a continued-fraction walker, possibly a Farey/Ford
+view. The question is whether each becomes its own HTML page or a mode inside `index.html`.
+
+**Decision: one app page with modes, plus disposable lab pages.**
+
+One page, because these are not different applications. They share the exact-arithmetic
+core (`Circle`, `Packing`), the viewport, the renderer, the palette, the numeral
+machinery, the theme, the export path and the share links. Splitting them across pages
+duplicates all of that or forces it into a shared module that each page then has to
+re-wire. Worse, it would misrepresent the mathematics: the Apollonian gasket is *inside*
+the Schmidt arrangement, not beside it — see
+[notes/schmidt-generations.md](notes/schmidt-generations.md). Two pages would assert a
+separation that does not exist.
+
+The **lab page** is the escape valve, and it is a pattern already in use elsewhere in
+this account: `lunizodiacal/font-test.html` sits beside its app without being part of it.
+A lab page is a scratch file for one question — compare six fonts, check a subdivision
+rule, look at one figure. It may be ugly, it need not be linked from anywhere, and it is
+deleted or promoted once the question is answered. Nothing in `src/` may depend on one.
+
+**When a lab page graduates into a mode:** when it needs the packing, the viewport, or
+the share link. Until it needs one of those three, it is cheaper as a lab page.
+
+### 7.2 The legacy guarantee
+
+The requirement is that the current view keeps working as new modes arrive. Stated
+concretely, so it can be checked rather than hoped for:
+
+> **Every state reachable today must stay reachable through controls, and every URL
+> emitted today must keep rendering the same picture.**
+
+That is testable, and it is the reason the share fragment matters beyond convenience.
+The commitment has three parts:
+
+1. **The default view does not change.** Loading the page with no fragment gives the
+   `(−1, 2, 2, 3)` packing, framed on its bounding circle, coloured by curvature, with
+   numerals on. A new mode may be *offered*, but must not become the default.
+2. **Old fragments keep working.** `decode()` already returns `null` for anything it
+   cannot parse and falls back rather than breaking, and unknown keys are ignored. Any
+   new mode key must therefore default to "the current behaviour" when absent — never
+   the reverse.
+3. **A set of canonical URLs is kept and checked.** A handful of fragments — default
+   view, deep zoom, strip packing, custom root, depth filter — rendered and compared
+   before anything ships. This is the concrete form of "show that state with controls".
+
+The one thing that would break this is a mode that changes what a *circle* is. The
+Schmidt arrangement does not: its circles are the same `(b̄, b, b·z)` rows, in a
+normalization where curvatures are even (§7 of the notes). So it can be a mode.
+
+### 7.3 Numerals
+
+Reading curvatures off the picture is the point of the tool, so the typeface is not
+decoration. The catalogue is `src/render/fonts.js`; the mechanics are in
+[assets/FONTS.md](assets/FONTS.md).
+
+**Six faces, chosen in the app**, with the choice carried in the share link and
+remembered locally:
+
+| Font | Figures | Source |
+|---|---|---|
+| **Times New Roman** (default) | lining | system |
+| Georgia | **oldstyle** | system |
+| EB Garamond | **oldstyle** | shipped, SIL OFL |
+| Crimson Pro | **oldstyle** | shipped, SIL OFL |
+| STIX Two Text | **oldstyle** | shipped, SIL OFL |
+| Caladea | lining | shipped, Apache 2.0 |
+
+**Oldstyle figures cannot be requested at draw time.** `ctx.font` takes a CSS font
+shorthand, which has no room for `font-feature-settings`, and the `@font-face` descriptor
+form is ignored — measured directly, a family declared with `'onum' 1` gives metrics
+identical to the same family without it. So the feature is *frozen into the font*:
+`pyftfeatfreeze -f onum` makes the oldstyle set the default and nothing needs selecting
+at draw time. Georgia is the exception that needs no treatment, its figures being
+oldstyle already.
+
+**Sizing and placement stay measured, never assumed.** Nothing in `src/` names a font.
+The size still comes from the digit box measured once per face, so every numeral holds
+the same constant ratio to its circle (§Phase 3 — settled, and not to be capped). But
+each numeral is now centred on **its own** measured box rather than on the average over
+all ten digits, because with oldstyle figures `11` has no descender and `39` has two; a
+shared offset leaves one of them sitting visibly wrong.
+
+**A consequence worth knowing before choosing.** Oldstyle numerals *look* smaller at the
+same setting, because their measured box includes descenders while their visible body is
+x-height. EB Garamond in particular sets `1` as a short figure close to a lowercase
+roman numeral, which is authentic but can read oddly in a circle labelled `11`. If a
+face is chosen for the default and this becomes annoying, the fix is to size oldstyle
+faces from x-height rather than from the full box — a per-face metric, not a global
+change.
+
+**Adding a face** is: an entry in `src/render/fonts.js`, an `@font-face` in `index.html`
+if it is shipped, and nothing else.
+
+---
+
+## 8. References
 
 Everything this project relies on, in one place. Anything asserted in the code or the
 notes should be traceable to something here; where a claim is second-hand rather than

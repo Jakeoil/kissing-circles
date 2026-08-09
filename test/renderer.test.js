@@ -3,7 +3,14 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { draw } from '../src/render/renderer.js';
-import { resetFontMetrics, NUMERAL_FONT, numeralSize, digitMetrics } from '../src/render/labels.js';
+import {
+  resetFontMetrics,
+  NUMERAL_FONT,
+  numeralSize,
+  digitMetrics,
+  setNumeralFont,
+} from '../src/render/labels.js';
+import { FONTS, DEFAULT_FONT, font } from '../src/render/fonts.js';
 import { bucket, BUCKETS, THEMES, theme, HUE_STEP } from '../src/render/palette.js';
 import { Viewport } from '../src/render/viewport.js';
 import { generate } from '../src/math/packing.js';
@@ -460,9 +467,37 @@ describe('renderer', () => {
       assert.ok(Math.abs(m.center - 0.35) < 1e-12, 'optical center from the stub font');
     });
 
-    test('the font stack names Caladea first', () => {
-      assert.match(NUMERAL_FONT, /^"Caladea"/);
-      assert.match(NUMERAL_FONT, /serif$/);
+    test('the default numeral font is Times New Roman, and every stack ends in serif', () => {
+      assert.match(NUMERAL_FONT, /^"Times New Roman"/);
+      for (const f of FONTS) assert.match(f.stack, /serif$/, f.id);
+    });
+
+    test('choosing a font changes the stack and clears the metrics', () => {
+      const before = NUMERAL_FONT;
+      setNumeralFont('garamond');
+      assert.notEqual(NUMERAL_FONT, before);
+      assert.match(NUMERAL_FONT, /EB Garamond/);
+
+      // Metrics must be re-measured against the new face rather than carried over.
+      const ctx = stubContext();
+      const m = digitMetrics(/** @type {any} */ (ctx));
+      assert.ok(m.height > 0);
+
+      setNumeralFont('times');
+      assert.equal(NUMERAL_FONT, before);
+    });
+
+    test('an unknown font id falls back rather than throwing', () => {
+      setNumeralFont('nonesuch');
+      assert.match(NUMERAL_FONT, /Times New Roman/);
+    });
+
+    test('the catalogue is well formed', () => {
+      assert.ok(FONTS.length >= 4);
+      assert.equal(new Set(FONTS.map((f) => f.id)).size, FONTS.length, 'ids are unique');
+      assert.ok(FONTS.some((f) => f.oldstyle), 'at least one oldstyle option');
+      assert.ok(FONTS.some((f) => !f.oldstyle), 'at least one lining option');
+      assert.ok(font(DEFAULT_FONT), 'the default resolves');
     });
 
     test('metrics are cached, and resetFontMetrics clears them', () => {
