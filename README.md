@@ -2,6 +2,8 @@
 
 Exact integral Apollonian circle packings, in the browser.
 
+**Live: https://jakeoil.github.io/kissing-circles/**
+
 A research tool for studying Apollonian packings, built on Descartes' Circle Theorem
 and its complex extension. A port of the Android/Kotlin project
 [DynamicKissingCircles](https://github.com/Jakeoil/DynamicKissingCircles) to modular
@@ -24,11 +26,15 @@ converted per circle at draw time.
 
 ## Running it
 
-ES modules need a real origin, so open it over HTTP rather than from the filesystem:
+Open the [live site](https://jakeoil.github.io/kissing-circles/), or serve it locally.
+ES modules need a real origin, so use HTTP rather than the filesystem:
 
 ```sh
 python3 -m http.server 8000     # then visit http://localhost:8000/
 ```
+
+There is no build step. GitHub Pages serves these files exactly as they are in the
+repository, so `git push` is the whole deployment.
 
 Drag to pan, wheel or pinch to zoom, double-click to zoom in. `0` resets the view,
 `+`/`-` zoom, arrows pan, `[`/`]` peel the packing back a level at a time, `l` toggles
