@@ -496,12 +496,15 @@ remembered locally:
 
 | Font | Figures | Source |
 |---|---|---|
-| **Times New Roman** (default) | lining | system |
+| **Caladea** (default) | lining | shipped, Apache 2.0 |
+| Times New Roman | lining | system |
 | Georgia | **oldstyle** | system |
 | EB Garamond | **oldstyle** | shipped, SIL OFL |
 | Crimson Pro | **oldstyle** | shipped, SIL OFL |
 | STIX Two Text | **oldstyle** | shipped, SIL OFL |
-| Caladea | lining | shipped, Apache 2.0 |
+
+Caladea stays the default because it is what the deployed site already draws with, and
+§7.2 says adding a control must not change the default view.
 
 **Oldstyle figures cannot be requested at draw time.** `ctx.font` takes a CSS font
 shorthand, which has no room for `font-feature-settings`, and the `@font-face` descriptor
@@ -531,7 +534,127 @@ if it is shipped, and nothing else.
 
 ---
 
-## 8. References
+## 8. Next: modes, and the Schmidt arrangement
+
+A plan, not a commitment. §7.1 settled that new views are modes inside one page; this
+works out what a mode *is*, and stages the mathematics from
+[notes/schmidt-generations.md](notes/schmidt-generations.md).
+
+### 8.1 What a mode is
+
+Today's generator is one specific thing: reflect a circle in a triple of tangent
+circles. Schmidt's construction is more general — subdivide a region by applying a
+Möbius map from a fixed set of generators. The Apollonian reflection is a special case,
+which is why one page can hold both.
+
+Concretely, a mode supplies three things and nothing else:
+
+- **a generator** — something that fills a `Packing`-shaped structure from a root;
+- **a framing** — the world rectangle to open on;
+- **its own controls** — a fragment of the panel, shown only when the mode is active.
+
+Everything else stays shared: viewport, renderer, palette, numerals, hover readout,
+export, share links, analysis. The mode id joins the share fragment as another key that
+**defaults to today's behaviour when absent**, per §7.2.
+
+The honest risk: `Packing` currently hard-codes the reflection rule in `_expand`. Making
+it mode-agnostic means separating *what to expand* from *how to expand it*. That is a
+refactor of the one module everything depends on, and it should be done with the test
+suite green at every step, not in one move.
+
+### 8.2 How a Möbius map acts on a circle — the piece that has to be right
+
+The Apollonian recursion never needed matrices. The Schmidt construction is nothing but
+matrices, so the action has to be exact, or the arrangement drifts off the Gaussian
+integers within a few generations.
+
+A circle `A|z|² + B̄z + Bz̄ + C = 0` corresponds to the Hermitian matrix
+
+```
+M = [ A   B ]     with A, C real
+    [ B̄   C ]
+```
+
+and our representation is exactly that, already:
+
+```
+A = b        B = −b·z        C = b̄
+```
+
+so `M = [[b, −b·z], [−conj(b·z), b̄]]`, and `det M = b·b̄ − |bz|² = −1` by the invariant
+in `Circle.isValid`. A Möbius map `g` acts by conjugation, and using the **adjugate**
+rather than the inverse keeps everything integral:
+
+```
+M  ↦  adj(g)* · M · adj(g)          adj(g) = [[d, −b], [−c, a]]
+```
+
+**Checked, not assumed.** Applying each of Schmidt's seven generators to circles taken
+from the current packing — the bounding circle, a curvature-2, a 3 and a 15 — the result
+stays Hermitian (A and C real) and satisfies `|bz|² − b·b̄ = 1` **exactly, with no
+scaling factor**, for all 28 combinations. So the action needs no normalization, every
+entry stays a Gaussian integer, and the invariant is a free check on every step.
+
+That is the load-bearing result for everything below: the whole Schmidt construction is
+implementable in the representation we already have, in exact BigInt arithmetic, with
+`Circle.isValid` as its own verification.
+
+**Normalization.** Schmidt's curvatures are even (§4a of the notes); ours are not. A
+factor of two converts between them. Pick one convention, state it in the module, and
+convert at the boundary — not in scattered places.
+
+### 8.3 What breaks when disks stop being empty
+
+This is the part to plan for rather than discover. Three assumptions in the current
+renderer hold only because an Apollonian gasket never subdivides a disk:
+
+1. **Draw order does not matter.** Interiors are disjoint today, so circles can be
+   batched by colour and painted in any order. Once a disk contains circles, painting
+   is strictly largest-first or the contents vanish. Batching by colour then conflicts
+   with ordering by size; the likely answer is to bucket by depth and batch by colour
+   *within* a depth.
+2. **`pick` can return the first hit.** With nesting it must return the *smallest*
+   containing circle, which means scanning all candidates rather than stopping early.
+3. **The bounding circle is the only negative curvature.** Probably still true, but the
+   analysis panel and the palette both assume the sign means "the frame". Check.
+
+None of these is hard. All three are silent if missed.
+
+### 8.4 Staging
+
+Ordered so each step is verifiable before the next depends on it.
+
+1. **The Möbius action, in `src/math/mobius.js`.** Pure arithmetic, no renderer, no
+   mode. Tests: the seven generators, `det M = −1` preserved, a circle from the current
+   packing carried through a generator word and back by the inverse.
+2. **A Schmidt generator**, producing the arrangement from `𝒥` and the seven maps.
+   Verified by curvature: every one even, and the classic gasket's curvatures present
+   after the factor of two.
+3. **Mode infrastructure**, once there are two real generators to abstract over — not
+   before. Abstracting over one implementation is guesswork.
+4. **The renderer's nesting work** (§8.3), driven by the arrangement actually rendering
+   wrong without it.
+5. **The continued-fraction walker.** Enter a complex number, follow its nested regions
+   generation by generation. Schmidt's closed form for `exp[1/(−ib)]` is the test
+   oracle — the expansion is known in advance, so this is checkable against arithmetic
+   rather than against a picture. This is the payoff, and the thing the 2004 article
+   wanted and could not draw.
+6. **A Farey/Ford lab page**, if it helps explain the analogy. Lab page, not a mode:
+   it needs neither the packing nor the viewport.
+
+### 8.5 What this does not answer
+
+- Whether the arrangement is *legible* at the resolutions we draw at. It is far denser
+  than a gasket, and it may simply look like noise until zoomed. Worth a lab page with
+  a few hundred circles before committing to a mode.
+- Whether curvature-mod-24 colouring means anything in the arrangement. The analysis
+  panel assumes a single gasket; it may need a different question entirely.
+- Memory. The arrangement grows faster than a gasket, and circles are still never
+  evicted. The budget deferred after Phase 6 stops being optional here.
+
+---
+
+## 9. References
 
 Everything this project relies on, in one place. Anything asserted in the code or the
 notes should be traceable to something here; where a claim is second-hand rather than

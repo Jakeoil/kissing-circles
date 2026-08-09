@@ -24,6 +24,13 @@
 /** @type {NumeralFont[]} */
 export const FONTS = [
   {
+    id: 'caladea',
+    label: 'Caladea',
+    stack: 'Caladea, Cambria, Georgia, serif',
+    oldstyle: false,
+    hosted: true,
+  },
+  {
     id: 'times',
     label: 'Times New Roman',
     stack: '"Times New Roman", Times, "Liberation Serif", serif',
@@ -58,17 +65,16 @@ export const FONTS = [
     oldstyle: true,
     hosted: true,
   },
-  {
-    id: 'caladea',
-    label: 'Caladea',
-    stack: 'Caladea, Cambria, Georgia, serif',
-    oldstyle: false,
-    hosted: true,
-  },
 ];
 
-/** The one used unless something says otherwise. */
-export const DEFAULT_FONT = 'times';
+/**
+ * The one used unless something says otherwise.
+ *
+ * Caladea, because that is what the deployed site already draws with, and the legacy
+ * guarantee in plan.md §7.2 says the default view does not change when a control is
+ * added. A new face may be offered; it may not arrive uninvited.
+ */
+export const DEFAULT_FONT = 'caladea';
 
 /**
  * @param {string} id

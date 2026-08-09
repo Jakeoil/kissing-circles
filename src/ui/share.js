@@ -1,5 +1,7 @@
 // @ts-check
 
+import { DEFAULT_FONT } from '../render/fonts.js';
+
 /**
  * View state in the URL fragment.
  *
@@ -39,7 +41,7 @@ export function encode(s) {
   if (s.color !== 'curvature') params.set('c', s.color);
   if (!s.labels) params.set('l', '0');
   if (s.depth > 0) params.set('d', String(s.depth));
-  if (s.font && s.font !== 'times') params.set('f', s.font);
+  if (s.font && s.font !== DEFAULT_FONT) params.set('f', s.font);
   return params.toString();
 }
 
@@ -75,7 +77,7 @@ export function decode(fragment) {
     color,
     labels: params.get('l') !== '0',
     depth: Number.isFinite(depth) && depth > 0 ? Math.floor(depth) : 0,
-    font: params.get('f') ?? 'times',
+    font: params.get('f') ?? DEFAULT_FONT,
   };
 }
 

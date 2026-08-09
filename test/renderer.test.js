@@ -467,8 +467,10 @@ describe('renderer', () => {
       assert.ok(Math.abs(m.center - 0.35) < 1e-12, 'optical center from the stub font');
     });
 
-    test('the default numeral font is Times New Roman, and every stack ends in serif', () => {
-      assert.match(NUMERAL_FONT, /^"Times New Roman"/);
+    test('the default numeral font is the one already deployed, and every stack ends in serif', () => {
+      // plan.md 7.2: adding a control must not change the default view.
+      assert.equal(DEFAULT_FONT, 'caladea');
+      assert.match(NUMERAL_FONT, /^Caladea/);
       for (const f of FONTS) assert.match(f.stack, /serif$/, f.id);
     });
 
@@ -483,13 +485,13 @@ describe('renderer', () => {
       const m = digitMetrics(/** @type {any} */ (ctx));
       assert.ok(m.height > 0);
 
-      setNumeralFont('times');
+      setNumeralFont(DEFAULT_FONT);
       assert.equal(NUMERAL_FONT, before);
     });
 
     test('an unknown font id falls back rather than throwing', () => {
       setNumeralFont('nonesuch');
-      assert.match(NUMERAL_FONT, /Times New Roman/);
+      assert.match(NUMERAL_FONT, /Caladea/);
     });
 
     test('the catalogue is well formed', () => {
