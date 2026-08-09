@@ -2,8 +2,9 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { draw, resetFontMetrics, NUMERAL_FONT } from '../src/render/renderer.js';
-import { bucket, BUCKETS, THEMES, theme } from '../src/render/palette.js';
+import { draw } from '../src/render/renderer.js';
+import { resetFontMetrics, NUMERAL_FONT, numeralSize, digitMetrics } from '../src/render/labels.js';
+import { bucket, BUCKETS, THEMES, theme, HUE_STEP } from '../src/render/palette.js';
 import { Viewport } from '../src/render/viewport.js';
 import { generate } from '../src/math/packing.js';
 import { ROOTS } from '../src/math/descartes.js';
@@ -111,6 +112,47 @@ describe('palette', () => {
       for (const c of [...t.fills, ...t.labels]) assert.match(c, /^hsl\(/);
       for (const c of [t.background, t.interior, t.line]) assert.match(c, /^#/);
     }
+  });
+
+  test('the residues an Apollonian packing actually uses are far apart in hue', () => {
+    // Buckets are curvature mod 24, and the classic packing only produces eight of
+    // those residues. A hue map has to separate *those*, not all 24 evenly — the
+    // golden angle left residues 2 and 23 under 8 degrees apart.
+    const admissible = [2, 3, 6, 11, 14, 15, 18, 23];
+    const hues = admissible.map((i) => (i * HUE_STEP) % 360);
+
+    let closest = 360;
+    let pair = [];
+    for (let a = 0; a < hues.length; a++) {
+      for (let b = a + 1; b < hues.length; b++) {
+        const d = Math.min(
+          Math.abs(hues[a] - hues[b]),
+          360 - Math.abs(hues[a] - hues[b]),
+        );
+        if (d < closest) {
+          closest = d;
+          pair = [admissible[a], admissible[b]];
+        }
+      }
+    }
+    assert.ok(closest >= 25, `residues ${pair} are only ${closest.toFixed(1)}° apart`);
+  });
+
+  test('all 24 buckets stay distinguishable, for coloring by depth', () => {
+    const hues = Array.from({ length: BUCKETS }, (_, i) => (i * HUE_STEP) % 360);
+    assert.equal(new Set(hues.map((h) => h.toFixed(3))).size, BUCKETS);
+
+    let closest = 360;
+    for (let a = 0; a < BUCKETS; a++) {
+      for (let b = a + 1; b < BUCKETS; b++) {
+        const d = Math.min(
+          Math.abs(hues[a] - hues[b]),
+          360 - Math.abs(hues[a] - hues[b]),
+        );
+        if (d < closest) closest = d;
+      }
+    }
+    assert.ok(closest >= 12, `closest pair of all 24 is ${closest.toFixed(1)}°`);
   });
 
   test('a label is always much darker than the disk it sits on', () => {
@@ -330,6 +372,87 @@ describe('renderer', () => {
         checked++;
       }
       assert.ok(checked > 5, `only checked ${checked} numerals`);
+    });
+
+    test('a single digit does not swallow its circle', () => {
+      // Fitting purely by bounding box let one narrow glyph grow until it hit the
+      // circle diagonally, at about 70% of the diameter. Sizing by cap height keeps
+      // a numeral to a readable label instead of the dominant object in the frame.
+      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
+      const r = 200;
+      const size = numeralSize(r, 1, metrics);
+      const capHeight = size * metrics.height;
+
+      assert.ok(capHeight / (2 * r) < 0.5, `digit spans ${(capHeight / (2 * r)) * 100}%`);
+      assert.ok(capHeight / (2 * r) > 0.25, 'but should still be comfortably legible');
+    });
+
+    test('numerals of different lengths keep a consistent cap height', () => {
+      // Up to the point where width forces a long numeral to shrink, one digit and
+      // two digits should be set at the same size — not wildly different ones.
+      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
+      assert.equal(numeralSize(200, 1, metrics), numeralSize(200, 2, metrics));
+    });
+
+    test('a long numeral shrinks to fit rather than overflowing', () => {
+      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
+      const r = 200;
+      const long = numeralSize(r, 6, metrics);
+      assert.ok(long < numeralSize(r, 1, metrics));
+      const w = 6 * metrics.advance * long;
+      const h = metrics.height * long;
+      assert.ok(Math.hypot(w, h) / 2 <= r, 'must still fit inside the circle');
+    });
+
+    test('a circle larger than the window does not get a numeral larger than the window', () => {
+      // Zooming inside a big circle scaled its numeral with the circle, producing a
+      // glyph sprawling across the view and hiding the packing behind it.
+      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
+      const ceiling = 0.12 * 760;
+      const huge = numeralSize(50000, 1, metrics, ceiling);
+      assert.ok(huge <= ceiling, `${huge}px exceeds the ceiling of ${ceiling}px`);
+      assert.ok(huge > 0, 'but it should still be labeled');
+    });
+
+    test('the ceiling does not shrink numerals that already fit', () => {
+      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
+      const ceiling = 0.12 * 760;
+      assert.equal(
+        numeralSize(40, 2, metrics, ceiling),
+        numeralSize(40, 2, metrics),
+      );
+    });
+
+    test('drawn numerals respect the viewport ceiling', () => {
+      const view = new Viewport(800, 600);
+      view.fit({ minX: -0.02, minY: -0.02, maxX: 0.02, maxY: 0.02 });
+      const packing = generate(ROOTS.apollonian.quad, { maxCurvature: 600n });
+      const ctx = stubContext();
+      resetFontMetrics();
+      draw(/** @type {any} */ (ctx), packing, view, { labels: true });
+
+      const ceiling = 0.12 * 600;
+      for (const call of ctx.calls) {
+        if (call.op !== 'fillText') continue;
+        const size = parseFloat(/(\d+(?:\.\d+)?)px/.exec(call.font)[1]);
+        assert.ok(size <= ceiling + 1e-9, `numeral drawn at ${size}px`);
+      }
+    });
+
+    test('tiny circles get no numeral at all', () => {
+      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
+      assert.equal(numeralSize(4, 2, metrics), 0);
+      assert.equal(numeralSize(11, 2, metrics), 0);
+      assert.ok(numeralSize(40, 2, metrics) > 0);
+    });
+
+    test('digitMetrics reads the font rather than assuming it', () => {
+      const ctx = stubContext();
+      resetFontMetrics();
+      const m = digitMetrics(/** @type {any} */ (ctx));
+      assert.ok(Math.abs(m.height - 0.7) < 1e-12, 'cap height from the stub font');
+      assert.ok(Math.abs(m.advance - 0.5) < 1e-12, 'digit advance from the stub font');
+      assert.ok(Math.abs(m.center - 0.35) < 1e-12, 'optical center from the stub font');
     });
 
     test('the font stack names Caladea first', () => {

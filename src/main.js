@@ -6,12 +6,12 @@ import { Viewport } from './render/viewport.js';
 import { draw, resetFontMetrics } from './render/renderer.js';
 
 /**
- * Phase 2 checkpoint viewer.
+ * The viewer.
  *
- * Enough interaction to confirm the generator works: drag to pan, wheel or pinch to
- * zoom, and the packing refines itself into whatever you zoom into. Phase 4 is where
- * this becomes a proper desktop tool — hover readouts, keyboard control, a real
- * control panel.
+ * Drag to pan, wheel or pinch to zoom, and the packing refines itself into whatever
+ * you zoom into. Phase 4 is where this becomes a proper research tool — hover
+ * readouts giving a circle's exact curvature and generating quadruple, custom root
+ * entry, and shareable URLs.
  */
 
 /** Initial framing for each root, since a packing does not carry its own view. */
@@ -53,7 +53,7 @@ let refineAt = 0;
 function load(name) {
   rootName = name;
   packing = new Packing(ROOTS[name].quad, limits());
-  view.fit(VIEWS[name]);
+  view.fit(VIEWS[name], 0.11);
   packing.refine(limits());
   viewDirty = true;
 }
@@ -184,7 +184,7 @@ window.addEventListener('keydown', (e) => {
   const step = 60;
   switch (e.key) {
     case '0':
-      view.fit(VIEWS[rootName]);
+      view.fit(VIEWS[rootName], 0.11);
       break;
     case '+':
     case '=':
@@ -258,11 +258,33 @@ if (document.fonts && document.fonts.ready) {
 // ------------------------------------------------------------------ the loop
 
 let lastFrame = performance.now();
-let fps = 0;
+/** Recent frame intervals; the HUD reports their median. */
+const intervals = new Float64Array(30);
+let intervalAt = 0;
+let intervalCount = 0;
+
+/**
+ * Median of the recent frame intervals, as frames per second.
+ *
+ * An exponential average was misleading here: it starts at zero and takes hundreds
+ * of frames to climb, so the HUD read 17 fps during the first seconds after load
+ * while the page was in fact drawing at well over 60. A median over a short window
+ * settles immediately and ignores the occasional long generation frame.
+ *
+ * @returns {number}
+ */
+function fps() {
+  if (intervalCount < 5) return 0;
+  const n = Math.min(intervalCount, intervals.length);
+  const sorted = Array.prototype.slice.call(intervals, 0, n).sort((a, b) => a - b);
+  return 1000 / sorted[n >> 1];
+}
 
 function frame() {
   const now = performance.now();
-  fps = fps * 0.9 + (1000 / Math.max(now - lastFrame, 1)) * 0.1;
+  intervals[intervalAt] = Math.max(now - lastFrame, 0.001);
+  intervalAt = (intervalAt + 1) % intervals.length;
+  intervalCount++;
   lastFrame = now;
 
   // Let the view settle before asking the generator to chase it.
@@ -299,9 +321,12 @@ function report(stats) {
     `depth ${s.maxDepth}`,
     `max curvature ${s.maxCurvature.toLocaleString()}`,
     `zoom ${view.scale.toPrecision(4)}`,
+    `labels ${stats.labeled}`,
     s.done ? (s.deferred > 0 ? `${s.deferred.toLocaleString()} deferred` : 'complete') : 'generating…',
-    `${fps.toFixed(0)} fps`,
-  ].join('   ');
+    intervalCount < 5 ? '' : `${fps().toFixed(0)} fps`,
+  ]
+    .filter(Boolean)
+    .join('   ');
 }
 
 themeSelect.value = themePreference();

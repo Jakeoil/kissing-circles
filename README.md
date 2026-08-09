@@ -49,7 +49,7 @@ font.
 
 ## Status
 
-Phases 1 and 2 complete: the math core, the generator, and a checkpoint viewer.
+Phases 1 through 3 complete: the math core, the generator, and the renderer.
 
 | Module | Purpose |
 |---|---|
@@ -58,11 +58,15 @@ Phases 1 and 2 complete: the math core, the generator, and a checkpoint viewer.
 | `src/math/descartes.js` | The theorem, exact validation, named root quadruples |
 | `src/math/packing.js` | Budgeted, resumable generation with screen-space pruning |
 | `src/render/viewport.js` | World-to-screen transform |
-| `src/render/renderer.js` | Canvas 2D drawing — provisional, Phase 3 replaces it |
-| `src/render/palette.js` | Color by curvature or by depth |
+| `src/render/renderer.js` | Canvas 2D drawing, batched by color |
+| `src/render/labels.js` | Curvature numerals, measured from the font |
+| `src/render/palette.js` | Color by curvature or by depth, light and dark |
 
-The renderer and the viewer are a checkpoint, not the finished article: Phase 3 brings
-proper level-of-detail and typography, Phase 4 the desktop interaction.
+Measured at 1400x900 on a Retina backing store: 8.3 ms per frame, about 120 fps, with
+3,300 circles on screen and the view moving every frame.
+
+Phase 4 is the research interaction — hover readouts giving a circle's exact curvature
+and generating quadruple, custom root quadruple entry, and shareable URLs.
 
 ## Tests
 

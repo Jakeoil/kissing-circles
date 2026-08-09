@@ -250,6 +250,30 @@ curvature histogram and completes in well under a second.
 **Done when:** the classic `(−1,2,2,3)` packing renders correctly, with legible integer
 curvatures, at 60fps while panning.
 
+> **Built.** 8.3 ms per frame (~120 fps) at 1400×900 on a Retina backing store with
+> 3,300 circles on screen and the view moving every frame. Four things only became
+> visible once the page was actually rendered and looked at:
+>
+> - **Numerals sized by bounding box grow absurdly.** One narrow glyph keeps growing
+>   until it hits the circle diagonally, so a single digit spanned ~70% of the
+>   diameter and the picture read as digits with circles around them. Sizing from cap
+>   height instead gives every numeral the same visual weight.
+> - **A circle larger than the window got a numeral larger than the window.** Zooming
+>   inside a big circle scaled its label with the circle. Labels are now capped to a
+>   fraction of the viewport.
+> - **The golden angle is the wrong hue map here.** Buckets are curvature mod 24, and
+>   a packing does not use all 24 residues — the classic one uses only 8. The golden
+>   angle placed residues 2 and 23 just 7.7° apart, so two of the commonest
+>   curvatures came out the same purple. A multiplier of 173°/bucket was chosen by
+>   search: 28° minimum separation across the residues that occur, 14° across all 24.
+> - **`maxDepth: 64` silently capped deep zoom.** Past about 5000× the packing simply
+>   stopped deepening. Depth is now effectively unbounded; resolution and viewport do
+>   the pruning, which is what should have been doing the work all along.
+>
+> The reported "17 fps" that prompted the performance work was an artifact: the HUD
+> used an exponential average starting from zero, which takes hundreds of frames to
+> climb. It now reports a median over a short window.
+
 ### Phase 4 — Interaction, desktop-first
 The Android version was touch-only. Desktop gets the better experience:
 

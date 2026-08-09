@@ -41,7 +41,13 @@ import { Circle } from './circle.js';
  */
 
 const DEFAULT_LIMITS = {
-  maxDepth: 64,
+  // Deliberately loose. Depth is not the limit that should be doing the work —
+  // resolution and viewport are, and they prune by how much detail is actually
+  // visible. A default of 64 quietly capped deep zoom: past about 5000x the
+  // packing stopped deepening and simply stopped producing new circles. Callers
+  // that want a bounded run should set maxCurvature, minRadius or bounds; with
+  // none of those, no depth limit makes generation finite anyway.
+  maxDepth: 4096,
   maxCurvature: /** @type {bigint|null} */ (null),
   minRadius: 0,
   bounds: /** @type {Bounds|null} */ (null),
