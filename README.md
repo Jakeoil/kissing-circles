@@ -41,6 +41,11 @@ rational, co-curvature, depth, and the Descartes quadruple it was reflected out 
 The **custom** field takes four curvatures — `-6,11,14,15` — and builds that packing,
 or explains why it cannot.
 
+**analysis** opens the curvature arithmetic: which residues mod 24 the packing occupies,
+and which integers inside those classes it never reaches. **link** copies a URL that
+restores the exact packing and view. **PNG** and **SVG** export what you have framed —
+SVG stays sharp at any size, which matters for print.
+
 Light and dark themes both ship; the selector follows the system setting by default
 and remembers an explicit choice.
 
@@ -61,8 +66,8 @@ cached module otherwise looks exactly like a change that did not work.
 
 ## Status
 
-Phases 1 through 4 complete: the math core, the generator, the renderer, and the
-research interaction.
+Phases 1 through 6 complete: the math core, the generator, the renderer, the research
+interaction, and the arithmetic tooling.
 
 | Module | Purpose |
 |---|---|
@@ -75,13 +80,26 @@ research interaction.
 | `src/render/labels.js` | Curvature numerals, measured from the font |
 | `src/render/palette.js` | Color by curvature or by depth, light and dark |
 | `src/math/rational.js` | Exact rationals, for constructing a root from curvatures |
+| `src/math/analysis.js` | Residues mod 24, and the integers a packing misses |
 | `src/ui/readout.js` | Exact formatting for the hover panel |
+| `src/ui/share.js` | View state in the URL fragment |
+| `src/ui/export.js` | PNG and SVG output |
 
 Measured at 1400x900 on a Retina backing store: 8.3 ms per frame, about 120 fps, with
 3,300 circles on screen and the view moving every frame.
 
-Still to come: deep-zoom refinement across frames (Phase 5), and export, curvature
-analysis and shareable URLs (Phase 6).
+## Curvature arithmetic
+
+A primitive integral Apollonian packing only produces curvatures in certain classes
+modulo 24 — the classic `(-1, 2, 2, 3)` packing uses eight of the twenty-four, and
+`(-2, 3, 6, 7)` uses a different eight. Within those classes most integers occur, but
+not all: `(-1, 2, 2, 3)` misses 78 and 159, and 35 integers in total below 10,000. The
+local–global conjecture held that such exceptions were finite; it was disproved in 2023
+by Haag, Kertzer, Rickards and Stange, so the analysis panel lists them rather than
+assuming them away.
+
+Still to come: a memory budget for very long deep-zoom sessions, and deploying to
+GitHub Pages (Phase 7).
 
 ## Tests
 
@@ -112,3 +130,6 @@ plan.md       design and phases
 
 `DynamicKissingCircles/` is the original Android source, kept locally for reference and
 excluded from this repository.
+
+https://www.mathpuzzle.com/MAA/15-Gaussian%20Numbers/mathgames_03_15_04.html
+

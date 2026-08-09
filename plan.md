@@ -346,6 +346,19 @@ visible and must be generated on demand.
   representation.
 
 ### Phase 6 — Research features
+
+> **Built**, and the arithmetic turned out to be the most interesting part. The
+> analysis panel generates to a curvature bound and reports which residues mod 24 the
+> packing occupies and — the useful part — which integers *inside* those admissible
+> classes it never reaches. `(−1,2,2,3)` misses 78 and 159 first, 35 integers in all
+> below 10,000; `(−2,3,6,7)` occupies a different eight residues and misses 132. The
+> local–global conjecture held such exceptions were finite and was disproved in 2023,
+> so listing them is more honest than assuming them away. 141 ms to curvature 10,000.
+>
+> Two bugs the browser caught that no test would have: the export buttons were being
+> swallowed by the help panel, which overlapped them and intercepted the clicks; and
+> downloads never fired because the anchor was detached from the document and the
+> object URL was revoked before the click took effect.
 - **Export**: SVG and PNG at arbitrary resolution, for papers and figures.
 - **Curvature analysis**: histogram, which residues mod 24 appear (the local-global
   conjecture territory), count by depth.

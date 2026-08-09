@@ -99,6 +99,9 @@
         gap: 14px;
         align-items: center;
         flex-wrap: wrap;
+        /* Stop short of the help panel rather than sliding underneath it, which
+           put the export buttons somewhere unclickable. */
+        max-width: calc(100% - 285px);
       }
 
       #controls label {
@@ -108,6 +111,17 @@
         color: var(--dim);
         white-space: nowrap;
       }
+
+      button {
+        background: var(--input);
+        color: var(--text);
+        border: 1px solid var(--edge);
+        border-radius: 5px;
+        padding: 3px 9px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover { border-color: var(--dim); }
 
       select,
       input[type='text'] {
@@ -173,6 +187,91 @@
         font-weight: 700;
       }
 
+      /* Curvature arithmetic: which integers this packing actually reaches. */
+      #analysis {
+        top: 12px; /* repositioned below the controls when opened */
+        left: 12px;
+        width: min(430px, calc(100% - 24px));
+        max-height: calc(100% - 24px);
+        overflow-y: auto;
+        z-index: 5;
+      }
+      #analysis[hidden] { display: none; }
+      #analysis h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      #analysis-close {
+        float: right;
+        border: none;
+        background: none;
+        font-size: 17px;
+        line-height: 1;
+        color: var(--dim);
+        padding: 0 2px;
+      }
+      #analysis dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 12px;
+        margin: 0 0 10px;
+        font-size: 12px;
+      }
+      #analysis dt { color: var(--dim); }
+      #analysis dd {
+        margin: 0;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      }
+      #analysis h3 {
+        margin: 12px 0 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--dim);
+      }
+      #analysis .note {
+        font-size: 11.5px;
+        color: var(--dim);
+        margin: 4px 0 0;
+        line-height: 1.45;
+      }
+      .residues {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+      }
+      .residues span {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 11px;
+        min-width: 24px;
+        text-align: center;
+        padding: 2px 4px;
+        border-radius: 4px;
+        border: 1px solid var(--edge);
+      }
+      .residues .on { background: #2ea04366; color: var(--text); }
+      .residues .off { opacity: 0.4; }
+      .misses {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12px;
+        word-spacing: 4px;
+        line-height: 1.6;
+      }
+      .bars { display: grid; gap: 2px; font-size: 11px; }
+      .bar { display: grid; grid-template-columns: 92px 1fr auto; gap: 6px; align-items: center; }
+      .bar i {
+        background: var(--dim);
+        height: 9px;
+        border-radius: 2px;
+        display: block;
+        opacity: 0.65;
+      }
+      .bar span:first-child,
+      .bar span:last-child {
+        font-family: ui-monospace, Menlo, monospace;
+        color: var(--dim);
+      }
+
       #hud {
         bottom: 12px;
         left: 12px;
@@ -188,6 +287,8 @@
         right: 12px;
         color: var(--dim);
         max-width: 230px;
+        /* Purely informational, so it should never swallow a click. */
+        pointer-events: none;
       }
       #help b { color: var(--text); font-weight: 600; }
       #help kbd {
@@ -245,11 +346,21 @@
         curvatures
       </label>
       <span id="depth-readout">depth all</span>
+      <button id="analyze" type="button">analysis</button>
+      <button id="share" type="button">link</button>
+      <button id="png" type="button">PNG</button>
+      <button id="svg" type="button">SVG</button>
       <span id="build">build —</span>
       <div id="error"></div>
     </div>
 
     <div id="readout" class="panel" hidden></div>
+
+    <div id="analysis" class="panel" hidden>
+      <button id="analysis-close" type="button" title="close">×</button>
+      <h2>Curvature arithmetic</h2>
+      <div id="analysis-body">computing…</div>
+    </div>
 
     <div id="help" class="panel">
       <b>drag</b> to pan · <b>wheel</b> or <b>pinch</b> to zoom · <b>double-click</b> to
