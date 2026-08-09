@@ -5,3 +5,6 @@ DynamicKissingCircles/
 node_modules/
 .DS_Store
 *.log
+
+# Reference papers kept locally, not redistributed here (copyright).
+*.pdf

@@ -104,8 +104,18 @@ local–global conjecture held that such exceptions were finite; it was disprove
 by Haag, Kertzer, Rickards and Stange, so the analysis panel lists them rather than
 assuming them away.
 
-Still to come: a memory budget for very long deep-zoom sessions, and deploying to
-GitHub Pages (Phase 7).
+Still to come: a memory budget for very long deep-zoom sessions.
+
+## Where this could go next
+
+[notes/schmidt-generations.md](notes/schmidt-generations.md) works through Asmus
+Schmidt's complex continued fraction algorithm and what it implies here. The short
+version: our packing is one half of a larger construction. Schmidt subdivides a
+curvilinear triangle by inscribing a circle — which is exactly our Descartes reflection
+— *and* subdivides every disk by adding three tangent circles inside it, which we do not
+do. Adding that second rule turns a single gasket into the Schmidt arrangement of the
+Gaussian integers, in which a complex number's continued fraction expansion is the
+sequence of nested regions containing it.
 
 ## Tests
 
