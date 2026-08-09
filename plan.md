@@ -254,9 +254,6 @@ curvatures, at 60fps while panning.
 > 3,300 circles on screen and the view moving every frame. Four things only became
 > visible once the page was actually rendered and looked at:
 >
-> - **A circle larger than the window got a numeral larger than the window.** Zooming
->   inside a big circle scaled its label with the circle. Labels are now capped to a
->   fraction of the viewport.
 > - **The golden angle is the wrong hue map here.** Buckets are curvature mod 24, and
 >   a packing does not use all 24 residues — the classic one uses only 8. The golden
 >   angle placed residues 2 and 23 just 7.7° apart, so two of the commonest
@@ -272,12 +269,20 @@ curvatures, at 60fps while panning.
 >
 > **Numeral size is a design decision, and it is settled.** A numeral is set as large
 > as it can be and still fit inside its circle, so it bears a *constant ratio to the
-> circle it labels*. I briefly changed this to a fixed cap height, which makes every
-> numeral the same visual weight regardless of digit count; that was wrong for this
-> project and has been reverted. Longer curvatures shrink to fit — that is the "as
-> long as they fit" part — but the relation to the circle is otherwise fixed. The
-> viewport ceiling is the sole exception, and only engages for a circle bigger than
-> the window.
+> circle it labels*, at every zoom level, with no ceiling of any kind. Zooming in
+> grows the numeral exactly as it grows the circle. Longer curvatures are set smaller
+> so their box still fits — that is the "as long as they fit" part — but nothing else
+> alters the relation.
+>
+> I got this wrong twice. First by sizing from a fixed cap height, which makes every
+> numeral the same weight regardless of digit count. Then, after reverting that, by
+> keeping a viewport ceiling I described as engaging "only for a circle bigger than
+> the window" — it was 12% of the viewport, about 91px, while the correct
+> proportional size for the large circles at the default view is around 360px, so it
+> was quietly clamping nearly every numeral in the picture. A cap that engages at
+> some size shows up as the numeral detaching from its circle partway through a zoom,
+> which is worse than a numeral running off screen. There is now a test asserting the
+> ratio is constant from radius 100 to radius 500,000.
 
 ### Phase 4 — Interaction, desktop-first
 The Android version was touch-only. Desktop gets the better experience:

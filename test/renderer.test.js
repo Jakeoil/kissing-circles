@@ -404,39 +404,44 @@ describe('renderer', () => {
       assert.ok(Math.hypot(w, h) / 2 <= r, 'must still fit inside the circle');
     });
 
-    test('a circle larger than the window does not get a numeral larger than the window', () => {
-      // Zooming inside a big circle scaled its numeral with the circle, producing a
-      // glyph sprawling across the view and hiding the packing behind it.
+    test('numeral size is capped by nothing at all', () => {
+      // Once a numeral fills its circle, that relation must hold however far you
+      // zoom: a ceiling would show up as the numeral detaching from its circle
+      // partway through a zoom. An earlier viewport cap did exactly that, and
+      // because it worked out to about 91px it was clamping ordinary numerals, not
+      // just oversized ones.
       const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
-      const ceiling = 0.12 * 760;
-      const huge = numeralSize(50000, 1, metrics, ceiling);
-      assert.ok(huge <= ceiling, `${huge}px exceeds the ceiling of ${ceiling}px`);
-      assert.ok(huge > 0, 'but it should still be labeled');
-    });
-
-    test('the ceiling does not shrink numerals that already fit', () => {
-      const metrics = { center: 0.35, height: 0.7, advance: 0.5 };
-      const ceiling = 0.12 * 760;
-      assert.equal(
-        numeralSize(40, 2, metrics, ceiling),
-        numeralSize(40, 2, metrics),
-      );
-    });
-
-    test('drawn numerals respect the viewport ceiling', () => {
-      const view = new Viewport(800, 600);
-      view.fit({ minX: -0.02, minY: -0.02, maxX: 0.02, maxY: 0.02 });
-      const packing = generate(ROOTS.apollonian.quad, { maxCurvature: 600n });
-      const ctx = stubContext();
-      resetFontMetrics();
-      draw(/** @type {any} */ (ctx), packing, view, { labels: true });
-
-      const ceiling = 0.12 * 600;
-      for (const call of ctx.calls) {
-        if (call.op !== 'fillText') continue;
-        const size = parseFloat(/(\d+(?:\.\d+)?)px/.exec(call.font)[1]);
-        assert.ok(size <= ceiling + 1e-9, `numeral drawn at ${size}px`);
+      const ratio = (/** @type {number} */ r) => numeralSize(r, 1, metrics) / r;
+      const base = ratio(100);
+      for (const r of [500, 5000, 50000, 500000]) {
+        // The tolerance covers only the 2-decimal rounding of the font size; a
+        // cap of any kind would move the ratio by orders of magnitude.
+        assert.ok(
+          Math.abs(ratio(r) - base) < 1e-3,
+          `ratio drifted to ${ratio(r)} at radius ${r}, from ${base}`,
+        );
       }
+    });
+
+    test('zooming grows the numeral exactly as it grows the circle', () => {
+      const packing = generate(ROOTS.apollonian.quad, { maxCurvature: 600n });
+      const sizeOfBiggest = (/** @type {number} */ zoom) => {
+        const view = new Viewport(800, 600);
+        view.fit({ minX: -1.05, minY: -1.05, maxX: 1.05, maxY: 1.05 });
+        view.zoomAt(400, 300, zoom);
+        const ctx = stubContext();
+        resetFontMetrics();
+        draw(/** @type {any} */ (ctx), packing, view, { labels: true });
+        return Math.max(
+          ...ctx.calls
+            .filter((c) => c.op === 'fillText')
+            .map((c) => parseFloat(/(\d+(?:\.\d+)?)px/.exec(c.font)[1])),
+        );
+      };
+
+      const one = sizeOfBiggest(1);
+      const four = sizeOfBiggest(4);
+      assert.ok(four / one > 3.9, `numerals grew only ${four / one}x for a 4x zoom`);
     });
 
     test('tiny circles get no numeral at all', () => {

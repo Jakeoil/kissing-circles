@@ -130,11 +130,14 @@
       }
       #error:empty { display: none; }
 
-      #depth-readout {
+      #depth-readout,
+      #build {
         color: var(--dim);
         font-family: ui-monospace, Menlo, monospace;
         font-size: 12px;
       }
+      /* Always visible, so a stale cached page can be spotted immediately. */
+      #build { opacity: 0.75; }
 
       /* The hover readout: exact values for the circle under the cursor. */
       #readout {
@@ -242,6 +245,7 @@
         curvatures
       </label>
       <span id="depth-readout">depth all</span>
+      <span id="build">build —</span>
       <div id="error"></div>
     </div>
 

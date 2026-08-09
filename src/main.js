@@ -5,6 +5,7 @@ import { ROOTS, rootFromCurvatures } from './math/descartes.js';
 import { Viewport } from './render/viewport.js';
 import { draw, resetFontMetrics } from './render/renderer.js';
 import { describe } from './ui/readout.js';
+import { BUILD } from './build.js';
 
 /**
  * The viewer.
@@ -54,6 +55,9 @@ const customInput = /** @type {HTMLInputElement} */ (document.getElementById('cu
 const errorBox = /** @type {HTMLElement} */ (document.getElementById('error'));
 const readout = /** @type {HTMLElement} */ (document.getElementById('readout'));
 const depthReadout = /** @type {HTMLElement} */ (document.getElementById('depth-readout'));
+const buildBox = /** @type {HTMLElement} */ (document.getElementById('build'));
+
+buildBox.textContent = `build ${BUILD}`;
 
 const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
 

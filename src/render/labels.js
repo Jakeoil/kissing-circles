@@ -39,16 +39,6 @@ const MIN_SIZE = 8;
 /** Most numerals to draw in one frame, largest first. */
 const MAX_LABELS = 800;
 
-/**
- * A numeral may never exceed this fraction of the viewport's shorter side.
- *
- * Without it, zooming inside a big circle scales its numeral with the circle: at
- * 1600x the containing circle is many screens wide and its curvature is drawn as a
- * glyph sprawling across the whole view, obscuring the packing. A label for a circle
- * larger than the window should stay a label.
- */
-const VIEWPORT_FRACTION = 0.12;
-
 /** @typedef {{center: number, height: number, advance: number}} DigitMetrics */
 
 /** @type {DigitMetrics|null} */
@@ -107,27 +97,27 @@ export function digitMetrics(ctx, family = NUMERAL_FONT) {
  *
  * The numeral is set as large as it can be and still fit inside the circle: with the
  * measured box w wide and h tall, the largest size whose half-diagonal stays within
- * the radius is 2*r/hypot(w, h). That keeps a constant relation between numeral and
- * circle, and makes a long curvature shrink rather than spill over the edge.
+ * the radius is 2*r/hypot(w, h).
  *
- * The one exception is the viewport ceiling, which only engages for a circle bigger
- * than the window — where holding the ratio would mean a glyph larger than the
- * screen.
+ * The size is strictly proportional to the screen radius, with no ceiling of any
+ * kind. Once a numeral fills its circle there is no reason to change that relation,
+ * so zooming in grows the numeral exactly as it grows the circle. A cap that
+ * engaged at some size would show up as the numeral quietly detaching from its
+ * circle partway through a zoom, which is worse than a numeral running off screen.
  *
  * @param {number} radius screen radius
  * @param {number} digits how many characters the numeral has
  * @param {DigitMetrics} metrics
- * @param {number} [ceiling] largest permitted size in pixels
  * @returns {number} font size in pixels, rounded; 0 means do not draw
  */
-export function numeralSize(radius, digits, metrics, ceiling = Infinity) {
+export function numeralSize(radius, digits, metrics) {
   if (radius < MIN_RADIUS) return 0;
 
   const byBox =
     (2 * radius * BOX_FRACTION) /
     Math.hypot(digits * metrics.advance, metrics.height);
 
-  const size = Math.round(Math.min(byBox, ceiling) * 100) / 100;
+  const size = Math.round(byBox * 100) / 100;
   return size < MIN_SIZE ? 0 : size;
 }
 
@@ -150,7 +140,6 @@ export function drawLabels(ctx, packing, view, candidates, buckets, palette) {
 
   const { scale, tx, ty } = view;
   const metrics = digitMetrics(ctx);
-  const ceiling = VIEWPORT_FRACTION * Math.min(view.width, view.height);
 
   const ordered =
     candidates.length > MAX_LABELS
@@ -166,7 +155,7 @@ export function drawLabels(ctx, packing, view, candidates, buckets, palette) {
   for (const i of ordered) {
     const radius = packing.r[i] * scale;
     const text = packing.circles[i].b.toString();
-    const size = numeralSize(radius, text.length, metrics, ceiling);
+    const size = numeralSize(radius, text.length, metrics);
     if (size === 0) continue;
 
     const style = palette.labels[buckets[i]];

@@ -50,9 +50,14 @@ Reading integer curvatures off the picture is the point of the tool, so the nume
 get some care. The font is self-hosted rather than left to a system stack — see
 [assets/README.md](assets/README.md) for why, and for how to swap it. Sizing and
 placement are measured at runtime from the font's own digit bounding box, so numerals
-sit on their optical center rather than on the em box, and a long curvature shrinks to
-fit its circle instead of spilling over the edge. Nothing in `src/` names a specific
-font.
+sit on their optical center rather than on the em box. A numeral is set as large as it
+can be and still fit, so it bears a constant ratio to its circle at every zoom level —
+zooming in grows the numeral exactly as it grows the circle. Longer curvatures are set
+smaller so their box still fits. Nothing in `src/` names a specific font.
+
+The page shows a **build stamp** in the top bar. It is written by `npm run stamp` and
+is there so what is on screen can be checked against what was last built — a stale
+cached module otherwise looks exactly like a change that did not work.
 
 ## Status
 
