@@ -2,8 +2,8 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { draw } from '../src/render/renderer.js';
-import { bucket, BUCKETS, FILLS } from '../src/render/palette.js';
+import { draw, resetFontMetrics, NUMERAL_FONT } from '../src/render/renderer.js';
+import { bucket, BUCKETS, THEMES, theme } from '../src/render/palette.js';
 import { Viewport } from '../src/render/viewport.js';
 import { generate } from '../src/math/packing.js';
 import { ROOTS } from '../src/math/descartes.js';
@@ -51,8 +51,10 @@ function stubContext() {
     arc(/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ r) {
       calls.push({ op: 'arc', args: [x, y, r] });
     },
+    rectFills: /** @type {string[]} */ ([]),
     fillRect(/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ w, /** @type {number} */ h) {
       calls.push({ op: 'fillRect', args: [x, y, w, h] });
+      this.rectFills.push(current);
     },
     fill() {
       fills.push(current);
@@ -62,7 +64,18 @@ function stubContext() {
       calls.push({ op: 'stroke', args: [] });
     },
     fillText(/** @type {string} */ t, /** @type {number} */ x, /** @type {number} */ y) {
-      calls.push({ op: 'fillText', args: [x, y] });
+      calls.push({ op: 'fillText', args: [x, y], text: t, font: this.font });
+    },
+    // Stand-in for a real font: half-em digit advances, cap height 0.7 em, no
+    // descender — close enough to a lining-figure serif for the geometry to matter.
+    measureText(/** @type {string} */ t) {
+      const match = /(\d+(?:\.\d+)?)px/.exec(this.font);
+      const size = match ? parseFloat(match[1]) : 100;
+      return {
+        width: t.length * size * 0.5,
+        actualBoundingBoxAscent: size * 0.7,
+        actualBoundingBoxDescent: 0,
+      };
     },
   };
 }
@@ -83,7 +96,7 @@ describe('palette', () => {
     }
   });
 
-  test('equal curvatures get equal colours', () => {
+  test('equal curvatures get equal colors', () => {
     assert.equal(bucket(38n, 3, 'curvature'), bucket(38n, 9, 'curvature'));
   });
 
@@ -91,9 +104,35 @@ describe('palette', () => {
     assert.equal(bucket(7n, 5, 'depth'), bucket(999n, 5, 'depth'));
   });
 
-  test('every fill is a usable colour string', () => {
-    assert.equal(FILLS.length, BUCKETS);
-    for (const f of FILLS) assert.match(f, /^hsl\(/);
+  test('both themes are complete', () => {
+    for (const [name, t] of Object.entries(THEMES)) {
+      assert.equal(t.fills.length, BUCKETS, name);
+      assert.equal(t.labels.length, BUCKETS, name);
+      for (const c of [...t.fills, ...t.labels]) assert.match(c, /^hsl\(/);
+      for (const c of [t.background, t.interior, t.line]) assert.match(c, /^#/);
+    }
+  });
+
+  test('a label is always much darker than the disk it sits on', () => {
+    // Contrast that holds in both themes, so numerals read against their own
+    // circle rather than against the page.
+    for (const [name, t] of Object.entries(THEMES)) {
+      for (let i = 0; i < BUCKETS; i++) {
+        const fill = Number(/(\d+)%\)$/.exec(t.fills[i])[1]);
+        const label = Number(/(\d+)%\)$/.exec(t.labels[i])[1]);
+        assert.ok(fill - label >= 30, `${name} bucket ${i}: ${fill}% vs ${label}%`);
+      }
+    }
+  });
+
+  test('the two themes differ in background', () => {
+    assert.notEqual(THEMES.light.background, THEMES.dark.background);
+  });
+
+  test('theme() falls back to dark for anything unrecognized', () => {
+    assert.equal(theme('light'), THEMES.light);
+    assert.equal(theme('dark'), THEMES.dark);
+    assert.equal(theme('chartreuse'), THEMES.dark);
   });
 });
 
@@ -121,16 +160,30 @@ describe('renderer', () => {
     }
   });
 
-  test('batches into at most one fill per colour, plus the background', () => {
+  test('batches into at most one fill per color, plus the background', () => {
     const { view, packing } = scene();
     const ctx = stubContext();
     draw(/** @type {any} */ (ctx), packing, view);
 
-    // Background, the bounding circle, and one per occupied colour bucket.
+    // Background, the bounding circle, and one per occupied color bucket.
     assert.ok(
       ctx.fills.length <= BUCKETS + 2,
       `${ctx.fills.length} fills for ${packing.count} circles`,
     );
+  });
+
+  test('honors the theme it is given', () => {
+    const { view, packing } = scene();
+    const dark = stubContext();
+    const light = stubContext();
+    draw(/** @type {any} */ (dark), packing, view, { theme: 'dark' });
+    draw(/** @type {any} */ (light), packing, view, { theme: 'light' });
+
+    assert.equal(dark.rectFills[0], THEMES.dark.background);
+    assert.equal(light.rectFills[0], THEMES.light.background);
+    assert.ok(dark.fills.includes(THEMES.dark.interior));
+    assert.ok(light.fills.includes(THEMES.light.interior));
+    assert.notDeepEqual(dark.fills, light.fills);
   });
 
   test('culls circles outside the viewport', () => {
@@ -162,9 +215,145 @@ describe('renderer', () => {
     const on = draw(/** @type {any} */ (stubContext()), packing, view, { labels: true });
     const off = draw(/** @type {any} */ (stubContext()), packing, view, { labels: false });
 
-    assert.ok(on.labelled > 0, 'something should be labelled at this zoom');
-    assert.equal(off.labelled, 0);
-    assert.ok(on.labelled < on.drawn, 'not every circle can fit a numeral');
+    assert.ok(on.labeled > 0, 'something should be labeled at this zoom');
+    assert.equal(off.labeled, 0);
+    assert.ok(on.labeled < on.drawn, 'not every circle can fit a numeral');
+  });
+
+  describe('numerals', () => {
+    /**
+     * Index the drawn circles so a label can be matched back to the circle it
+     * belongs to. Keying on screen x alone is not enough — this packing is
+     * symmetric, so many circles share an x. Curvature disambiguates, and the few
+     * genuine collisions (a curvature-3 circle above and below the axis) agree on
+     * radius anyway.
+     *
+     * @param {import('../src/math/packing.js').Packing} p
+     * @param {Viewport} v
+     */
+    function indexCircles(p, v) {
+      /** @type {Map<string, {cy: number, r: number}[]>} */
+      const map = new Map();
+      for (let i = 0; i < p.count; i++) {
+        if (!Number.isFinite(p.r[i]) || p.r[i] <= 0) continue;
+        const key = `${(p.x[i] * v.scale + v.tx).toFixed(4)}|${p.circles[i].b}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push({ cy: p.y[i] * v.scale + v.ty, r: p.r[i] * v.scale });
+      }
+      return map;
+    }
+
+    /** @param {{op: string, args: number[], font?: string}} call */
+    const sizeOf = (call) => parseFloat(/(\d+(?:\.\d+)?)px/.exec(call.font)[1]);
+
+    test('every numeral fits inside its circle', () => {
+      // The measured fit is the whole point: a four-digit curvature must shrink
+      // rather than spill over the edge of a small circle.
+      const { view, packing } = scene();
+      const ctx = stubContext();
+      resetFontMetrics();
+      draw(/** @type {any} */ (ctx), packing, view, { labels: true });
+
+      const circles = indexCircles(packing, view);
+      let checked = 0;
+
+      for (const call of ctx.calls) {
+        if (call.op !== 'fillText') continue;
+        const entries = circles.get(`${call.args[0].toFixed(4)}|${call.text}`);
+        assert.ok(entries, `label "${call.text}" drawn where there is no such circle`);
+
+        const size = sizeOf(call);
+        // Stub metrics: 0.5 em per digit, 0.7 em tall.
+        const w = call.text.length * 0.5 * size;
+        const h = 0.7 * size;
+        assert.ok(
+          Math.hypot(w, h) / 2 <= entries[0].r + 1e-9,
+          `"${call.text}" at ${size}px overflows a circle of radius ${entries[0].r}`,
+        );
+        checked++;
+      }
+      assert.ok(checked > 5, `only checked ${checked} numerals`);
+    });
+
+    test('longer curvatures are set smaller than short ones in equal circles', () => {
+      const ctx = stubContext();
+      resetFontMetrics();
+      const { view, packing } = scene();
+      draw(/** @type {any} */ (ctx), packing, view, { labels: true });
+
+      /** @type {Map<number, number[]>} */
+      const byLength = new Map();
+      for (const call of ctx.calls) {
+        if (call.op !== 'fillText') continue;
+        const size = parseFloat(/(\d+(?:\.\d+)?)px/.exec(call.font)[1]);
+        const n = call.text.length;
+        if (!byLength.has(n)) byLength.set(n, []);
+        byLength.get(n).push(size);
+      }
+      assert.ok(byLength.size > 1, 'need numerals of differing length to compare');
+      const lengths = [...byLength.keys()].sort((a, b) => a - b);
+      assert.ok(
+        Math.max(...byLength.get(lengths[0])) >
+          Math.max(...byLength.get(lengths[lengths.length - 1])),
+        'a one-digit numeral should be able to be set larger than a long one',
+      );
+    });
+
+    test('the baseline is dropped to the digits’ optical center', () => {
+      // Canvas 'middle' centers the em box, which leaves digits riding high. The
+      // measured offset puts the middle of the digit box on the circle's center:
+      // for the stub font that is half of a 0.7 em cap height, so 0.35 em.
+      const ctx = stubContext();
+      resetFontMetrics();
+      const { view, packing } = scene();
+      draw(/** @type {any} */ (ctx), packing, view, { labels: true });
+
+      const circles = indexCircles(packing, view);
+      let checked = 0;
+
+      for (const call of ctx.calls) {
+        if (call.op !== 'fillText') continue;
+        const entries = circles.get(`${call.args[0].toFixed(4)}|${call.text}`);
+        if (!entries) continue;
+
+        const expected = 0.35 * sizeOf(call);
+        // A curvature can occur twice at the same x — above and below the axis —
+        // so match against whichever center this label was actually drawn from.
+        const matched = entries.find(
+          (e) => Math.abs(call.args[1] - e.cy - expected) < 1e-6,
+        );
+        assert.ok(
+          matched,
+          `baseline ${call.args[1]} is not ${expected} below any center for "${call.text}"`,
+        );
+        assert.ok(call.args[1] > matched.cy, 'baseline must sit below the center');
+        checked++;
+      }
+      assert.ok(checked > 5, `only checked ${checked} numerals`);
+    });
+
+    test('the font stack names Caladea first', () => {
+      assert.match(NUMERAL_FONT, /^"Caladea"/);
+      assert.match(NUMERAL_FONT, /serif$/);
+    });
+
+    test('metrics are cached, and resetFontMetrics clears them', () => {
+      const ctx = stubContext();
+      const { view, packing } = scene();
+
+      resetFontMetrics();
+      draw(/** @type {any} */ (ctx), packing, view, { labels: true });
+      const first = ctx.calls.filter((c) => c.op === 'fillText').length;
+
+      const again = stubContext();
+      draw(/** @type {any} */ (again), packing, view, { labels: true });
+      assert.equal(again.calls.filter((c) => c.op === 'fillText').length, first);
+
+      resetFontMetrics();
+      const third = stubContext();
+      draw(/** @type {any} */ (third), packing, view, { labels: true });
+      assert.equal(third.calls.filter((c) => c.op === 'fillText').length, first);
+    });
   });
 
   test('draws the lines of the strip packing', () => {

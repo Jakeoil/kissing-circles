@@ -3,7 +3,7 @@
 import { Packing } from './math/packing.js';
 import { ROOTS } from './math/descartes.js';
 import { Viewport } from './render/viewport.js';
-import { draw } from './render/renderer.js';
+import { draw, resetFontMetrics } from './render/renderer.js';
 
 /**
  * Phase 2 checkpoint viewer.
@@ -34,6 +34,7 @@ const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
 const hud = /** @type {HTMLElement} */ (document.getElementById('hud'));
 const rootSelect = /** @type {HTMLSelectElement} */ (document.getElementById('root'));
 const colorSelect = /** @type {HTMLSelectElement} */ (document.getElementById('color'));
+const themeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('theme'));
 const labelToggle = /** @type {HTMLInputElement} */ (document.getElementById('labels'));
 
 const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
@@ -63,6 +64,40 @@ function limits() {
     minRadius: view.worldRadius(RESOLUTION),
     bounds: view.visibleBounds(MARGIN),
   };
+}
+
+// ----------------------------------------------------------------------- theme
+
+const THEME_KEY = 'kc-theme';
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+/** @returns {'auto'|'light'|'dark'} */
+function themePreference() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') return saved;
+  } catch {
+    // Private browsing, or storage disabled. Fall through to the default.
+  }
+  return 'auto';
+}
+
+/** @returns {'light'|'dark'} the theme actually in force */
+function activeTheme() {
+  const pref = /** @type {'auto'|'light'|'dark'} */ (themeSelect.value);
+  if (pref === 'auto') return prefersDark.matches ? 'dark' : 'light';
+  return pref;
+}
+
+/** Push the current preference to the document and to storage. */
+function applyTheme() {
+  document.documentElement.dataset.theme = activeTheme();
+  try {
+    localStorage.setItem(THEME_KEY, themeSelect.value);
+  } catch {
+    // Not fatal — the theme still applies for this session.
+  }
+  viewDirty = true;
 }
 
 /** Match the backing store to the display size and pixel density. */
@@ -173,6 +208,10 @@ window.addEventListener('keydown', (e) => {
     case 'l':
       labelToggle.checked = !labelToggle.checked;
       break;
+    case 't':
+      themeSelect.value = activeTheme() === 'dark' ? 'light' : 'dark';
+      applyTheme();
+      break;
     default:
       return;
   }
@@ -201,7 +240,20 @@ colorSelect.addEventListener('change', () => {
 labelToggle.addEventListener('change', () => {
   viewDirty = true;
 });
+themeSelect.addEventListener('change', applyTheme);
+prefersDark.addEventListener('change', () => {
+  if (themeSelect.value === 'auto') applyTheme();
+});
 window.addEventListener('resize', resize);
+
+// font-display: swap paints the fallback first. Once the real font arrives the
+// measured digit metrics are stale, so throw them away and redraw.
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    resetFontMetrics();
+    viewDirty = true;
+  });
+}
 
 // ------------------------------------------------------------------ the loop
 
@@ -229,6 +281,7 @@ function frame() {
     viewDirty = false;
     const stats = draw(ctx, packing, view, {
       colorMode: /** @type {'curvature'|'depth'} */ (colorSelect.value),
+      theme: activeTheme(),
       labels: labelToggle.checked,
     });
     report(stats);
@@ -237,7 +290,7 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
-/** @param {{drawn: number, skipped: number, labelled: number}} stats */
+/** @param {{drawn: number, skipped: number, labeled: number}} stats */
 function report(stats) {
   const s = packing.stats();
   hud.textContent = [
@@ -251,6 +304,8 @@ function report(stats) {
   ].join('   ');
 }
 
+themeSelect.value = themePreference();
+applyTheme();
 resize();
 load('apollonian');
 requestAnimationFrame(frame);

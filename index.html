@@ -4,13 +4,57 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>Kissing Circles</title>
+
+    <script>
+      // Resolve the theme before first paint, so the page never flashes the wrong one.
+      (function () {
+        var saved = null;
+        try { saved = localStorage.getItem('kc-theme'); } catch (e) {}
+        var mode = saved || 'auto';
+        var dark = mode === 'dark' ||
+          (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
+
     <style>
+      /* Caladea: metric-compatible with Cambria, Apache 2.0. See assets/README.md. */
+      @font-face {
+        font-family: 'Caladea';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('./assets/caladea-400.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Caladea';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('./assets/caladea-700.woff2') format('woff2');
+      }
+
       :root {
+        --numeral-font: 'Caladea', Cambria, Charter, 'Source Serif 4', Georgia,
+          'Times New Roman', serif;
+      }
+
+      :root[data-theme='light'] {
+        --bg: #eef1f5;
+        --panel: #ffffffcc;
+        --edge: #d0d7de;
+        --text: #1f2328;
+        --dim: #57606a;
+        --input: #ffffff;
+      }
+
+      :root[data-theme='dark'] {
         --bg: #0d1117;
         --panel: #161b22cc;
         --edge: #30363d;
         --text: #c9d1d9;
         --dim: #8b949e;
+        --input: #0d1117;
       }
 
       * { box-sizing: border-box; }
@@ -21,7 +65,7 @@
         overflow: hidden;
         background: var(--bg);
         color: var(--text);
-        font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
       }
 
       #view {
@@ -62,7 +106,7 @@
       }
 
       select {
-        background: #0d1117;
+        background: var(--input);
         color: var(--text);
         border: 1px solid var(--edge);
         border-radius: 5px;
@@ -75,7 +119,7 @@
         left: 12px;
         right: 12px;
         color: var(--dim);
-        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
         font-size: 12px;
         white-space: pre-wrap;
       }
@@ -84,18 +128,18 @@
         top: 12px;
         right: 12px;
         color: var(--dim);
-        max-width: 220px;
+        max-width: 230px;
       }
       #help b { color: var(--text); font-weight: 600; }
       #help kbd {
         font-family: ui-monospace, Menlo, monospace;
-        background: #0d1117;
+        background: var(--input);
         border: 1px solid var(--edge);
         border-radius: 3px;
         padding: 0 4px;
       }
 
-      @media (max-width: 700px) {
+      @media (max-width: 760px) {
         #help { display: none; }
         #controls { font-size: 12px; }
       }
@@ -113,10 +157,18 @@
         </select>
       </label>
       <label>
-        colour by
+        color by
         <select id="color">
           <option value="curvature">curvature</option>
           <option value="depth">depth</option>
+        </select>
+      </label>
+      <label>
+        theme
+        <select id="theme">
+          <option value="auto">auto</option>
+          <option value="light">light</option>
+          <option value="dark">dark</option>
         </select>
       </label>
       <label>
@@ -129,7 +181,7 @@
       <b>drag</b> to pan · <b>wheel</b> or <b>pinch</b> to zoom · <b>double-click</b> to
       zoom in<br />
       <kbd>0</kbd> reset · <kbd>+</kbd> <kbd>-</kbd> zoom · <kbd>↑↓←→</kbd> pan ·
-      <kbd>l</kbd> labels
+      <kbd>l</kbd> labels · <kbd>t</kbd> theme
     </div>
 
     <div id="hud" class="panel">starting…</div>

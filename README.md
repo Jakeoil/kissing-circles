@@ -31,8 +31,21 @@ python3 -m http.server 8000     # then visit http://localhost:8000/
 ```
 
 Drag to pan, wheel or pinch to zoom, double-click to zoom in. `0` resets the view,
-`+`/`-` zoom, arrows pan, `l` toggles the curvature labels. Zooming in generates new
-detail on the fly rather than regenerating from scratch.
+`+`/`-` zoom, arrows pan, `l` toggles the curvature labels, `t` switches the theme.
+Zooming in generates new detail on the fly rather than regenerating from scratch.
+
+Light and dark themes both ship; the selector follows the system setting by default
+and remembers an explicit choice.
+
+## Numerals
+
+Reading integer curvatures off the picture is the point of the tool, so the numerals
+get some care. The font is self-hosted rather than left to a system stack — see
+[assets/README.md](assets/README.md) for why, and for how to swap it. Sizing and
+placement are measured at runtime from the font's own digit bounding box, so numerals
+sit on their optical center rather than on the em box, and a long curvature shrinks to
+fit its circle instead of spilling over the edge. Nothing in `src/` names a specific
+font.
 
 ## Status
 
@@ -46,7 +59,7 @@ Phases 1 and 2 complete: the math core, the generator, and a checkpoint viewer.
 | `src/math/packing.js` | Budgeted, resumable generation with screen-space pruning |
 | `src/render/viewport.js` | World-to-screen transform |
 | `src/render/renderer.js` | Canvas 2D drawing — provisional, Phase 3 replaces it |
-| `src/render/palette.js` | Colour by curvature or by depth |
+| `src/render/palette.js` | Color by curvature or by depth |
 
 The renderer and the viewer are a checkpoint, not the finished article: Phase 3 brings
 proper level-of-detail and typography, Phase 4 the desktop interaction.
