@@ -425,3 +425,90 @@ The dependency that matters: **Phase 1's tests must pass before anything is draw
 Rendering a wrong packing beautifully is the failure mode to avoid, and it's exactly
 where the Android version ended up — a pretty pan/zoom canvas with no correct math
 behind it.
+
+---
+
+## 7. References
+
+Everything this project relies on, in one place. Anything asserted in the code or the
+notes should be traceable to something here; where a claim is second-hand rather than
+checked against a primary source, that is said explicitly.
+
+### The mathematics
+
+- **Descartes' Circle Theorem.** The relation
+  `(b₁+b₂+b₃+b₄)² = 2(b₁²+b₂²+b₃²+b₄²)`, and the Vieta jump
+  `b₄' = 2(b₁+b₂+b₃) − b₄` that follows from it. Implemented in
+  `src/math/descartes.js` and `Circle.spawn`.
+
+- **Lagarias, J. C., Mallows, C. L., Wilks, A. R.**, "Beyond the Descartes Circle
+  Theorem", *American Mathematical Monthly* **109** (2002), 338–361.
+  [arXiv:math/0101066](https://arxiv.org/abs/math/0101066).
+  The complex Descartes theorem, augmented curvature-center coordinates `(b̄, b, b·z)`,
+  and the matrix identity `Wᵀ Q_D W = Q_W`. This is the representation the whole
+  project is built on; the identity is what `lmwErrors()` checks, and checking only the
+  per-column relations is what let a bad root through in Phase 1.
+
+- **Graham, R. L., Lagarias, J. C., Mallows, C. L., Wilks, A. R., Yan, C. H.**,
+  "Apollonian Circle Packings: Number Theory", *Journal of Number Theory* **100**
+  (2003), 1–45. [arXiv:math/0009113](https://arxiv.org/abs/math/0009113).
+  Integrality, the Apollonian group, and the congruence restrictions modulo 24 that
+  `src/math/analysis.js` reports.
+
+- **Haag, S., Kertzer, C., Rickards, J., Stange, K. E.**, "The Local-Global Conjecture
+  for Apollonian circle packings is false" (2023).
+  [arXiv:2307.02749](https://arxiv.org/abs/2307.02749).
+  Why the analysis panel lists the admissible-but-absent curvatures instead of treating
+  them as a finite nuisance. *Relayed, not read in full — the panel reports measured
+  data and does not depend on the paper's argument.*
+
+- **Schmidt, A. L.**, "Diophantine approximation of complex numbers",
+  *Acta Mathematica* **134** (1975), 1–85.
+  The complex continued fraction algorithm for **Q(i)**: Farey sets, the subdivision of
+  the plane into circular and triangular regions, and the matrices V₁–V₃, E₁–E₃, C, S,
+  I. §1.1 p. 4 defines the matrices; Lemma 1.1 p. 6 gives their determinants and the
+  S-conjugacy; §1.2 p. 7 defines ρ(F) and states ρ(F) ∈ 2N₀. *Read directly from a copy
+  of the paper; see [notes/schmidt-generations.md](notes/schmidt-generations.md).*
+  Not redistributed here — `*.pdf` is gitignored.
+
+- **Stange, K. E.**, [Schmidt Arrangements](https://math.katestange.net/illustration/schmidt-arrangements/)
+  and [Visualizing imaginary quadratic fields](https://math.colorado.edu/~kstange/papers/Stange-short-exp.pdf).
+  The modern framing: the orbit of the extended real line under PSL(2, O_K), and where
+  Apollonian packings sit inside it.
+
+- **Ford, L. R.**, "Fractions", *American Mathematical Monthly* **45** (1938), 586–601.
+  Ford circles and mesh triangles, which Schmidt names as the thing Farey sets extend.
+  *Cited via Schmidt's introduction, p. 2; not consulted directly.*
+
+- **Pegg, E. Jr.**, [Math Games: Gaussian Numbers](https://www.mathpuzzle.com/MAA/15-Gaussian%20Numbers/mathgames_03_15_04.html),
+  MAA, 15 March 2004. The article that prompted the project. Its account of Schmidt's
+  method is the source of the "generations" framing; two of its counts are loose and
+  are corrected against the paper in the notes.
+
+- **OEIS**, [A042944](https://oeis.org/search?q=6,11,14,15,18,23,26,27) and neighbours —
+  the curvature sequences of the `(−1,2,2,3)` packing, used informally as a check on
+  the generator's output.
+
+### Software and assets
+
+- **Caladea**, by Huerta Tipográfica, Apache License 2.0. Metric-compatible with
+  Cambria, and redistributable where Cambria is not. Shipped in `assets/`, with the
+  licence, and explained in [assets/README.md](assets/README.md).
+
+- **Cambria**, by Microsoft. The font the Android original reached for. Present on the
+  development machine with Office, licensed with it, and **not** licensed for web
+  embedding — hence Caladea.
+
+- **Node.js `node:test`** for the test suite; no third-party test framework, and no
+  runtime dependencies at all.
+
+- **playwright-core** driving the system Chrome, used only for development — verifying
+  the rendered page, measuring frame times, and generating the social preview image.
+  Never a dependency of the shipped site; it lives outside the repository.
+
+### Prior art in this repository's own history
+
+- **Jakeoil**, [DynamicKissingCircles](https://github.com/Jakeoil/DynamicKissingCircles).
+  The Android/Kotlin original. Contributed the `(b, b·z)` representation and the
+  `complement()` reflection rule, which survive here essentially unchanged, and a
+  transcription of Schmidt's matrices which turned out to be the key to §7 above.
