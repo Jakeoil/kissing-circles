@@ -745,6 +745,31 @@ Ordered so each step is verifiable before the next depends on it.
 6. **A Farey/Ford lab page**, if it helps explain the analogy. Lab page, not a mode:
    it needs neither the packing nor the viewport.
 
+### 8.4a Found while starting chapter 7
+
+**The gasket is in the arrangement, and the factor of two is confirmed.** Searching
+the arrangement for four mutually tangent circles satisfying Descartes — allowing one
+to be negatively oriented, since a bounding circle must be — turns up **(−2, 4, 4, 6)**,
+156 times over. That is the classic `(−1, 2, 2, 3)` packing doubled. So are the others:
+`(−4, 6, 12, 14)`, `(−6, 10, 16, 16)`, `(−8, 16, 18, 18)` are our named roots at twice
+the curvature. One such quadruple passes `validateQuad` and generates a packing.
+
+Two things that came out of trying to demonstrate it, both worth fixing before
+chapter 7 can be written:
+
+- **`arrangement()` prunes emission, not traversal.** `maxCurvature` and `bounds`
+  decide what gets *recorded*; the region walk expands everything regardless. So the
+  cost is 5ⁿ whatever the limits say, and generation 12 exhausts memory on a machine
+  with 4 GB of heap. The limits need to prune the walk, which needs a bound on what a
+  region's subtree can reach — the analogue of `branchBounds` in `packing.js`.
+- **"Circles of curvature ≤ N" is not a finite set here.** The arrangement is invariant
+  under translation by 1 and by i, so every curvature occurs infinitely often across
+  the plane. Any comparison against a bounded gasket has to be windowed spatially, or
+  it is measuring the wrong thing. My first attempt at the embedding check did exactly
+  that and reported a meaningless 141 of 412.
+
+Neither is hard. Both are silent, and the second produces a plausible-looking number.
+
 ### 8.5 What this does not answer
 
 - ~~Whether the arrangement is *legible*.~~ **Answered by `labs/schmidt.html`, and the
