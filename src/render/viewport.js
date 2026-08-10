@@ -5,9 +5,14 @@
  *
  *     screen = world * scale + translation
  *
- * Both spaces are y-down, matching the canvas and the "y-down cartesian" the Kotlin
- * DynamicView aimed at, so the transform stays a uniform scale plus a translation
- * with no flip to keep track of.
+ * Both spaces are y-down by default, matching the canvas and the "y-down cartesian"
+ * the Kotlin DynamicView aimed at, so the transform stays a uniform scale plus a
+ * translation.
+ *
+ * `flipY` turns that off, for figures where mathematical convention wins: Schmidt's
+ * upper half plane has to be drawn *up*, or every figure is a mirror of the one in
+ * the paper. Flipping here rather than by transforming the canvas keeps text upright,
+ * which a canvas-level flip would not.
  *
  * This is a port of DynamicView.Trans with its two bugs left behind: zooming here
  * adjusts both axes about the cursor (the Android onScale adjusted only yOffset and
@@ -33,6 +38,8 @@ export class Viewport {
     this.height = height;
     /** @type {number} pixels per world unit */
     this.scale = 1;
+    /** @type {boolean} whether world y increases upward on screen */
+    this.flipY = false;
     /** @type {number} */
     this.tx = width / 2;
     /** @type {number} */
@@ -51,13 +58,18 @@ export class Viewport {
     this.centerOn(center.x, center.y);
   }
 
+  /** @returns {number} the signed vertical scale */
+  get yScale() {
+    return this.flipY ? -this.scale : this.scale;
+  }
+
   /**
    * @param {number} x
    * @param {number} y
    * @returns {{x: number, y: number}}
    */
   worldToScreen(x, y) {
-    return { x: x * this.scale + this.tx, y: y * this.scale + this.ty };
+    return { x: x * this.scale + this.tx, y: y * this.yScale + this.ty };
   }
 
   /**
@@ -66,7 +78,7 @@ export class Viewport {
    * @returns {{x: number, y: number}}
    */
   screenToWorld(sx, sy) {
-    return { x: (sx - this.tx) / this.scale, y: (sy - this.ty) / this.scale };
+    return { x: (sx - this.tx) / this.scale, y: (sy - this.ty) / this.yScale };
   }
 
   /**
@@ -76,7 +88,7 @@ export class Viewport {
    */
   centerOn(x, y) {
     this.tx = this.width / 2 - x * this.scale;
-    this.ty = this.height / 2 - y * this.scale;
+    this.ty = this.height / 2 - y * this.yScale;
   }
 
   /**
@@ -99,7 +111,7 @@ export class Viewport {
     const w = this.screenToWorld(sx, sy);
     this.scale *= factor;
     this.tx = sx - w.x * this.scale;
-    this.ty = sy - w.y * this.scale;
+    this.ty = sy - w.y * this.yScale;
   }
 
   /**
@@ -125,14 +137,14 @@ export class Viewport {
   visibleBounds(margin = 0) {
     const a = this.screenToWorld(0, 0);
     const b = this.screenToWorld(this.width, this.height);
-    const mx = (b.x - a.x) * margin;
-    const my = (b.y - a.y) * margin;
-    return {
-      minX: a.x - mx,
-      minY: a.y - my,
-      maxX: b.x + mx,
-      maxY: b.y + my,
-    };
+    // With flipY the corners come back in the other order, so sort rather than assume.
+    const minX = Math.min(a.x, b.x);
+    const maxX = Math.max(a.x, b.x);
+    const minY = Math.min(a.y, b.y);
+    const maxY = Math.max(a.y, b.y);
+    const mx = (maxX - minX) * margin;
+    const my = (maxY - minY) * margin;
+    return { minX: minX - mx, minY: minY - my, maxX: maxX + mx, maxY: maxY + my };
   }
 
   /**

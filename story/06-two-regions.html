@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Two kinds of region — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+  </head>
+  <body>
+    <nav class="crumbs">
+      <a href="./index.html">Contents</a> ·
+      <a href="../index.html">Workbench</a>
+    </nav>
+
+    <main>
+      <span class="chapter-number">Chapter 6</span>
+      <h1>Two kinds of region</h1>
+
+      <p class="lede">
+        The Apollonian move — drop a circle into the gap between three that touch — is
+        one of two rules. Here is the other, and the reason the two must be drawn
+        apart before they are drawn together.
+      </p>
+
+      <p>
+        Asmus Schmidt's 1975 algorithm subdivides the complex plane the way continued
+        fractions subdivide the line. It works on regions, and there are exactly two
+        shapes of region. Which shape you have decides how many pieces you get.
+      </p>
+
+      <p>
+        A <b>circular</b> region — a disc, or a half plane, which is a disc through
+        infinity — splits into <b>seven</b>. A <b>triangular</b> region — the
+        curvilinear triangle between three mutually tangent circles — splits into
+        <b>four</b>. Schmidt drew these as two separate figures, and it matters that
+        he did.
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <span>show</span>
+          <button id="show-j" type="button" aria-pressed="true">circular · 7 parts</button>
+          <button id="show-t" type="button" aria-pressed="false">triangular · 4 parts</button>
+          <button id="show-both" type="button" aria-pressed="false">both at once</button>
+          <label><input type="checkbox" id="labels" checked /> labels</label>
+        </div>
+        <canvas id="figure" width="1100" height="620"></canvas>
+        <figcaption id="caption"></figcaption>
+      </figure>
+
+      <h2>The circular rule</h2>
+
+      <p>
+        Start with the upper half plane, <code>𝒥</code>. Its seven children are three
+        circular — <code>𝒱₁ 𝒱₂ 𝒱₃</code> — and four triangular — <code>ℰ₁ ℰ₂ ℰ₃</code>
+        and <code>C</code>. The <code>𝒱</code> pieces sit at the three corners, the
+        <code>ℰ</code> pieces along the three edges, and <code>C</code> in the middle.
+        That is what the letters mean: <b>v</b>ertex, <b>e</b>dge, <b>c</b>entre.
+      </p>
+
+      <p>
+        In coordinates the first generation is the unit square. The lines
+        <code>y = 0</code>, <code>y = 1</code>, <code>x = 0</code> and
+        <code>x = 1</code>, with a circle of radius ½ at the midpoint of each side.
+        Look at it and you may see two strip packings laid over one another, one
+        horizontal and one vertical — which is exactly what it is. The curvatures are
+        2 rather than 1, because Schmidt's normalization makes every curvature in the
+        arrangement even.
+      </p>
+
+      <h2>The triangular rule</h2>
+
+      <p>
+        Now take one of those curvilinear triangles. It splits into four: three more
+        triangles at its corners, <code>𝒱₁* 𝒱₂* 𝒱₃*</code>, and a single circle
+        <code>C*</code> dropped into the middle.
+      </p>
+
+      <p>
+        <b>That last part is the Apollonian move.</b> Three mutually tangent circles,
+        and one more inscribed in the gap between them — the circle you get from
+        Descartes' theorem, the one this project has been generating all along. In
+        Schmidt's scheme it is a single letter, <code>c</code>, applied to a
+        triangular region.
+      </p>
+
+      <div class="aside">
+        <p>
+          So an Apollonian packing is what you get by using only the <code>C</code>
+          rule and ignoring the <code>𝒱</code> and <code>ℰ</code> pieces entirely. The
+          gasket is not a different object from the arrangement. It is a
+          <em>sub-orbit</em> — one letter's worth of a seven-letter alphabet.
+        </p>
+      </div>
+
+      <h2>Why they have to be drawn apart</h2>
+
+      <p>
+        Press <b>both at once</b> above. The result is a mess, and instructively so:
+        the two subdivisions are of <em>different regions</em>, so superimposing their
+        boundaries produces curves that never bound anything together. It looks like
+        structure and is not.
+      </p>
+
+      <p>
+        This is the failure mode of drawing an arrangement as circles rather than as
+        regions. Every published picture of a Schmidt arrangement is a tangle of
+        circles precisely because the region structure has been thrown away — and the
+        first version of the lab page in this project made the same mistake, which is
+        how this chapter came to be written.
+      </p>
+
+      <div class="pager">
+        <a href="./index.html">← Contents</a>
+        <span>Next: The arrangement</span>
+      </div>
+    </main>
+
+    <script type="module">
+      import { seed, subdivide, geometry } from '../src/math/schmidt.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { fillRegion, outlineRegion, labelRegion } from '../src/render/regions.js';
+
+      const canvas = document.getElementById('figure');
+      const ctx = canvas.getContext('2d');
+      const caption = document.getElementById('caption');
+      const labelToggle = document.getElementById('labels');
+      const buttons = {
+        j: document.getElementById('show-j'),
+        t: document.getElementById('show-t'),
+        both: document.getElementById('show-both'),
+      };
+
+      // Colours chosen so circular and triangular pieces read as two families.
+      const CIRCULAR = ['hsl(157 52% 46%)', 'hsl(172 48% 42%)', 'hsl(142 46% 44%)'];
+      const TRIANGULAR = ['hsl(330 46% 52%)', 'hsl(350 48% 54%)', 'hsl(310 42% 50%)', 'hsl(28 62% 52%)'];
+      const INK = '#0d1117';
+
+      const view = new Viewport(1, 1);
+      // Schmidt's upper half plane is drawn up; the workbench's world is y-down.
+      view.flipY = true;
+      let mode = 'j';
+
+      // Chapter 6 only ever needs one level of subdivision, of each type.
+      const jParent = seed();
+      const jChildren = subdivide(jParent);
+      // A triangular region to subdivide in turn: C, the middle piece.
+      const tParent = jChildren.find((r) => r.name === 'C');
+      const tChildren = subdivide(tParent);
+
+      function fit() {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.564);
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(cssWidth, cssHeight);
+        frame();
+        draw();
+      }
+
+      /** Each mode wants its own framing: the half plane is wide, one triangle is not. */
+      function frame() {
+        if (mode === 't') {
+          view.fit({ minX: -0.06, minY: 0.44, maxX: 1.06, maxY: 1.06 }, 0.06);
+        } else {
+          view.fit({ minX: -1.15, minY: -0.28, maxX: 2.15, maxY: 1.58 }, 0.02);
+        }
+      }
+
+      function paint(regions, palette) {
+        regions.forEach((region, i) => {
+          const g = geometry(region);
+          if (g === null) return;
+          fillRegion(ctx, view, g, palette[i % palette.length]);
+        });
+        regions.forEach((region) => {
+          const g = geometry(region);
+          if (g === null) return;
+          outlineRegion(ctx, view, g, INK, 1.25);
+          if (labelToggle.checked) labelRegion(ctx, view, g, region.name, INK, 16);
+        });
+      }
+
+      function draw() {
+        ctx.save();
+        ctx.fillStyle = getComputedStyle(document.body).backgroundColor;
+        ctx.fillRect(0, 0, view.width, view.height);
+        ctx.restore();
+
+        if (mode === 'j') {
+          paint(jChildren, [...CIRCULAR, ...TRIANGULAR]);
+          caption.textContent =
+            'Schmidt Fig. 1 — the upper half plane 𝒥 divided into seven: three circular '
+            + '(𝒱₁ 𝒱₂ 𝒱₃, greens) at the vertices, four triangular (ℰ₁ ℰ₂ ℰ₃ C, pinks) '
+            + 'along the edges and at the centre.';
+        } else if (mode === 't') {
+          paint(tChildren, TRIANGULAR);
+          caption.textContent =
+            'Schmidt Fig. 1* — one triangular region, C, divided into four: three '
+            + 'triangles at its corners (𝒱₁* 𝒱₂* 𝒱₃*) and one circle dropped into the '
+            + 'middle (C*). That circle is the Apollonian move.';
+        } else {
+          paint(jChildren, [...CIRCULAR, ...TRIANGULAR]);
+          ctx.save();
+          ctx.globalAlpha = 0.55;
+          paint(tChildren, TRIANGULAR);
+          ctx.restore();
+          caption.textContent =
+            'Both subdivisions superimposed. They divide different regions, so their '
+            + 'boundaries do not bound anything in common — this reads as structure and '
+            + 'is not. Drawing an arrangement as circles rather than regions produces '
+            + 'exactly this.';
+        }
+      }
+
+      for (const [key, button] of Object.entries(buttons)) {
+        button.addEventListener('click', () => {
+          mode = key === 'both' ? 'both' : key;
+          for (const [k, b] of Object.entries(buttons)) {
+            b.setAttribute('aria-pressed', String((k === 'both' ? 'both' : k) === mode));
+          }
+          frame();
+          draw();
+        });
+      }
+      labelToggle.addEventListener('change', draw);
+      window.addEventListener('resize', fit);
+      fit();
+    </script>
+  </body>
+</html>

@@ -169,6 +169,34 @@ export class Mobius {
     return new Circle(q22.re, q11.re, q12.neg());
   }
 
+  /**
+   * Where this map sends a point, in floating point.
+   *
+   * Everything else here is exact; this is not, and is not meant to be. It exists to
+   * answer orientation questions — which side of a boundary a region lies on — where
+   * a sample point somewhere in the interior settles the matter and precision is
+   * irrelevant. Never use it to place a circle.
+   *
+   * @param {number} px
+   * @param {number} py
+   * @returns {{x: number, y: number}|null} null at the pole
+   */
+  applyToPoint(px, py) {
+    const ar = Number(this.a.re), ai = Number(this.a.im);
+    const br = Number(this.b.re), bi = Number(this.b.im);
+    const cr = Number(this.c.re), ci = Number(this.c.im);
+    const dr = Number(this.d.re), di = Number(this.d.im);
+
+    const nr = ar * px - ai * py + br;
+    const ni = ar * py + ai * px + bi;
+    const mr = cr * px - ci * py + dr;
+    const mi = cr * py + ci * px + di;
+
+    const q = mr * mr + mi * mi;
+    if (q === 0) return null;
+    return { x: (nr * mr + ni * mi) / q, y: (ni * mr - nr * mi) / q };
+  }
+
   /** @returns {string} */
   toString() {
     return `[[${this.a}, ${this.b}], [${this.c}, ${this.d}]]`;

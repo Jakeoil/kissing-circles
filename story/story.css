@@ -1,0 +1,167 @@
+/*
+  Shared chapter styling. Chapters are read, so this is a reading layout first and a
+  figure container second — see plan.md §7.1.
+*/
+
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --edge: #30363d;
+  --text: #c9d1d9;
+  --dim: #8b949e;
+  --bright: #f0f6fc;
+  --accent: #7ee2b8;
+  --measure: 34rem;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fbfcfd;
+    --panel: #ffffff;
+    --edge: #d6dde5;
+    --text: #24292f;
+    --dim: #57606a;
+    --bright: #0d1117;
+    --accent: #0f7d55;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 ui-serif, Georgia, 'Times New Roman', serif;
+}
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+nav.crumbs {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 0;
+  font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+  color: var(--dim);
+  display: flex;
+  gap: .6rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+nav.crumbs a { color: var(--dim); }
+nav.crumbs a:hover { color: var(--text); }
+
+.chapter-number {
+  font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: block;
+  margin-bottom: .6rem;
+}
+
+h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  margin: 0 0 1.4rem;
+  color: var(--bright);
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 2.4rem 0 .8rem;
+  color: var(--bright);
+  font-weight: 600;
+}
+
+p, li { max-width: var(--measure); }
+p { margin: 0 0 1.1rem; }
+li { margin-bottom: .4rem; }
+
+a { color: var(--accent); }
+
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: .88em;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: .05em .35em;
+}
+
+.lede {
+  font-size: 1.12rem;
+  color: var(--dim);
+  max-width: var(--measure);
+}
+
+/* Figures */
+
+figure {
+  margin: 2rem 0;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+figure canvas { display: block; width: 100%; }
+
+figcaption {
+  font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+  color: var(--dim);
+  padding: .7rem .9rem;
+  border-top: 1px solid var(--edge);
+  max-width: none;
+}
+
+.figure-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: .6rem .9rem;
+  border-bottom: 1px solid var(--edge);
+  font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+  color: var(--dim);
+}
+.figure-controls label { display: flex; gap: .4rem; align-items: center; }
+
+button, select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  padding: 3px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover, select:hover { border-color: var(--dim); }
+button[aria-pressed='true'] { border-color: var(--accent); color: var(--bright); }
+
+/* A note that steps out of the argument. */
+.aside {
+  border-left: 2px solid var(--edge);
+  padding: .1rem 0 .1rem 1rem;
+  margin: 1.6rem 0;
+  color: var(--dim);
+  font-size: .95rem;
+}
+.aside p:last-child { margin-bottom: 0; }
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--edge);
+  font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+}
+.pager a { text-decoration: none; }
+.pager span { color: var(--dim); }

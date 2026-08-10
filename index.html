@@ -178,8 +178,9 @@
       }
       #error:empty { display: none; }
 
-      #labs-link { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--edge); }
-      #labs-link:hover { color: var(--text); }
+      #story-link, #labs-link { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--edge); }
+      #story-link:hover, #labs-link:hover { color: var(--text); }
+      #story-link { color: var(--text); }
 
       /* Shown only when "link" is pressed. The URL is never written to the address
          bar — see main.js shareURL(). */
@@ -409,7 +410,8 @@
       <button id="png" type="button">PNG</button>
       <button id="svg" type="button">SVG</button>
       <span id="build">build —</span>
-      <a id="labs-link" href="./labs/schmidt.html">labs →</a>
+      <a id="story-link" href="./story/index.html">story →</a>
+      <a id="labs-link" href="./labs/schmidt.html">labs</a>
       <div id="error"></div>
       <div id="share-row" hidden>
         <input id="share-url" type="text" readonly />

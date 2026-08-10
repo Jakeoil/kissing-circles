@@ -39,6 +39,115 @@ import { IDENTITY, GENERATORS } from './mobius.js';
  */
 export const REAL_LINE = new Circle(0n, 0n, new Gaussian(0n, 1n));
 
+/**
+ * The curves bounding `𝒥*`, the triangular seed region
+ * `{0 ≤ x ≤ 1, y ≥ √(x − x²)}`.
+ *
+ * Three of them are its actual sides: the lines `x = 0` and `x = 1` and the semicircle
+ * between them, mutually tangent — the lines meet at infinity, the circle touches each
+ * at 0 and 1 — so every image of `𝒥*` is a curvilinear triangle.
+ *
+ * The fourth, the real line, is **not a side**; it touches `𝒥*` only at 0 and 1. It is
+ * here because the three sides do not determine the region. "Between the lines and
+ * outside the semicircle" describes two components — the one above the semicircle and
+ * the one below it — and `y ≥ 0` is what picks the right one. Without it a renderer
+ * that works by intersecting constraints fills both, which in practice means filling
+ * most of the picture.
+ *
+ * @type {Circle[]}
+ */
+export const JSTAR_BOUNDARY = [
+  new Circle(0n, 0n, new Gaussian(1n, 0n)), // x = 0
+  new Circle(2n, 0n, new Gaussian(1n, 0n)), // x = 1
+  new Circle(0n, 2n, new Gaussian(1n, 0n)), // |z − ½| = ½
+  REAL_LINE,                                // y ≥ 0, to select the component
+];
+
+/** `𝒥` is the upper half plane; the real line is its only boundary. */
+export const J_BOUNDARY = [REAL_LINE];
+
+/** A point comfortably inside `𝒥`. */
+export const J_INTERIOR = { x: 0, y: 1 };
+
+/** A point comfortably inside `𝒥*` — above the semicircle, between the lines. */
+export const JSTAR_INTERIOR = { x: 0.5, y: 0.9 };
+
+/**
+ * A region of the subdivision: which map produced it, and which of Schmidt's two
+ * shapes it is.
+ *
+ * @typedef {object} Region
+ * @property {import('./mobius.js').Mobius} m
+ * @property {'J'|'T'} type circular or triangular
+ * @property {string} name Schmidt's label, e.g. `𝒱₂` or `C*`
+ */
+
+/** Schmidt's labels for the children of each region type. */
+const LABELS = {
+  J: { V1: '𝒱₁', V2: '𝒱₂', V3: '𝒱₃', E1: 'ℰ₁', E2: 'ℰ₂', E3: 'ℰ₃', C: 'C' },
+  T: { V1: '𝒱₁*', V2: '𝒱₂*', V3: '𝒱₃*', C: 'C*' },
+};
+
+/**
+ * The seed region: the upper half plane, undivided.
+ * @returns {Region}
+ */
+export function seed() {
+  return { m: IDENTITY, type: 'J', name: '𝒥' };
+}
+
+/**
+ * Subdivide one region, with Schmidt's names attached.
+ *
+ * A circular region gives seven parts (Fig. 1, Fig. 2); a triangular one gives four
+ * (Fig. 1*, Fig. 2*). This is the whole of the construction.
+ *
+ * @param {Region} region
+ * @returns {Region[]}
+ */
+export function subdivide(region) {
+  return SUBDIVISION[region.type].map(([name, type]) => ({
+    m: region.m.mul(GENERATORS[name]),
+    type,
+    name: LABELS[region.type][name],
+  }));
+}
+
+/**
+ * The curves bounding a region, and a point inside it.
+ *
+ * A circular region is bounded by a single circle or line — it is the image of a half
+ * plane — so it is a disc or a half plane. A triangular one is bounded by three
+ * mutually tangent curves. The interior point is what tells a renderer which *side*
+ * of each boundary the region lies on, which no amount of staring at the boundary
+ * alone will reveal.
+ *
+ * `sides` are the region's actual edges, and are what should be drawn. `constraints`
+ * additionally contains the selecting curve described above, which bounds nothing and
+ * must not be drawn — outlining it puts a stray arc through the middle of the picture.
+ *
+ * @param {Region} region
+ * @returns {{sides: Circle[], constraints: Circle[], interior: {x: number, y: number}}|null}
+ */
+export function geometry(region) {
+  const source = region.type === 'J' ? J_BOUNDARY : JSTAR_BOUNDARY;
+  const inside = region.type === 'J' ? J_INTERIOR : JSTAR_INTERIOR;
+  const sideCount = region.type === 'J' ? 1 : 3;
+
+  /** @type {Circle[]} */
+  const constraints = [];
+  for (const curve of source) {
+    const image = region.m.applyTo(curve);
+    if (image === null) return null;
+    constraints.push(image);
+  }
+
+  const interior = region.m.applyToPoint(inside.x, inside.y);
+  if (interior === null) return null;
+
+  return { sides: constraints.slice(0, sideCount), constraints, interior };
+}
+
 /** Which children a region has, by type. `J` is circular, `T` triangular. */
 const SUBDIVISION = {
   J: /** @type {[string, 'J'|'T'][]} */ ([

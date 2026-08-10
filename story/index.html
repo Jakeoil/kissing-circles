@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contents — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+    <style>
+      ol.toc { list-style: none; padding: 0; margin: 2rem 0 0; max-width: 44rem; }
+      ol.toc li { margin: 0 0 .3rem; max-width: none; }
+      ol.toc a, ol.toc .pending {
+        display: grid;
+        grid-template-columns: 2.2rem 1fr;
+        gap: .5rem;
+        padding: .7rem .9rem;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--text);
+      }
+      ol.toc a:hover { border-color: var(--edge); background: var(--panel); }
+      ol.toc .pending { color: var(--dim); }
+      ol.toc .n {
+        font: 600 12px/1.7 ui-sans-serif, system-ui, sans-serif;
+        color: var(--accent);
+      }
+      ol.toc .pending .n { color: var(--edge); }
+      ol.toc .t { font-weight: 600; }
+      ol.toc .d {
+        grid-column: 2;
+        font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+        color: var(--dim);
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="crumbs"><a href="../index.html">Workbench →</a></nav>
+
+    <main>
+      <span class="chapter-number">Kissing Circles</span>
+      <h1>A story about circles that touch</h1>
+
+      <p class="lede">
+        Four circles, each touching the other three. That constraint is tight enough to
+        force the numbers to be whole, and loose enough to fill a plane. This is where
+        that goes.
+      </p>
+
+      <p>
+        Every figure here is live and computed in exact integer arithmetic — the same
+        code as the <a href="../index.html">workbench</a>, which is where to go once you
+        would rather poke at something than read about it.
+      </p>
+
+      <ol class="toc">
+        <li><span class="pending"><span class="n">01</span><span class="t">Four circles that touch</span><span class="d">Descartes' theorem, and why three circles have two completions.</span></span></li>
+        <li><span class="pending"><span class="n">02</span><span class="t">The jump</span><span class="d">Both completions solve one quadratic, so the second costs a subtraction.</span></span></li>
+        <li><span class="pending"><span class="n">03</span><span class="t">Why the numbers stay whole</span><span class="d">Exact integers against floating point, zoomed until one of them fails.</span></span></li>
+        <li><span class="pending"><span class="n">04</span><span class="t">Generations</span><span class="d">4·3ⁿ⁻¹ new circles each round.</span></span></li>
+        <li><span class="pending"><span class="n">05</span><span class="t">Which numbers appear</span><span class="d">Curvatures mod 24, and the ones that never turn up at all.</span></span></li>
+        <li>
+          <a href="./06-two-regions.html">
+            <span class="n">06</span><span class="t">Two kinds of region</span>
+            <span class="d">Schmidt's two subdivision rules — and the Apollonian move hiding inside one of them.</span>
+          </a>
+        </li>
+        <li><span class="pending"><span class="n">07</span><span class="t">The arrangement</span><span class="d">Both rules everywhere, and the gasket located inside the result.</span></span></li>
+        <li><span class="pending"><span class="n">08</span><span class="t">Ford circles, one dimension down</span><span class="d">The same construction over the reals.</span></span></li>
+        <li><span class="pending"><span class="n">09</span><span class="t">Walking to e<sup>i</sup></span><span class="d">A complex number's continued fraction, followed generation by generation.</span></span></li>
+      </ol>
+
+      <p style="margin-top:2rem; color:var(--dim); font-size:.95rem">
+        Chapters without a link are not written yet.
+      </p>
+    </main>
+  </body>
+</html>
