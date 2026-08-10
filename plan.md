@@ -433,31 +433,48 @@ behind it.
 Two open questions, answered here so the answers stop being re-litigated: **how the app
 is structured as the mathematics grows**, and **what the numerals look like**.
 
-### 7.1 One page, or a page per view?
+### 7.1 One core, several kinds of page
 
-The app is going to grow modes that are not simply "the same picture with different
-numbers": the Schmidt arrangement, a continued-fraction walker, possibly a Farey/Ford
-view. The question is whether each becomes its own HTML page or a mode inside `index.html`.
+**This section originally said "one page with modes". That answered the wrong
+question.** It answered *how is the code structured* and presented the result as
+though it also answered *how does a reader move through this*. Those are separable,
+and conflating them cost the project its narrative: a single page with a mode dropdown
+is architecturally tidy and pedagogically flat. You cannot tell a story in a `<select>`.
 
-**Decision: one app page with modes, plus disposable lab pages.**
+The half that was right stays:
 
-One page, because these are not different applications. They share the exact-arithmetic
-core (`Circle`, `Packing`), the viewport, the renderer, the palette, the numeral
-machinery, the theme, the export path and the share links. Splitting them across pages
-duplicates all of that or forces it into a shared module that each page then has to
-re-wire. Worse, it would misrepresent the mathematics: the Apollonian gasket is *inside*
-the Schmidt arrangement, not beside it — see
-[notes/schmidt-generations.md](notes/schmidt-generations.md). Two pages would assert a
-separation that does not exist.
+> **One shared core.** Every view imports the same `src/` modules — the exact
+> arithmetic, the viewport, the renderer, the palette, the numerals. Nothing is
+> duplicated, nothing forks. This is what keeps every picture in the project
+> arithmetically identical and is not negotiable.
 
-The **lab page** is the escape valve, and it is a pattern already in use elsewhere in
-this account: `lunizodiacal/font-test.html` sits beside its app without being part of it.
-A lab page is a scratch file for one question — compare six fonts, check a subdivision
-rule, look at one figure. It may be ugly, it need not be linked from anywhere, and it is
-deleted or promoted once the question is answered. Nothing in `src/` may depend on one.
+The half that was wrong is replaced. There are **three kinds of page**, and they differ
+in what they are *for*, not in what they are built from:
 
-**When a lab page graduates into a mode:** when it needs the packing, the viewport, or
-the share link. Until it needs one of those three, it is cheaper as a lab page.
+| | Purpose | Polish | Linked |
+|---|---|---|---|
+| **The workbench** — `index.html` | The research tool. Every packing, every control, deep zoom, analysis, export. | Finished | Everywhere |
+| **Chapters** — `story/*.html` | One idea each, with prose and one live figure. Read in order. | Finished | From the contents and each other |
+| **Labs** — `labs/*.html` | One question, asked and answered. May be ugly. | None | From the workbench, loosely |
+
+A chapter is not a mode and not a lab. It has **prose**, a **single figure with the
+fewest controls that make the point**, and a **place in a sequence**. The workbench is
+where a reader ends up once the story has given them a reason to poke at something; a
+lab is where I go to find out whether an idea works before it earns prose.
+
+**The rule that keeps this from sprawling:** a chapter may import from `src/` and may
+not contain mathematics of its own. If a chapter needs something the core cannot do,
+that is a signal to extend the core, not to write a one-off in the page. The moment a
+chapter carries its own arithmetic, the project has two implementations and the
+guarantee that every picture is exact quietly dies.
+
+**A decision I have not made, because it is not mine.** Should `index.html` stay the
+workbench, with the story at `story/`, or should the front door become the contents
+page with the workbench moving to `app/`? The story-first arrangement is better for a
+teaching program. It also **breaks every link already shared**, because those are
+`index.html#…` fragments — see §7.2. My recommendation is to keep `index.html` as the
+workbench and link the story prominently from it, but this is worth deciding
+deliberately rather than by default.
 
 ### 7.2 The legacy guarantee
 
@@ -531,6 +548,76 @@ change.
 
 **Adding a face** is: an entry in `src/render/fonts.js`, an `@font-face` in `index.html`
 if it is shipped, and nothing else.
+
+### 7.4 The chapters
+
+A story, not a feature tour. Each chapter asks a question, answers it with a figure you
+can move, and leaves you needing the next one. The arc is already latent in what has
+been built — this is mostly a matter of putting it in order and writing it down.
+
+**1 · Four circles that touch.**
+Descartes' theorem. Drag one of four mutually tangent circles and watch
+`(Σb)² = 2Σb²` hold. *Ends on:* given three circles, there are exactly two that
+complete them — so which one do you draw?
+
+**2 · The jump.**
+Both answers are roots of the same quadratic, so they sum to `2(b₁+b₂+b₃)`. Click a
+triple, watch the fourth circle flip between its two positions. *Ends on:* the second
+circle costs one subtraction. No square root. That is the whole recursion.
+
+**3 · Why the numbers stay whole.**
+Curvature and centre together, `(b, b·z)` in ℤ[i]. Side by side: the same packing in
+exact integers and in floating point, zoomed until the float version's tangencies
+visibly come apart. *Ends on:* the picture is made of integers, so it can be counted.
+
+**4 · Generations.**
+`4·3ⁿ⁻¹` new circles per generation. Peel the packing back with `[` and `]` and watch
+it rebuild. *Ends on:* every circle has an integer curvature — which integers?
+
+**5 · Which numbers appear.**
+Curvatures mod 24: eight classes of twenty-four for `(−1,2,2,3)`, a different eight for
+`(−2,3,6,7)`. Then the ones that are admissible and still never occur — 78, 159, and 33
+more below ten thousand. *Ends on:* a conjecture that said these were finite, disproved
+in 2023. The picture has an open problem in it.
+
+**6 · Schmidt's two regions.**
+The chapter that fixes the defect Jake spotted. Fig. 1 and Fig. 1\* **side by side and
+separately**, because they subdivide different things: a circular region into seven, a
+triangular one into four. Then, and only then, superimposed. *Ends on:* one of those
+two rules is the Apollonian move you already know. The other you have never drawn.
+
+**7 · The arrangement.**
+Apply both rules everywhere. Outlines, not fills — and show why, by filling them once.
+The gasket located inside it, at the factor of two that makes Schmidt's curvatures even.
+*Ends on:* the packing was never the whole object. It is one orbit inside a larger one.
+
+**8 · Ford circles, one dimension down.**
+The same construction over ℝ: Ford circles on the rationals, subdividing by mediants.
+Lemma 1.5 says which words in the generators produce them, so they can be picked out of
+the arrangement and lit up. *Ends on:* continued fractions on the line are this
+subdivision. So what is a continued fraction on the plane?
+
+**9 · Walking to e^i.**
+A complex number's expansion is the nested sequence of regions containing it, one per
+generation. Type a number, watch it zoom. Schmidt's closed form for `exp[1/(−ib)]`
+predicts the word `C² V₃ C² V₃³ C² V₃⁵ …`, so the walk can be checked against arithmetic
+rather than against the picture. *Ends on:* the figure Ed Pegg wanted in 2004 and wrote
+that he could not draw.
+
+---
+
+**What each chapter needs from the core.** Most of it exists. The gaps, in order of
+appearance: a draggable-quadruple figure (1, 2), a float-arithmetic comparison mode (3),
+region-type-aware drawing so Fig. 1 and Fig. 1\* can be shown apart (6), the gasket's
+embedding in the arrangement (7), Ford-circle word recognition (8), and the walker (9).
+Chapters 4 and 5 need nothing new at all.
+
+**Order of writing.** Not 1 through 9. Write **6 and 7 first** — they are where the
+current work already is, and chapter 6 fixes a real defect. Then **4 and 5**, which need
+no new code. Then **1, 2, 3**, which need the most new figure machinery and are the
+least urgent because they cover the best-understood ground. **8 and 9** last, because 9
+is the payoff and should not be rushed to meet an outline.
+
 
 ---
 
