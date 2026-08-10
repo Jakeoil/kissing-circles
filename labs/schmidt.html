@@ -22,19 +22,54 @@
       label { display: flex; gap: 6px; align-items: center; color: #8b949e; white-space: nowrap; }
       #hud { bottom: 12px; left: 12px; right: 12px; color: #8b949e;
              font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
-      input[type=range] { width: 120px; }
+      button { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+               border-radius: 5px; padding: 2px 9px; font: inherit; cursor: pointer; }
+      button:hover { border-color: #8b949e; }
+      #genv { min-width: 1.2em; text-align: center; display: inline-block; color: #c9d1d9; }
+      #legend { top: 70px; left: 12px; width: min(430px, calc(100% - 24px)); line-height: 1.5; }
+      #legend[hidden] { display: none; }
+      #legend h2 { font-size: 13px; margin: 0 0 6px; }
+      #legend p { margin: 0 0 8px; color: #8b949e; }
+      #legend table { border-collapse: collapse; font-size: 12px; margin: 0 0 8px; }
+      #legend td { padding: 1px 10px 1px 0; color: #8b949e; vertical-align: baseline; }
+      #legend code { color: #c9d1d9; font-family: ui-monospace, Menlo, monospace; }
     </style>
   </head>
   <body>
     <canvas id="view"></canvas>
 
     <div id="controls" class="panel">
-      <label>generations <input id="gen" type="range" min="1" max="9" value="5" /> <b id="genv">5</b></label>
+      <label>generation
+        <button id="gen-down" type="button" title="[">−</button>
+        <b id="genv">5</b>
+        <button id="gen-up" type="button" title="]">+</button>
+      </label>
       <label>color <select id="color"><option value="depth">generation</option><option value="curvature">curvature</option></select></label>
       <label>draw <select id="style"><option value="stroke">outlines</option><option value="fill">filled</option></select></label>
       <label><input type="checkbox" id="labels" /> curvatures</label>
-      <label><input type="checkbox" id="gasket" /> gasket over it</label>
+      <label><input type="checkbox" id="gasket" /> show gasket instead</label>
+      <button id="legend-toggle" type="button">what am I looking at?</button>
     </div>
+    <div id="legend" class="panel" hidden>
+      <h2>Schmidt's subdivision</h2>
+      <p>Every region is subdivided at each generation. There are two kinds, and they
+      behave differently — this is Schmidt's Fig. 2 and Fig. 2*:</p>
+      <table>
+        <tr><td><b>circular</b> region</td><td>→ 7 parts: 3 circular (V₁ V₂ V₃), 4 triangular (E₁ E₂ E₃ C)</td></tr>
+        <tr><td><b>triangular</b> region</td><td>→ 4 parts: 3 triangular (V₁ V₂ V₃), 1 circular (C)</td></tr>
+      </table>
+      <p><b>Generation 1</b> is the unit square: the lines <code>y=0</code>,
+      <code>y=1</code>, <code>x=0</code>, <code>x=1</code>, with a circle of radius ½
+      at the midpoint of each side. That is two strip packings superimposed — one
+      horizontal, one vertical — at curvature 2 rather than 1, because Schmidt's
+      normalization makes every curvature even.</p>
+      <p><b>Why outlines.</b> These circles nest, unlike an Apollonian packing whose
+      interiors are disjoint. Filled, the picture becomes a solid slab with no
+      structure visible. Switch <i>draw</i> to <i>filled</i> to see it happen.</p>
+      <p>Region counts follow <code>(3·5ⁿ − 1)/2</code> — 1, 7, 37, 187, 937, 4687 —
+      against the gasket's <code>4·3ⁿ⁻¹</code>.</p>
+    </div>
+
     <div id="hud">…</div>
 
     <script type="module">
@@ -47,8 +82,13 @@
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
       const hud = document.getElementById('hud');
-      const genInput = document.getElementById('gen');
       const genOut = document.getElementById('genv');
+      const genUp = document.getElementById('gen-up');
+      const genDown = document.getElementById('gen-down');
+      const legend = document.getElementById('legend');
+      const legendToggle = document.getElementById('legend-toggle');
+      const MIN_GEN = 1, MAX_GEN = 9;
+      let generation = 5;
       const colorSelect = document.getElementById('color');
       const labelToggle = document.getElementById('labels');
       const styleSelect = document.getElementById('style');
@@ -68,7 +108,7 @@
       }
 
       function build() {
-        const n = Number(genInput.value);
+        const n = generation;
         genOut.textContent = String(n);
         const t0 = performance.now();
 
@@ -111,10 +151,26 @@
         dirty = true;
       }, { passive: false });
 
-      for (const el of [genInput, gasketToggle]) el.addEventListener('input', () => { build(); view.fit(home(), 0.08); });
+      function step(delta) {
+        const next = Math.min(MAX_GEN, Math.max(MIN_GEN, generation + delta));
+        if (next === generation) return;
+        generation = next;
+        build();
+      }
+      genUp.addEventListener('click', () => step(1));
+      genDown.addEventListener('click', () => step(-1));
+      legendToggle.addEventListener('click', () => { legend.hidden = !legend.hidden; });
+      gasketToggle.addEventListener('change', () => { build(); view.fit(home(), 0.08); });
       for (const el of [colorSelect, labelToggle, styleSelect]) el.addEventListener('change', () => { dirty = true; });
       window.addEventListener('resize', resize);
-      window.addEventListener('keydown', (e) => { if (e.key === '0') { view.fit(home(), 0.08); dirty = true; } });
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+        if (e.key === '0') { view.fit(home(), 0.08); dirty = true; }
+        else if (e.key === ']') step(1);
+        else if (e.key === '[') step(-1);
+        else return;
+        e.preventDefault();
+      });
 
       function frame() {
         if (dirty && model) {

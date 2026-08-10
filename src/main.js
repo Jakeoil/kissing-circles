@@ -69,6 +69,10 @@ const analysisClose = /** @type {HTMLButtonElement} */ (document.getElementById(
 const shareButton = /** @type {HTMLButtonElement} */ (document.getElementById('share'));
 const pngButton = /** @type {HTMLButtonElement} */ (document.getElementById('png'));
 const svgButton = /** @type {HTMLButtonElement} */ (document.getElementById('svg'));
+const shareRow = /** @type {HTMLElement} */ (document.getElementById('share-row'));
+const shareField = /** @type {HTMLInputElement} */ (document.getElementById('share-url'));
+const shareNote = /** @type {HTMLElement} */ (document.getElementById('share-note'));
+const shareClose = /** @type {HTMLButtonElement} */ (document.getElementById('share-close'));
 
 buildBox.textContent = `build ${BUILD}`;
 
@@ -177,7 +181,6 @@ async function applyFont(id) {
 
 fontSelect.addEventListener('change', () => {
   applyFont(fontSelect.value);
-  syncURL();
 });
 
 // ----------------------------------------------------------------------- theme
@@ -390,9 +393,16 @@ function shareFragment() {
   });
 }
 
-/** Keep the address bar current without adding a history entry per pan. */
-function syncURL() {
-  history.replaceState(null, '', `#${shareFragment()}`);
+/**
+ * The share URL for the current view.
+ *
+ * Deliberately *not* written to the address bar. Rewriting it as the view settled
+ * meant that typing in the address bar was impossible — the page overwrote the edit
+ * mid-keystroke — and it filled browser history with fragment-laden entries. A link
+ * is something you ask for, not something the page imposes.
+ */
+function shareURL() {
+  return `${location.origin}${location.pathname}#${shareFragment()}`;
 }
 
 /** Restore a view from the fragment, if there is one. */
@@ -429,18 +439,22 @@ function restoreFromURL() {
 }
 
 shareButton.addEventListener('click', async () => {
-  syncURL();
-  const url = location.href;
+  const url = shareURL();
+  shareField.value = url;
+  shareRow.hidden = false;
+  shareField.focus();
+  shareField.select();
   try {
     await navigator.clipboard.writeText(url);
-    shareButton.textContent = 'copied';
+    shareNote.textContent = 'copied to clipboard';
   } catch {
-    // Clipboard access can be refused; the address bar still holds the link.
-    shareButton.textContent = 'in address bar';
+    // Clipboard access can be refused; the field is still there to copy by hand.
+    shareNote.textContent = 'select and copy';
   }
-  setTimeout(() => {
-    shareButton.textContent = 'link';
-  }, 1400);
+});
+
+shareClose.addEventListener('click', () => {
+  shareRow.hidden = true;
 });
 
 /** @returns {import('./ui/export.js').ExportOptions} */
@@ -720,7 +734,6 @@ function frame() {
   if (refineAt !== 0 && now >= refineAt) {
     refineAt = 0;
     packing.refine(limits());
-    syncURL();
   }
 
   if (!paused && !packing.done) {
@@ -772,5 +785,7 @@ applyTheme();
 applyFont(fontPreference());
 resize();
 load(ROOTS.apollonian.quad, 'apollonian');
-if (!restoreFromURL()) syncURL();
+// Reading the fragment still works, so shared links open as they should. Writing it
+// is what caused trouble, and that is gone.
+restoreFromURL();
 requestAnimationFrame(frame);
