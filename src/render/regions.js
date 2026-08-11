@@ -16,7 +16,34 @@
  * rule against a rectangle covering the canvas.
  */
 
+import { digitMetrics, numeralSize, NUMERAL_FONT } from './labels.js';
+
 const TAU = Math.PI * 2;
+
+/**
+ * How much room a region has at its interior point: the distance to its nearest
+ * side, in world units.
+ *
+ * A region is not a disc, so it has no radius, but it does have a largest circle that
+ * fits around the sample point — and that is the right scale for a numeral. It works
+ * for both shapes without a special case: a disc gives its own radius when the sample
+ * is its center, and a curvilinear triangle gives however much space there is before
+ * the nearest arc.
+ *
+ * @param {{sides: import('../math/circle.js').Circle[], interior: {x: number, y: number}}} geometry
+ * @returns {number}
+ */
+export function roomAt(geometry) {
+  let room = Infinity;
+  for (const side of geometry.sides) {
+    const f = side.toFloat();
+    const d = side.isLine()
+      ? Math.abs(geometry.interior.x * f.x + geometry.interior.y * f.y - side.lineOffset())
+      : Math.abs(Math.hypot(geometry.interior.x - f.x, geometry.interior.y - f.y) - Math.abs(f.r));
+    if (d < room) room = d;
+  }
+  return room;
+}
 
 /**
  * @param {{x: number, y: number}} p
@@ -145,7 +172,7 @@ export function outlineRegion(ctx, view, geometry, stroke, width = 1.5) {
 }
 
 /**
- * A label placed at the region's interior point.
+ * A label placed at the region's interior point, at a fixed size.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {import('./viewport.js').Viewport} view
@@ -165,4 +192,42 @@ export function labelRegion(ctx, view, geometry, text, color, size = 17) {
   ctx.fillStyle = color;
   ctx.fillText(text, p.x, p.y);
   ctx.restore();
+}
+
+/**
+ * A numeral sized to the room the region has, in the project's numeral font.
+ *
+ * Sized and centered by the same rules as the packing's curvature labels — measured
+ * from the font rather than assumed, and dropped onto the digits' optical center — so
+ * a number in a Schmidt region reads like a number in a Soddy circle.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./viewport.js').Viewport} view
+ * @param {{sides: import('../math/circle.js').Circle[], interior: {x: number, y: number}}} geometry
+ * @param {string} text
+ * @param {string} color
+ * @returns {boolean} whether there was room to draw it
+ */
+export function numberRegion(ctx, view, geometry, text, color) {
+  const p = view.worldToScreen(geometry.interior.x, geometry.interior.y);
+  if (p.x < -60 || p.x > view.width + 60 || p.y < -60 || p.y > view.height + 60) return false;
+
+  const metrics = digitMetrics(ctx);
+  const radius = roomAt(geometry) * view.scale;
+  const size = numeralSize(radius, text.length, metrics);
+  if (size === 0) return false;
+
+  ctx.save();
+  ctx.font = `700 ${size}px ${NUMERAL_FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = color;
+  const box = ctx.measureText(text);
+  const rise =
+    box.actualBoundingBoxAscent === undefined
+      ? metrics.center * size
+      : (box.actualBoundingBoxAscent - box.actualBoundingBoxDescent) / 2;
+  ctx.fillText(text, p.x, p.y + rise);
+  ctx.restore();
+  return true;
 }

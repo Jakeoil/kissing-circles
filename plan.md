@@ -549,6 +549,32 @@ change.
 **Adding a face** is: an entry in `src/render/fonts.js`, an `@font-face` in `index.html`
 if it is shipped, and nothing else.
 
+### 7.3a Pinned — a quadruple you can handle
+
+The custom field now takes three bends or four and offers the completions (§7.3), which
+is right arithmetically and still a text box. **Pinned for later: make the quadruple
+something you manipulate rather than type.**
+
+The shape of it: four fields, each with its own `−`/`+`, and the drawing responds as
+you press. Nudge one bend and its circle grows or shrinks while the other three hold
+their tangencies — which they cannot always do, and that is the interesting part.
+Descartes binds the four together, so moving one either drags the others or is refused;
+either behavior teaches the constraint better than an error message can.
+
+Worth working out before building:
+
+- **What is held fixed.** Three bends fixed and the fourth stepped leaves the
+  configuration over-determined — the fourth is not free. So stepping a bend has to
+  mean *choosing a different quadruple*, and the honest options are to re-solve for one
+  of the others, or to snap to the nearest integral quadruple. The second is probably
+  what feels right and is certainly what keeps the arithmetic exact.
+- **Tangency points and centers as handles.** Dragging a tangency point, or a center,
+  is a more direct grip on the picture than a number is — and both are exactly
+  computable here (`tangencyPoint`, `Circle.toFloat`).
+- **Where it lives.** This is a figure with real interaction, so it starts as a lab,
+  and graduates into chapter 1 or 2 if it earns it. Chapter 2 already explains the rule
+  it would be demonstrating.
+
 ### 7.4 The chapters
 
 A story, not a feature tour. Each chapter asks a question, answers it with a figure you

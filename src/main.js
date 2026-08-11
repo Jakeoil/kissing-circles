@@ -69,6 +69,8 @@ const offersBox = /** @type {HTMLElement} */ (document.getElementById('custom-of
 const readout = /** @type {HTMLElement} */ (document.getElementById('readout'));
 const depthReadout = /** @type {HTMLElement} */ (document.getElementById('depth-readout'));
 const buildBox = /** @type {HTMLElement} */ (document.getElementById('build'));
+const settingsPanel = /** @type {HTMLElement} */ (document.getElementById('settings'));
+const settingsToggle = /** @type {HTMLButtonElement} */ (document.getElementById('settings-toggle'));
 const analyzeButton = /** @type {HTMLButtonElement} */ (document.getElementById('analyze'));
 const analysisPanel = /** @type {HTMLElement} */ (document.getElementById('analysis'));
 const analysisBody = /** @type {HTMLElement} */ (document.getElementById('analysis-body'));
@@ -82,6 +84,17 @@ const shareNote = /** @type {HTMLElement} */ (document.getElementById('share-not
 const shareClose = /** @type {HTMLButtonElement} */ (document.getElementById('share-close'));
 
 buildBox.textContent = `build ${BUILD}`;
+
+/** Sit the settings panel under the controls, which wrap at some widths. */
+function placeSettings() {
+  const controls = /** @type {HTMLElement} */ (document.getElementById('controls'));
+  settingsPanel.style.top = `${controls.getBoundingClientRect().bottom + 8}px`;
+}
+
+settingsToggle.addEventListener('click', () => {
+  settingsPanel.hidden = !settingsPanel.hidden;
+  if (!settingsPanel.hidden) placeSettings();
+});
 
 const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
 
@@ -827,6 +840,7 @@ prefersDark.addEventListener('change', () => {
 window.addEventListener('resize', () => {
   resize();
   if (!analysisPanel.hidden) placeAnalysis();
+  if (!settingsPanel.hidden) placeSettings();
 });
 
 // font-display: swap paints the fallback first. Once the real font arrives the

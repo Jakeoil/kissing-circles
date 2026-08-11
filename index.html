@@ -228,14 +228,36 @@
       #share-note { color: var(--dim); font-size: 11.5px; white-space: nowrap; }
       #share-close { border: none; background: none; color: var(--dim); font-size: 16px; padding: 0 4px; }
 
-      #depth-readout,
-      #build {
+      #depth-readout {
         color: var(--dim);
         font-family: ui-monospace, Menlo, monospace;
         font-size: 12px;
       }
-      /* Always visible, so a stale cached page can be spotted immediately. */
-      #build { opacity: 0.75; }
+
+      /* Small, out of the way, but never hidden: a stale cached page has to be
+         spottable without opening anything. */
+      #build {
+        display: block;
+        margin-top: .5rem;
+        padding-top: .4rem;
+        border-top: 1px solid var(--edge);
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 10.5px;
+        opacity: .6;
+      }
+
+      /* Settings: the things you set once and forget, kept out of the way. */
+      #settings {
+        top: 12px;
+        left: 12px;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        flex-wrap: wrap;
+        z-index: 6;
+      }
+      #settings[hidden] { display: none; }
+      #settings label { display: flex; gap: 6px; align-items: center; color: var(--dim); }
 
       /* The hover readout: exact values for the circle under the cursor. */
       #readout {
@@ -418,18 +440,6 @@
         </select>
       </label>
       <label>
-        font
-        <select id="font"></select>
-      </label>
-      <label>
-        theme
-        <select id="theme">
-          <option value="auto">auto</option>
-          <option value="light">light</option>
-          <option value="dark">dark</option>
-        </select>
-      </label>
-      <label>
         <input type="checkbox" id="labels" checked />
         curvatures
       </label>
@@ -438,7 +448,7 @@
       <button id="share" type="button">link</button>
       <button id="png" type="button">PNG</button>
       <button id="svg" type="button">SVG</button>
-      <span id="build">build —</span>
+      <button id="settings-toggle" type="button">settings</button>
       <a id="story-link" href="./story/index.html">story →</a>
       <a id="labs-link" href="./labs/index.html">labs</a>
       <div id="custom-result">
@@ -456,6 +466,21 @@
       </div>
     </div>
 
+    <div id="settings" class="panel" hidden>
+      <label>
+        theme
+        <select id="theme">
+          <option value="auto">auto</option>
+          <option value="light">light</option>
+          <option value="dark">dark</option>
+        </select>
+      </label>
+      <label>
+        font
+        <select id="font"></select>
+      </label>
+    </div>
+
     <div id="readout" class="panel" hidden></div>
 
     <div id="analysis" class="panel" hidden>
@@ -470,6 +495,7 @@
       <kbd>0</kbd> reset · <kbd>+</kbd> <kbd>-</kbd> zoom · <kbd>↑↓←→</kbd> pan<br />
       <kbd>[</kbd> <kbd>]</kbd> depth · <kbd>l</kbd> labels · <kbd>c</kbd> color ·
       <kbd>t</kbd> theme · <kbd>space</kbd> pause
+      <span id="build">build —</span>
     </div>
 
     <div id="hud" class="panel">starting…</div>

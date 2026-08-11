@@ -70,6 +70,7 @@
           <option value="cycle">per region</option>
         </select>
       </label>
+      <label><input type="checkbox" id="numbers" /> curvatures</label>
       <button id="note-toggle" type="button">what is this?</button>
     </div>
 
@@ -85,6 +86,10 @@
       vertices and is not one of its sides. Two different kinds of thing in one picture.
       Worth seeing, but it is not the partition, and the two should not be read
       together.</p>
+      <p><b>Curvatures</b> labels each region with Schmidt's <code>ρ(F)</code> — the bend
+      of its circumscribed circle, which for a circular region is simply its own. Every
+      one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and the reason the Apollonian
+      gasket sits inside this arrangement at twice the curvature.</p>
       <p>Region counts follow <code>(3·5ⁿ − 1)/2</code>, splitting
       <code>circular : triangular</code> as <code>1:0, 3:4, 13:24, 63:124, 313:624</code>.
       The triangular family grows faster and approaches twice the circular one.</p>
@@ -95,7 +100,8 @@
     <script type="module">
       import { regionsAt, geometry, regionCount, arrangement } from '../src/math/schmidt.js';
       import { Viewport } from '../src/render/viewport.js';
-      import { fillRegion, outlineRegion } from '../src/render/regions.js';
+      import { fillRegion, outlineRegion, numberRegion } from '../src/render/regions.js';
+      import { REAL_LINE } from '../src/math/schmidt.js';
       import { draw as drawCircles } from '../src/render/renderer.js';
 
       const canvas = document.getElementById('view');
@@ -107,6 +113,7 @@
       const viewMode = document.getElementById('view-mode');
       const filter = document.getElementById('filter');
       const colorMode = document.getElementById('color');
+      const numbersToggle = document.getElementById('numbers');
       const note = document.getElementById('note');
       const noteToggle = document.getElementById('note-toggle');
 
@@ -198,6 +205,19 @@
           }
         }
 
+        // Every region carries Schmidt's rho: the bend of its circumscribed circle,
+        // which for a circular region is its own. Always even — his 2N_0.
+        let numbered = 0;
+        if (numbersToggle.checked) {
+          for (const region of wanted) {
+            const g = geometry(region);
+            if (g === null) continue;
+            const circum = region.m.applyTo(REAL_LINE);
+            if (circum === null) continue;
+            if (numberRegion(ctx, view, g, String(circum.b), INK)) numbered++;
+          }
+        }
+
         const circular = wanted.filter((r) => r.type === 'J').length;
         hud.textContent = [
           `regions — the partition at generation ${generation}`,
@@ -205,7 +225,8 @@
           `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
           `built ${built} ms`,
           `drew ${Math.round(performance.now() - t0)} ms`,
-        ].join('   ');
+          numbersToggle.checked ? `${numbered.toLocaleString()} numbered` : '',
+        ].filter(Boolean).join('   ');
       }
 
       function step(d) {
@@ -218,7 +239,7 @@
       genUp.addEventListener('click', () => step(1));
       genDown.addEventListener('click', () => step(-1));
       viewMode.addEventListener('change', build);
-      for (const el of [filter, colorMode]) el.addEventListener('change', () => { dirty = true; });
+      for (const el of [filter, colorMode, numbersToggle]) el.addEventListener('change', () => { dirty = true; });
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
 
       let dragging = false;
