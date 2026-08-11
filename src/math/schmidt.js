@@ -114,6 +114,30 @@ export function subdivide(region) {
 }
 
 /**
+ * Every region at generation n — the leaves of the subdivision, which together
+ * partition the plane.
+ *
+ * This is the honest object to draw when the question is "what does generation n look
+ * like". Drawing each region's circumscribed circle instead superimposes two
+ * categorically different things: for a circular region that circle is its boundary,
+ * but for a triangular one it passes through the three vertices and is not a side at
+ * all. Superimposed, they read as one tangle. See labs/schmidt.html.
+ *
+ * @param {number} n
+ * @returns {Region[]}
+ */
+export function regionsAt(n) {
+  let regions = [seed()];
+  for (let g = 0; g < n; g++) {
+    /** @type {Region[]} */
+    const next = [];
+    for (const region of regions) next.push(...subdivide(region));
+    regions = next;
+  }
+  return regions;
+}
+
+/**
  * The curves bounding a region, and a point inside it.
  *
  * A circular region is bounded by a single circle or line — it is the image of a half

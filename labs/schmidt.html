@@ -3,13 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>lab — Schmidt arrangement</title>
+    <title>lab — Schmidt subdivision</title>
     <link rel="icon" href="data:," />
     <style>
       /*
-        A lab page (plan.md §7.1): one question, no polish, not linked from the app,
-        and nothing in src/ depends on it. The question here is §8.5's — is the
-        arrangement legible at the resolutions we draw at, or does it read as noise?
+        A lab page (plan.md §7.1): an experiment, not a finished figure. The question
+        is what one generation of Schmidt's subdivision looks like, and whether the two
+        region types behave differently as it deepens.
+
+        The first version of this page drew every region's circumscribed circle, for
+        every generation, all at once. That superimposes two categorically different
+        things — for a circular region the circumscribed circle is its boundary, for a
+        triangular one it passes through the vertices and is not a side — and the
+        result was unanalysable. Hence the split below.
       */
       html, body { margin: 0; height: 100%; background: #0d1117; color: #c9d1d9;
                    font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
@@ -22,62 +28,75 @@
       label { display: flex; gap: 6px; align-items: center; color: #8b949e; white-space: nowrap; }
       #hud { bottom: 12px; left: 12px; right: 12px; color: #8b949e;
              font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
-      button { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+      button, select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
                border-radius: 5px; padding: 2px 9px; font: inherit; cursor: pointer; }
-      button:hover { border-color: #8b949e; }
+      button:hover, select:hover { border-color: #8b949e; }
       #genv { min-width: 1.2em; text-align: center; display: inline-block; color: #c9d1d9; }
-      #legend { top: 70px; left: 12px; width: min(430px, calc(100% - 24px)); line-height: 1.5; }
-      #legend[hidden] { display: none; }
-      #legend h2 { font-size: 13px; margin: 0 0 6px; }
-      #legend p { margin: 0 0 8px; color: #8b949e; }
-      #legend table { border-collapse: collapse; font-size: 12px; margin: 0 0 8px; }
-      #legend td { padding: 1px 10px 1px 0; color: #8b949e; vertical-align: baseline; }
-      #legend code { color: #c9d1d9; font-family: ui-monospace, Menlo, monospace; }
+      a { color: #7ee2b8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      #note { top: 66px; left: 12px; width: min(450px, calc(100% - 24px)); line-height: 1.5; }
+      #note[hidden] { display: none; }
+      #note h2 { font-size: 13px; margin: 0 0 6px; }
+      #note p { margin: 0 0 8px; color: #8b949e; }
+      #note code { color: #c9d1d9; font-family: ui-monospace, Menlo, monospace; }
     </style>
   </head>
   <body>
     <canvas id="view"></canvas>
 
     <div id="controls" class="panel">
+      <a href="./index.html">← labs</a>
       <label>generation
         <button id="gen-down" type="button" title="[">−</button>
-        <b id="genv">5</b>
+        <b id="genv">3</b>
         <button id="gen-up" type="button" title="]">+</button>
       </label>
-      <label>color <select id="color"><option value="depth">generation</option><option value="curvature">curvature</option></select></label>
-      <label>draw <select id="style"><option value="stroke">outlines</option><option value="fill">filled</option></select></label>
-      <label><input type="checkbox" id="labels" /> curvatures</label>
-      <label><input type="checkbox" id="gasket" /> show gasket instead</label>
-      <button id="legend-toggle" type="button">what am I looking at?</button>
+      <label>draw
+        <select id="view-mode">
+          <option value="regions">regions — the partition</option>
+          <option value="circles">circles — the arrangement</option>
+        </select>
+      </label>
+      <label>show
+        <select id="filter">
+          <option value="both">both types</option>
+          <option value="J">circular only</option>
+          <option value="T">triangular only</option>
+        </select>
+      </label>
+      <label>color
+        <select id="color">
+          <option value="type">by region type</option>
+          <option value="cycle">per region</option>
+        </select>
+      </label>
+      <button id="note-toggle" type="button">what is this?</button>
     </div>
-    <div id="legend" class="panel" hidden>
-      <h2>Schmidt's subdivision</h2>
-      <p>Every region is subdivided at each generation. There are two kinds, and they
-      behave differently — this is Schmidt's Fig. 2 and Fig. 2*:</p>
-      <table>
-        <tr><td><b>circular</b> region</td><td>→ 7 parts: 3 circular (V₁ V₂ V₃), 4 triangular (E₁ E₂ E₃ C)</td></tr>
-        <tr><td><b>triangular</b> region</td><td>→ 4 parts: 3 triangular (V₁ V₂ V₃), 1 circular (C)</td></tr>
-      </table>
-      <p><b>Generation 1</b> is the unit square: the lines <code>y=0</code>,
-      <code>y=1</code>, <code>x=0</code>, <code>x=1</code>, with a circle of radius ½
-      at the midpoint of each side. That is two strip packings superimposed — one
-      horizontal, one vertical — at curvature 2 rather than 1, because Schmidt's
-      normalization makes every curvature even.</p>
-      <p><b>Why outlines.</b> These circles nest, unlike an Apollonian packing whose
-      interiors are disjoint. Filled, the picture becomes a solid slab with no
-      structure visible. Switch <i>draw</i> to <i>filled</i> to see it happen.</p>
-      <p>Region counts follow <code>(3·5ⁿ − 1)/2</code> — 1, 7, 37, 187, 937, 4687 —
-      against the gasket's <code>4·3ⁿ⁻¹</code>.</p>
+
+    <div id="note" class="panel" hidden>
+      <h2>The experiment</h2>
+      <p><b>Regions</b> draws the partition at one generation. Every point of the plane
+      belongs to exactly one region, so this is a single coherent picture, and stepping
+      the generation shows the subdivision happening.</p>
+      <p><b>Circles</b> draws each region's <i>circumscribed</i> circle instead, for
+      every generation at once — the Schmidt arrangement as it is usually published.
+      Know what that superimposes: for a circular region the circumscribed circle
+      <i>is</i> its boundary; for a triangular region it passes through the three
+      vertices and is not one of its sides. Two different kinds of thing in one picture.
+      Worth seeing, but it is not the partition, and the two should not be read
+      together.</p>
+      <p>Region counts follow <code>(3·5ⁿ − 1)/2</code>, splitting
+      <code>circular : triangular</code> as <code>1:0, 3:4, 13:24, 63:124, 313:624</code>.
+      The triangular family grows faster and approaches twice the circular one.</p>
     </div>
 
     <div id="hud">…</div>
 
     <script type="module">
-      import { arrangement, regionCount } from '../src/math/schmidt.js';
+      import { regionsAt, geometry, regionCount, arrangement } from '../src/math/schmidt.js';
       import { Viewport } from '../src/render/viewport.js';
-      import { draw } from '../src/render/renderer.js';
-      import { generate } from '../src/math/packing.js';
-      import { ROOTS } from '../src/math/descartes.js';
+      import { fillRegion, outlineRegion } from '../src/render/regions.js';
+      import { draw as drawCircles } from '../src/render/renderer.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -85,18 +104,45 @@
       const genOut = document.getElementById('genv');
       const genUp = document.getElementById('gen-up');
       const genDown = document.getElementById('gen-down');
-      const legend = document.getElementById('legend');
-      const legendToggle = document.getElementById('legend-toggle');
-      const MIN_GEN = 1, MAX_GEN = 9;
-      let generation = 5;
-      const colorSelect = document.getElementById('color');
-      const labelToggle = document.getElementById('labels');
-      const styleSelect = document.getElementById('style');
-      const gasketToggle = document.getElementById('gasket');
+      const viewMode = document.getElementById('view-mode');
+      const filter = document.getElementById('filter');
+      const colorMode = document.getElementById('color');
+      const note = document.getElementById('note');
+      const noteToggle = document.getElementById('note-toggle');
 
-      const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
-      let model = null;
+      const MIN_GEN = 0;
+      const MAX_GEN = 6;
+      let generation = 3;
+
+      const CIRCULAR = 'hsl(157 52% 46%)';
+      const TRIANGULAR = 'hsl(330 46% 52%)';
+      const INK = '#0d1117';
+
+      const view = new Viewport(1, 1);
+      view.flipY = true;                    // Schmidt draws the upper half plane up.
+
+      let regions = [];
+      let circles = null;
+      let built = 0;
       let dirty = true;
+
+      function build() {
+        genOut.textContent = String(generation);
+        const t0 = performance.now();
+        if (viewMode.value === 'regions') {
+          regions = regionsAt(generation);
+          circles = null;
+        } else {
+          circles = arrangement({ maxGeneration: generation, maxCurvature: 4000n });
+          regions = [];
+        }
+        built = Math.round(performance.now() - t0);
+        dirty = true;
+      }
+
+      function home() {
+        return { minX: -0.6, minY: -0.18, maxX: 1.6, maxY: 1.35 };
+      }
 
       function resize() {
         const dpr = window.devicePixelRatio || 1;
@@ -107,32 +153,73 @@
         dirty = true;
       }
 
-      function build() {
-        const n = generation;
-        genOut.textContent = String(n);
+      function paint() {
         const t0 = performance.now();
+        ctx.save();
+        ctx.fillStyle = '#0d1117';
+        ctx.fillRect(0, 0, view.width, view.height);
+        ctx.restore();
 
-        if (gasketToggle.checked) {
-          // The gasket in Schmidt's normalization: curvatures doubled.
-          const p = generate(ROOTS.apollonian.quad, { maxCurvature: 400n });
-          model = p;
-          model.__label = `gasket, ${p.count} circles`;
-        } else {
-          const a = arrangement({ maxGeneration: n, maxCurvature: 4000n });
-          model = a;
-          model.__label =
-            `${a.count.toLocaleString()} circles from ${regionCount(n).toLocaleString()} regions`;
+        if (viewMode.value === 'circles') {
+          const stats = drawCircles(ctx, circles, view, {
+            colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
+          });
+          hud.textContent = [
+            'circles — every generation superimposed, boundaries and circumscribed circles together',
+            `${circles.count.toLocaleString()} circles`,
+            `drawn ${stats.drawn.toLocaleString()}`,
+            `built ${built} ms`,
+          ].join('   ');
+          return;
         }
-        model.__ms = Math.round(performance.now() - t0);
-        dirty = true;
+
+        const wanted = regions.filter(
+          (r) => filter.value === 'both' || r.type === filter.value,
+        );
+
+        let drawn = 0;
+        wanted.forEach((region, i) => {
+          const g = geometry(region);
+          if (g === null) return;
+          const fill =
+            colorMode.value === 'type'
+              ? region.type === 'J' ? CIRCULAR : TRIANGULAR
+              : `hsl(${(i * 173) % 360} 55% 52%)`;
+          fillRegion(ctx, view, g, fill);
+          drawn++;
+        });
+
+        // Outlines afterwards, so a later fill cannot bury a shared edge. Skipped when
+        // there are too many to see individually anyway.
+        if (wanted.length <= 1000) {
+          for (const region of wanted) {
+            const g = geometry(region);
+            if (g !== null) outlineRegion(ctx, view, g, INK, 1);
+          }
+        }
+
+        const circular = wanted.filter((r) => r.type === 'J').length;
+        hud.textContent = [
+          `regions — the partition at generation ${generation}`,
+          `${regions.length.toLocaleString()} regions (formula ${regionCount(generation).toLocaleString()})`,
+          `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
+          `built ${built} ms`,
+          `drew ${Math.round(performance.now() - t0)} ms`,
+        ].join('   ');
       }
 
-      // The arrangement lives on the upper half plane around [0,1]; frame that.
-      function home() {
-        return gasketToggle.checked
-          ? { minX: -1.1, minY: -1.1, maxX: 1.1, maxY: 1.1 }
-          : { minX: -0.6, minY: -0.15, maxX: 1.6, maxY: 1.25 };
+      function step(d) {
+        const next = Math.min(MAX_GEN, Math.max(MIN_GEN, generation + d));
+        if (next === generation) return;
+        generation = next;
+        build();
       }
+
+      genUp.addEventListener('click', () => step(1));
+      genDown.addEventListener('click', () => step(-1));
+      viewMode.addEventListener('change', build);
+      for (const el of [filter, colorMode]) el.addEventListener('change', () => { dirty = true; });
+      noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
 
       let dragging = false;
       let last = null;
@@ -151,55 +238,24 @@
         dirty = true;
       }, { passive: false });
 
-      function step(delta) {
-        const next = Math.min(MAX_GEN, Math.max(MIN_GEN, generation + delta));
-        if (next === generation) return;
-        generation = next;
-        build();
-      }
-      genUp.addEventListener('click', () => step(1));
-      genDown.addEventListener('click', () => step(-1));
-      legendToggle.addEventListener('click', () => { legend.hidden = !legend.hidden; });
-      gasketToggle.addEventListener('change', () => { build(); view.fit(home(), 0.08); });
-      for (const el of [colorSelect, labelToggle, styleSelect]) el.addEventListener('change', () => { dirty = true; });
-      window.addEventListener('resize', resize);
       window.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
-        if (e.key === '0') { view.fit(home(), 0.08); dirty = true; }
+        if (e.key === '0') { view.fit(home(), 0.04); dirty = true; }
         else if (e.key === ']') step(1);
         else if (e.key === '[') step(-1);
         else return;
         e.preventDefault();
       });
+      window.addEventListener('resize', resize);
 
       function frame() {
-        if (dirty && model) {
-          dirty = false;
-          const stats = draw(ctx, model, view, {
-            colorMode: colorSelect.value,
-            theme: 'dark',
-            labels: labelToggle.checked,
-            style: styleSelect.value,
-          });
-          const even = (() => {
-            let odd = 0;
-            for (let i = 0; i < model.count; i++) if (model.circles[i].b % 2n !== 0n) odd++;
-            return odd;
-          })();
-          hud.textContent = [
-            model.__label,
-            `drawn ${stats.drawn.toLocaleString()}`,
-            `built in ${model.__ms} ms`,
-            `zoom ${view.scale.toPrecision(4)}`,
-            gasketToggle.checked ? '' : `odd curvatures: ${even}`,
-          ].filter(Boolean).join('   ');
-        }
+        if (dirty) { dirty = false; paint(); }
         requestAnimationFrame(frame);
       }
 
       resize();
       build();
-      view.fit(home(), 0.08);
+      view.fit(home(), 0.04);
       requestAnimationFrame(frame);
     </script>
   </body>
