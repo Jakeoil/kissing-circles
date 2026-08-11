@@ -5,6 +5,65 @@ research into Apollonian circle packings.
 
 ---
 
+## 0. Where things stand
+
+Kept current, so that opening this file answers "what is this and what is left" without
+reading the rest.
+
+**Live:** https://jakeoil.github.io/kissing-circles/ · repo `Jakeoil/kissing-circles`,
+public. No build step: GitHub Pages serves the repository verbatim, so a push is the
+whole deployment. **Do not push without asking.**
+
+**Three kinds of page** (§7.1): the workbench at `index.html`, chapters under `story/`,
+labs under `labs/`. All import the same `src/` modules; `src/math/` imports nothing
+from `render/` or `ui/` and runs under bare Node.
+
+| | State |
+|---|---|
+| Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
+| §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
+| Chapters | **1** (Soddy's poem, Descartes), **2** (the jump, Vieta), **6** (two regions) written; 3, 4, 5, 7, 8, 9 outlined in §7.4 |
+| Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms |
+| Tests | 229, `npm test`, no dependencies |
+
+**Verify visually before claiming anything works.** `playwright-core` driving the system
+Chrome, installed in the session scratchpad, never in the repo. Several real defects
+were invisible to the test suite. Run `npm run stamp` first — the build timestamp shows
+on the page, so a stale cache cannot be mistaken for a change that did not work.
+
+### Open, in the order I would take them
+
+1. **Prune the arrangement's traversal, not just its output** (§8.4a). `maxCurvature`
+   and `bounds` decide what gets recorded while the walk still expands 5ⁿ regions, so
+   generation 12 exhausts a 4 GB heap. Needs the analogue of `branchBounds`. **This
+   blocks chapter 7 and the "where the gasket sits" lab.**
+2. **Memory has no ceiling.** Circles accumulate and are never evicted — 600k after a
+   sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
+   `Packing._expand` calls it three times per emit to look up parent indices. Carrying
+   indices on the frame removes those without the ~50 MB a string cache would cost.
+3. **Chapters 3, 4, 5.** 4 and 5 need no new code at all. 3 needs a float-vs-exact
+   comparison, which is also a listed lab.
+4. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
+   arbitrarily; `rootFromCurvatures` builds all of the first twelve.
+5. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
+   than typed.
+6. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
+   place. Probably a limit of the translation-and-ordering search, not of the
+   mathematics.
+
+### Decisions that are settled, and why
+
+- **Numerals hold a constant ratio to their circle, with no cap of any kind** (§7.3).
+  Corrected twice; do not reintroduce a ceiling.
+- **Regions, not circles.** Drawing a Schmidt arrangement as circles superimposes
+  boundaries with circumscribed circles and destroys the structure — §8.3, and the
+  reason chapter 6 exists.
+- **The legacy guarantee** (§7.2): the default view does not change, and every URL
+  already emitted keeps rendering the same picture.
+- **The address bar is never written.** A share link is produced on request.
+
+---
+
 ## 1. What the old project actually is
 
 I read all 819 lines of Kotlin. It's worth being blunt about the state of it, because it
