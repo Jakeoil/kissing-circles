@@ -86,10 +86,10 @@
       vertices and is not one of its sides. Two different kinds of thing in one picture.
       Worth seeing, but it is not the partition, and the two should not be read
       together.</p>
-      <p><b>Curvatures</b> labels each region with Schmidt's <code>ρ(F)</code> — the bend
-      of its circumscribed circle, which for a circular region is simply its own. Every
-      one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and the reason the Apollonian
-      gasket sits inside this arrangement at twice the curvature.</p>
+      <p><b>Curvatures</b> numbers the circular regions with their bend — Schmidt's
+      <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
+      the reason the Apollonian gasket sits inside this arrangement at exactly twice the
+      curvature: <code>(0, 0, 1, 1)</code> appears here as <code>(0, 0, 2, 2)</code>.</p>
       <p>Region counts follow <code>(3·5ⁿ − 1)/2</code>, splitting
       <code>circular : triangular</code> as <code>1:0, 3:4, 13:24, 63:124, 313:624</code>.
       The triangular family grows faster and approaches twice the circular one.</p>
@@ -100,7 +100,8 @@
     <script type="module">
       import { regionsAt, geometry, regionCount, arrangement } from '../src/math/schmidt.js';
       import { Viewport } from '../src/render/viewport.js';
-      import { fillRegion, outlineRegion, numberRegion } from '../src/render/regions.js';
+      import { fillRegion, outlineRegion } from '../src/render/regions.js';
+      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
       import { REAL_LINE } from '../src/math/schmidt.js';
       import { draw as drawCircles } from '../src/render/renderer.js';
 
@@ -205,16 +206,18 @@
           }
         }
 
-        // Every region carries Schmidt's rho: the bend of its circumscribed circle,
-        // which for a circular region is its own. Always even — his 2N_0.
+        // Only the circular regions get a number. A circular region *is* a disc, so
+        // its bend goes in its centre by exactly the rules the workbench uses. A
+        // triangular region has no centre to speak of, and a number floating in a
+        // cusp says nothing.
         let numbered = 0;
         if (numbersToggle.checked) {
+          const metrics = digitMetrics(ctx);
           for (const region of wanted) {
-            const g = geometry(region);
-            if (g === null) continue;
-            const circum = region.m.applyTo(REAL_LINE);
-            if (circum === null) continue;
-            if (numberRegion(ctx, view, g, String(circum.b), INK)) numbered++;
+            if (region.type !== 'J') continue;
+            const circle = region.m.applyTo(REAL_LINE);
+            if (circle === null) continue;
+            if (drawNumeral(ctx, view, circle, String(circle.b), INK, metrics)) numbered++;
           }
         }
 

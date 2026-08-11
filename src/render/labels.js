@@ -136,6 +136,54 @@ export function numeralSize(radius, digits, metrics) {
 }
 
 /**
+ * Put a numeral in a circle: sized to the circle, centered on the circle, dropped onto
+ * the digits' optical center.
+ *
+ * This is the one implementation. The packing renderer and the Schmidt region lab both
+ * call it, because a numeral in a Schmidt circle should be placed by exactly the same
+ * rules as a numeral in a Soddy circle — and because writing the placement twice is
+ * how the two drift apart.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./viewport.js').Viewport} view
+ * @param {import('../math/circle.js').Circle} circle
+ * @param {string} text
+ * @param {string} color
+ * @param {DigitMetrics} [metrics] measured once by the caller when drawing many
+ * @returns {boolean} whether there was room
+ */
+export function drawNumeral(ctx, view, circle, text, color, metrics) {
+  if (circle.isLine()) return false;
+
+  const m = metrics ?? digitMetrics(ctx);
+  const f = circle.toFloat();
+  const radius = Math.abs(f.r) * view.scale;
+  const size = numeralSize(radius, text.length, m);
+  if (size === 0) return false;
+
+  const p = view.worldToScreen(f.x, f.y);
+  if (p.x < -radius || p.x > view.width + radius) return false;
+  if (p.y < -radius || p.y > view.height + radius) return false;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = color;
+  ctx.font = `700 ${size}px ${NUMERAL_FONT}`;
+
+  // Center on this numeral's own box, not on the average over all ten digits. With
+  // oldstyle figures the difference is visible: "11" has no descender while "39" has
+  // two, so a shared offset leaves one of them sitting wrong.
+  const box = ctx.measureText(text);
+  const rise =
+    box.actualBoundingBoxAscent === undefined
+      ? m.center * size
+      : (box.actualBoundingBoxAscent - box.actualBoundingBoxDescent) / 2;
+
+  ctx.fillText(text, p.x, p.y + rise);
+  return true;
+}
+
+/**
  * Draw curvature numerals over an already-rendered packing.
  *
  * Candidates are drawn largest first and capped, so that when a view is dense the
@@ -167,30 +215,10 @@ export function drawLabels(ctx, packing, view, candidates, buckets, palette) {
   let lastStyle = '';
 
   for (const i of ordered) {
-    const radius = packing.r[i] * scale;
     const text = packing.circles[i].b.toString();
-    const size = numeralSize(radius, text.length, metrics);
-    if (size === 0) continue;
-
     const style = palette.labels[buckets[i]];
-    if (style !== lastStyle) {
-      ctx.fillStyle = style;
-      lastStyle = style;
-    }
-
-    ctx.font = `700 ${size}px ${NUMERAL_FONT}`;
-
-    // Center on this numeral's own box, not on the average over all ten digits.
-    // With oldstyle figures the difference is visible: "11" has no descender while
-    // "39" has two, so a shared offset leaves one of them sitting wrong.
-    const box = ctx.measureText(text);
-    const rise =
-      box.actualBoundingBoxAscent === undefined
-        ? metrics.center * size
-        : (box.actualBoundingBoxAscent - box.actualBoundingBoxDescent) / 2;
-
-    ctx.fillText(text, packing.x[i] * scale + tx, packing.y[i] * scale + ty + rise);
-    drawn++;
+    if (style !== lastStyle) lastStyle = style;
+    if (drawNumeral(ctx, view, packing.circles[i], text, style, metrics)) drawn++;
   }
 
   return drawn;
