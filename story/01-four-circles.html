@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Four circles that touch — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+    <style>
+      blockquote.poem {
+        margin: 1.6rem 0;
+        padding: 0 0 0 1.2rem;
+        border-left: 2px solid var(--accent);
+        font-size: 1.02rem;
+        line-height: 1.55;
+        max-width: var(--measure);
+      }
+      blockquote.poem p { margin: 0 0 1rem; }
+      blockquote.poem b { color: var(--bright); }
+      blockquote.poem cite {
+        display: block;
+        font: 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+        font-style: normal;
+        color: var(--dim);
+        margin-top: .3rem;
+      }
+
+      /* The identity, worked out for whichever quadruple is showing. */
+      .arithmetic {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 13px;
+        padding: .8rem .9rem;
+        border-top: 1px solid var(--edge);
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: .25rem 1rem;
+        color: var(--dim);
+      }
+      .arithmetic b { color: var(--bright); font-weight: 600; }
+      .arithmetic .verdict { grid-column: 1 / -1; color: var(--accent); padding-top: .3rem; }
+    </style>
+  </head>
+  <body>
+    <nav class="crumbs">
+      <a href="./index.html">Contents</a> ·
+      <a href="../index.html">Workbench</a>
+    </nav>
+
+    <main>
+      <span class="chapter-number">Chapter 1</span>
+      <h1>Four circles that touch</h1>
+
+      <p class="lede">
+        Take three circles, each touching the other two. There is room for a fourth
+        that touches all three — and the four sizes cannot then be anything you like.
+        One equation ties them together.
+      </p>
+
+      <p>
+        The relation was found by Descartes in 1643, in a letter to Princess Elisabeth
+        of Bohemia, and lost again. It has been rediscovered several times since. The
+        version most worth quoting is not an equation at all.
+      </p>
+
+      <h2>The Kiss Precise</h2>
+
+      <p>
+        Frederick Soddy won a Nobel Prize for chemistry — he named the isotope — and
+        in 1936 published the theorem in <i>Nature</i> as a poem.
+      </p>
+
+      <blockquote class="poem">
+        <p>
+          For pairs of lips to kiss maybe<br />
+          Involves no trigonometry.<br />
+          ’Tis not so when four circles kiss<br />
+          Each one the other three.<br />
+          To bring this off the four must be<br />
+          As three in one or one in three.<br />
+          If one in three, beyond a doubt<br />
+          Each gets three kisses from without.<br />
+          If three in one, then is that one<br />
+          Thrice kissed internally.
+        </p>
+        <p>
+          Four circles to the kissing come.<br />
+          The smaller are the benter.<br />
+          The bend is just the inverse of<br />
+          The distance from the centre.<br />
+          Though their intrigue left Euclid dumb<br />
+          There’s now no need for rule of thumb.<br />
+          Since zero bend’s a dead straight line<br />
+          And concave bends have minus sign,<br />
+          <b>The sum of the squares of all four bends</b><br />
+          <b>Is half the square of their sum.</b>
+        </p>
+        <cite>
+          Frederick Soddy, “The Kiss Precise”, <i>Nature</i> <b>137</b>, 1021
+          (20 June 1936). A third stanza extends the result to spheres.
+        </cite>
+      </blockquote>
+
+      <p>
+        The last two lines are the theorem. Writing <b>b</b> for a bend:
+      </p>
+
+      <p style="font-family: ui-monospace, Menlo, monospace; font-size: 1.05rem; color: var(--bright)">
+        b₁² + b₂² + b₃² + b₄² &nbsp;=&nbsp; ½ (b₁ + b₂ + b₃ + b₄)²
+      </p>
+
+      <p>
+        Everything this project does rests on that line. The figure below works it out
+        for whichever quadruple you choose — the numbers are computed as you look, in
+        exact integer arithmetic, not printed from a table.
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <label>
+            quadruple
+            <select id="quad"></select>
+          </label>
+          <label><input type="checkbox" id="bends" checked /> bends</label>
+        </div>
+        <canvas id="figure" width="1100" height="620"></canvas>
+        <div class="arithmetic" id="arithmetic"></div>
+        <figcaption id="caption"></figcaption>
+      </figure>
+
+      <h2>What Soddy is telling you in the second stanza</h2>
+
+      <p>
+        Three lines of that verse are the conventions this program is built on, and
+        they are easy to skim past.
+      </p>
+
+      <ul>
+        <li>
+          <b>“The smaller are the benter.”</b> A bend is <code>1/r</code>. Tiny circles
+          have enormous bends, which is why the deep parts of a packing carry huge
+          numbers.
+        </li>
+        <li>
+          <b>“Zero bend’s a dead straight line.”</b> A line is a circle of infinite
+          radius, so its bend is 0. Choose the <b>strip</b> in the figure: two of the
+          four are lines, and the identity holds unchanged.
+        </li>
+        <li>
+          <b>“Concave bends have minus sign.”</b> When one circle encloses the other
+          three, its bend counts as negative. That is the −1 in
+          <code>(−1, 2, 2, 3)</code>, and without it the arithmetic fails.
+        </li>
+      </ul>
+
+      <p>
+        Soddy also states the two configurations: <i>“as three in one or one in three”</i>.
+        Either three circles sit inside a fourth, or four sit outside one another. Both
+        appear in the figure.
+      </p>
+
+      <h2>Where this is going</h2>
+
+      <p>
+        The equation is quadratic in each bend, and that is the whole story of the next
+        chapter. Fix three circles and ask for the fourth: a quadratic has
+        <em>two</em> roots, so there are two circles touching all three — a small one in
+        the gap between them, and a large one wrapped around the outside.
+      </p>
+
+      <p>
+        Which raises the question the rest of this depends on. If both answers are
+        legitimate, and each of them makes a new triple with two answers of its own,
+        how much of the plane can you fill?
+      </p>
+
+      <div class="pager">
+        <a href="./index.html">← Contents</a>
+        <span>Next: The jump</span>
+      </div>
+    </main>
+
+    <script type="module">
+      import { ROOTS, rootFromCurvatures } from '../src/math/descartes.js';
+      import { generate } from '../src/math/packing.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { draw } from '../src/render/renderer.js';
+
+      const canvas = document.getElementById('figure');
+      const ctx = canvas.getContext('2d');
+      const select = document.getElementById('quad');
+      const bendsToggle = document.getElementById('bends');
+      const arithmetic = document.getElementById('arithmetic');
+      const caption = document.getElementById('caption');
+
+      // Root quadruples: the minimal quadruple of each integral packing.
+      const CHOICES = [
+        { label: '(−1, 2, 2, 3) — the classic', curvatures: [-1, 2, 2, 3] },
+        { label: '(0, 0, 1, 1) — the strip, two lines', root: 'strip' },
+        { label: '(−2, 3, 6, 7)', curvatures: [-2, 3, 6, 7] },
+        { label: '(−3, 4, 12, 13)', curvatures: [-3, 4, 12, 13] },
+        { label: '(−3, 5, 8, 8)', curvatures: [-3, 5, 8, 8] },
+        { label: '(−6, 11, 14, 15)', curvatures: [-6, 11, 14, 15] },
+      ];
+
+      for (const [i, choice] of CHOICES.entries()) {
+        const option = document.createElement('option');
+        option.value = String(i);
+        option.textContent = choice.label;
+        select.append(option);
+      }
+
+      const view = new Viewport(1, 1);
+      let model = null;
+      let quad = null;
+
+      function load() {
+        const choice = CHOICES[Number(select.value)];
+        quad = choice.root
+          ? ROOTS[choice.root].quad
+          : rootFromCurvatures(choice.curvatures).quad;
+        // Depth 0 emits the four root circles and nothing else.
+        model = generate(quad, { maxDepth: 0 });
+        fit();
+      }
+
+      function fit() {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.564);
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(cssWidth, cssHeight);
+
+        const bounding = quad.find((c) => c.b < 0n);
+        if (bounding) {
+          const f = bounding.toFloat();
+          const r = Math.abs(f.r) * 1.08;
+          view.fit({ minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r }, 0.03);
+        } else {
+          // No bounding circle: frame the two unit circles and the lines between them.
+          view.fit({ minX: -1.7, minY: -0.35, maxX: 3.7, maxY: 2.35 }, 0.03);
+        }
+        render();
+      }
+
+      function render() {
+        draw(ctx, model, view, {
+          colorMode: 'curvature',
+          theme: 'dark',
+          labels: bendsToggle.checked,
+        });
+
+        const bends = quad.map((c) => c.b);
+        const sum = bends.reduce((a, b) => a + b, 0n);
+        const squares = bends.reduce((a, b) => a + b * b, 0n);
+        const lines = bends.filter((b) => b === 0n).length;
+
+        arithmetic.replaceChildren();
+        const row = (label, value, cls) => {
+          const a = document.createElement('span');
+          a.textContent = label;
+          const b = document.createElement('span');
+          b.innerHTML = value;
+          if (cls) { a.className = cls; b.className = cls; }
+          arithmetic.append(a, b);
+        };
+        row('bends', `<b>${bends.join(', ')}</b>`);
+        row('sum of bends', `${bends.join(' + ')} = <b>${sum}</b>`);
+        row('square of the sum', `${sum}² = <b>${sum * sum}</b>`);
+        row('sum of the squares', `${bends.map((b) => `${b}²`).join(' + ')} = <b>${squares}</b>`);
+
+        const verdict = document.createElement('span');
+        verdict.className = 'verdict';
+        verdict.style.gridColumn = '1 / -1';
+        verdict.textContent =
+          sum * sum === 2n * squares
+            ? `${squares} is exactly half of ${sum * sum} — the identity holds.`
+            : `${squares} is not half of ${sum * sum} — these four circles cannot all touch.`;
+        arithmetic.append(verdict);
+
+        caption.textContent =
+          lines > 0
+            ? `Two of these four are straight lines, drawn faintly. Soddy's "zero bend" — the identity holds with no special case.`
+            : `The circle with the negative bend encloses the other three: Soddy's "three in one".`;
+      }
+
+      select.addEventListener('change', load);
+      bendsToggle.addEventListener('change', render);
+      window.addEventListener('resize', fit);
+      load();
+    </script>
+  </body>
+</html>
