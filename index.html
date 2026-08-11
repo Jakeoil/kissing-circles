@@ -171,12 +171,41 @@
         font-family: ui-monospace, 'SF Mono', Menlo, monospace;
       }
 
+      #custom-result { flex-basis: 100%; }
+
       #error {
-        flex-basis: 100%;
         color: #f85149;
         font-size: 12px;
+        max-width: 62ch;
+        line-height: 1.45;
       }
       #error:empty { display: none; }
+      #error.note { color: var(--dim); }
+
+      /* Completions offered for a three-bend input, or a correction for a bad one. */
+      #custom-offers {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+      }
+      #custom-offers:empty { display: none; }
+      #custom-offers button {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 12px;
+      }
+      #custom-offers button.blocked {
+        opacity: .55;
+        cursor: default;
+        border-style: dashed;
+      }
+
+      #custom-hint {
+        margin-top: 5px;
+        font-size: 11.5px;
+        color: var(--dim);
+      }
+      #custom-hint a { color: var(--dim); }
 
       #story-link, #labs-link { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--edge); }
       #story-link:hover, #labs-link:hover { color: var(--text); }
@@ -379,7 +408,7 @@
       </label>
       <label>
         custom
-        <input id="custom" type="text" size="12" placeholder="-6,11,14,15" />
+        <input id="custom" type="text" size="14" placeholder="2,2,3 or -6,11,14,15" />
       </label>
       <label>
         color by
@@ -412,7 +441,14 @@
       <span id="build">build —</span>
       <a id="story-link" href="./story/index.html">story →</a>
       <a id="labs-link" href="./labs/index.html">labs</a>
-      <div id="error"></div>
+      <div id="custom-result">
+        <div id="error"></div>
+        <div id="custom-offers"></div>
+        <div id="custom-hint">
+          three bends or four · order does not matter · repeats are fine ·
+          <a href="./story/02-the-jump.html">why</a>
+        </div>
+      </div>
       <div id="share-row" hidden>
         <input id="share-url" type="text" readonly />
         <span id="share-note"></span>

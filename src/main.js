@@ -1,7 +1,13 @@
 // @ts-check
 
 import { Packing } from './math/packing.js';
-import { ROOTS, rootFromCurvatures } from './math/descartes.js';
+import {
+  ROOTS,
+  rootFromCurvatures,
+  fourthCurvature,
+  descartesReal,
+  primitiveForm,
+} from './math/descartes.js';
 import { Viewport } from './render/viewport.js';
 import { draw, resetFontMetrics } from './render/renderer.js';
 import { setNumeralFont } from './render/labels.js';
@@ -59,6 +65,7 @@ const fontSelect = /** @type {HTMLSelectElement} */ (document.getElementById('fo
 const labelToggle = /** @type {HTMLInputElement} */ (document.getElementById('labels'));
 const customInput = /** @type {HTMLInputElement} */ (document.getElementById('custom'));
 const errorBox = /** @type {HTMLElement} */ (document.getElementById('error'));
+const offersBox = /** @type {HTMLElement} */ (document.getElementById('custom-offers'));
 const readout = /** @type {HTMLElement} */ (document.getElementById('readout'));
 const depthReadout = /** @type {HTMLElement} */ (document.getElementById('depth-readout'));
 const buildBox = /** @type {HTMLElement} */ (document.getElementById('build'));
@@ -637,36 +644,169 @@ rootSelect.addEventListener('change', () => {
 });
 
 /**
- * Custom root entry: four curvatures, validated against Descartes' theorem and then
- * placed exactly. Errors are shown rather than swallowed — an invalid quadruple is
- * the most interesting thing a user can type here.
+ * Custom root entry.
+ *
+ * Three bends determine the fourth to two values; four determine everything; two
+ * determine nothing. So the field takes three or four, and where it cannot proceed it
+ * tries to say what would work rather than only what did not — a wrong quadruple is
+ * usually one arithmetic step from a right one. See story/02-the-jump.html.
  */
-function applyCustom() {
-  const text = customInput.value.trim();
-  if (text === '') {
-    showError('');
+
+/** @param {bigint[]} bs @returns {string} */
+const fmt = (bs) => bs.map((b) => (b < 0n ? `−${-b}` : `${b}`)).join(', ');
+
+function clearResult() {
+  showError('');
+  errorBox.className = '';
+  offersBox.replaceChildren();
+}
+
+/**
+ * @param {string} message
+ * @param {boolean} [advisory] styled as a note rather than a failure
+ */
+function say(message, advisory = false) {
+  showError(message);
+  errorBox.className = advisory ? 'note' : '';
+}
+
+/**
+ * Offer a quadruple as a button. Unbuildable ones are shown too, greyed, with the
+ * reason — hiding them would misrepresent how many completions exist.
+ *
+ * @param {bigint[]} bs
+ * @param {string} [label]
+ */
+function offer(bs, label) {
+  const built = rootFromCurvatures(bs);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = label ?? `(${fmt(bs)})`;
+
+  if (!built.ok) {
+    button.className = 'blocked';
+    button.title = built.reason;
+    button.disabled = true;
+  } else {
+    button.addEventListener('click', () => {
+      customInput.value = bs.join(',');
+      clearResult();
+      rootSelect.selectedIndex = -1;
+      load(built.quad, encodeCurvatures(bs));
+    });
+  }
+  offersBox.append(button);
+}
+
+/** Three bends: compute both completions and let the reader choose. */
+function offerCompletions(three) {
+  const roots = fourthCurvature(three[0], three[1], three[2]);
+  const disc = three[0] * three[1] + three[1] * three[2] + three[2] * three[0];
+
+  if (roots === null) {
+    say(
+      disc < 0n
+        ? `no fourth circle touches all three: b₁b₂ + b₂b₃ + b₃b₁ = ${disc}, which is negative.`
+        : `b₁b₂ + b₂b₃ + b₃b₁ = ${disc}, which is not a perfect square — so the fourth ` +
+          `bend is irrational. The packing exists; this program draws only integral ones.`,
+      true,
+    );
     return;
   }
+
+  const distinct = roots[0] === roots[1] ? [roots[0]] : roots;
+  say(
+    distinct.length === 1
+      ? `(${fmt(three)}) has a repeated root: both completions have bend ${roots[0]}, ` +
+        `mirrored across the triple.`
+      : `(${fmt(three)}) is completed by ${fmt([roots[0]])} or ${fmt([roots[1]])}. Choose one.`,
+    true,
+  );
+  for (const r of distinct) offer([...three, r]);
+}
+
+/** Four bends: check the relation, then try to place them. */
+function loadQuadruple(bs) {
+  if (!descartesReal(bs[0], bs[1], bs[2], bs[3])) {
+    const sum = bs.reduce((a, b) => a + b, 0n);
+    const squares = bs.reduce((a, b) => a + b * b, 0n);
+    say(
+      `(${fmt(bs)}) is not a Descartes quadruple: the square of the sum is ${sum * sum}, ` +
+        `but twice the sum of the squares is ${2n * squares}.`,
+    );
+    const roots = fourthCurvature(bs[0], bs[1], bs[2]);
+    if (roots !== null) {
+      const distinct = roots[0] === roots[1] ? [roots[0]] : roots;
+      for (const r of distinct) offer([bs[0], bs[1], bs[2], r]);
+    }
+    return;
+  }
+
+  const built = rootFromCurvatures(bs);
+  if (built.ok) {
+    clearResult();
+    rootSelect.selectedIndex = -1;
+    load(built.quad, encodeCurvatures(bs));
+    return;
+  }
+
+  // It satisfies the relation but will not place. Nearly always because it is a
+  // scaled copy of a smaller packing.
+  const primitive = primitiveForm(bs);
+  if (primitive.factor > 1n) {
+    say(
+      `(${fmt(bs)}) is ${primitive.factor} × (${fmt(primitive.curvatures)}) — the same ` +
+        `packing at a different size. Only the primitive one sits on the Gaussian integers.`,
+      true,
+    );
+    offer(primitive.curvatures);
+    return;
+  }
+
+  if (bs.some((b) => b === 0n)) {
+    say(
+      `(${fmt(bs)}) contains a straight line, which this constructor cannot place. ` +
+        `The strip packing in the list is the worked example.`,
+      true,
+    );
+    return;
+  }
+
+  say(
+    `(${fmt(bs)}) satisfies Descartes' theorem, but no placement on the Gaussian ` +
+      `integers was found. That is most likely a limit of the search here rather than ` +
+      `of the mathematics.`,
+    true,
+  );
+}
+
+function applyCustom() {
+  clearResult();
+  const text = customInput.value.trim();
+  if (text === '') return;
 
   const parts = text.split(/[\s,]+/).filter(Boolean);
-  if (parts.length !== 4) {
-    showError(`expected four curvatures, got ${parts.length}`);
-    return;
-  }
   if (!parts.every((p) => /^-?\d+$/.test(p))) {
-    showError('curvatures must be whole numbers');
+    say('bends must be whole numbers.');
+    return;
+  }
+  const bs = parts.map((p) => BigInt(p));
+
+  if (bs.length < 3) {
+    say(
+      `${bs.length === 1 ? 'one bend' : 'two bends'} leave a free parameter — infinitely ` +
+        `many circles complete them. Give three, and both completions are determined.`,
+      true,
+    );
+    return;
+  }
+  if (bs.length > 4) {
+    say(`give three bends or four, not ${bs.length}.`);
     return;
   }
 
-  const result = rootFromCurvatures(parts.map((p) => BigInt(p)));
-  if (!result.ok) {
-    showError(result.reason);
-    return;
-  }
-
-  showError('');
-  rootSelect.selectedIndex = -1;
-  load(result.quad, encodeCurvatures(parts.map((p) => BigInt(p))));
+  if (bs.length === 3) offerCompletions(bs);
+  else loadQuadruple(bs);
 }
 
 customInput.addEventListener('change', applyCustom);

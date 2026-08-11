@@ -2,7 +2,14 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { rootFromCurvatures, validateQuad, ROOTS } from '../src/math/descartes.js';
+import {
+  rootFromCurvatures,
+  validateQuad,
+  ROOTS,
+  primitiveForm,
+  fourthCurvature,
+  descartesReal,
+} from '../src/math/descartes.js';
 import { generate } from '../src/math/packing.js';
 import { describe as describeCircle, exactCenter, exactRadius } from '../src/ui/readout.js';
 
@@ -239,5 +246,61 @@ describe('readout formatting', () => {
     assert.ok(line >= 0);
     const rows = describeCircle(strip, line);
     assert.ok(rows.some((r) => r.label === 'line'));
+  });
+});
+
+describe('primitive form', () => {
+  test('divides out a common factor', () => {
+    const r = primitiveForm([-7, 14, 14, 21]);
+    assert.equal(r.factor, 7n);
+    assert.deepEqual(r.curvatures, [-1n, 2n, 2n, 3n]);
+  });
+
+  test('leaves a primitive quadruple alone', () => {
+    const r = primitiveForm([-1, 2, 2, 3]);
+    assert.equal(r.factor, 1n);
+    assert.deepEqual(r.curvatures, [-1n, 2n, 2n, 3n]);
+  });
+
+  test('handles zeros, which a strip packing has', () => {
+    const r = primitiveForm([0, 0, 2, 2]);
+    assert.equal(r.factor, 2n);
+    assert.deepEqual(r.curvatures, [0n, 0n, 1n, 1n]);
+  });
+
+  test('the reduced quadruple still satisfies Descartes', () => {
+    for (const q of [[-7, 14, 14, 21], [-4, 8, 8, 12], [0, 0, 2, 2], [-6, 12, 12, 18]]) {
+      const r = primitiveForm(q);
+      const [a, b, c, d] = r.curvatures;
+      assert.ok(descartesReal(a, b, c, d), `${q} reduced to ${r.curvatures}`);
+    }
+  });
+
+  test('explains almost every construction failure', () => {
+    // Scanning small quadruples, the ones that satisfy Descartes but will not place
+    // are overwhelmingly just scaled copies of smaller packings — which is what the
+    // custom field now says instead of reporting a co-curvature error.
+    let nonPrimitive = 0;
+    let primitive = 0;
+    for (let a = -8; a <= 12; a++) {
+      for (let b = 1; b <= 14; b++) {
+        for (let c = b; c <= 14; c++) {
+          const roots = fourthCurvature(BigInt(a), BigInt(b), BigInt(c));
+          if (roots === null) continue;
+          for (const r of roots) {
+            const quad = [BigInt(a), BigInt(b), BigInt(c), r];
+            if (quad.some((v) => v === 0n)) continue;
+            if (rootFromCurvatures(quad).ok) continue;
+            if (primitiveForm(quad).factor > 1n) nonPrimitive++;
+            else primitive++;
+          }
+        }
+      }
+    }
+    assert.ok(nonPrimitive > 40, `only ${nonPrimitive} non-primitive failures`);
+    assert.ok(
+      primitive <= 6,
+      `${primitive} primitive quadruples failed to place — more than expected`,
+    );
   });
 });
