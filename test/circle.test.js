@@ -170,3 +170,44 @@ describe('Circle', () => {
     assert.equal(keys.size, 4);
   });
 });
+
+describe('rescale — the plane scaled about the origin', () => {
+  test('halving the curvature doubles the radius and keeps the invariant', () => {
+    // |bz|² − b·bbar = 9 − 8 = 1, so this is a genuine circle: bend 4, centre (3/4, 0).
+    const c = Circle.of(2, 4, 3, 0);
+    assert.ok(c.isValid(), 'the fixture is a circle to begin with');
+
+    const half = /** @type {Circle} */ (c.rescale(2n));
+    assert.equal(half.b, 2n, 'curvature halves');
+    assert.ok(half.bz.equals(c.bz), 'the curvature-center product is unchanged');
+    assert.equal(half.bbar, 4n, 'the co-curvature doubles');
+    assert.ok(half.isValid(), 'and the circle is still a circle');
+  });
+
+  test('the center and radius both double', () => {
+    const c = Circle.of(2, 4, 3, 0);
+    const before = c.toFloat();
+    const after = /** @type {Circle} */ (c.rescale(2n)).toFloat();
+    assert.ok(Math.abs(after.r - 2 * before.r) < 1e-15);
+    assert.ok(Math.abs(after.x - 2 * before.x) < 1e-15);
+    assert.ok(Math.abs(after.y - 2 * before.y) < 1e-15);
+  });
+
+  test('refuses a scale that would leave the integers', () => {
+    assert.equal(Circle.of(1, 3, 0, 2).rescale(2n), null, '3 is not divisible by 2');
+    assert.equal(Circle.of(2, 4, 3, 0).rescale(0n), null);
+  });
+
+  test('a line rescales to a line', () => {
+    const line = ROOTS.strip.quad[0];
+    const scaled = /** @type {Circle} */ (line.rescale(1n));
+    assert.ok(scaled.isLine());
+    assert.ok(scaled.isValid());
+  });
+
+  test('rescaling by 1 changes nothing', () => {
+    for (const c of ROOTS.apollonian.quad) {
+      assert.ok(/** @type {Circle} */ (c.rescale(1n)).equals(c));
+    }
+  });
+});

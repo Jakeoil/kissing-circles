@@ -143,6 +143,28 @@ export class Circle {
     return new Circle(this.bbar - c.bbar, this.b - c.b, this.bz.sub(c.bz));
   }
 
+  /**
+   * The same circle after scaling the plane about the origin by k, that is z ↦ k·z.
+   *
+   * Radius multiplies by k, so curvature divides by it. The curvature-center product
+   * `b·z` is *unchanged* — b shrinks by exactly as much as z grows — and the
+   * co-curvature multiplies by k. The invariant survives untouched, since
+   * `(b/k)·(k·b̄) = b·b̄`.
+   *
+   * This is what "lowest terms" means for a configuration. Every curvature in a
+   * Schmidt arrangement is even, so the whole thing is 2 × a primitive one, and
+   * rescaling by 2 reduces it — the same picture at twice the size, which after
+   * refitting is the same picture. Only the numbers change.
+   *
+   * @param {bigint} k
+   * @returns {Circle|null} null when the curvature is not divisible by k
+   */
+  rescale(k) {
+    if (k === 0n) return null;
+    if (this.b % k !== 0n) return null;
+    return new Circle(this.bbar * k, this.b / k, this.bz);
+  }
+
   /** @param {bigint} n @returns {Circle} */
   scale(n) {
     return new Circle(this.bbar * n, this.b * n, this.bz.scale(n));

@@ -71,6 +71,7 @@
         </select>
       </label>
       <label><input type="checkbox" id="numbers" /> curvatures</label>
+      <label><input type="checkbox" id="lowest" /> lowest terms (÷2)</label>
       <button id="note-toggle" type="button">what is this?</button>
     </div>
 
@@ -90,6 +91,11 @@
       <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
       the reason the Apollonian gasket sits inside this arrangement at exactly twice the
       curvature: <code>(0, 0, 1, 1)</code> appears here as <code>(0, 0, 2, 2)</code>.</p>
+      <p><b>Lowest terms</b> divides that factor out. Since every bend is even, the whole
+      arrangement is 2 × a primitive one — the same idea as a fraction reduced. Dividing
+      the bends by 2 is exactly scaling the plane by 2, which gives a <i>similar</i>
+      figure: same shape, twice the size, and therefore identical once the view refits.
+      So only the numbers move, and they land on the workbench's own convention.</p>
       <p>Region counts follow <code>(3·5ⁿ − 1)/2</code>, splitting
       <code>circular : triangular</code> as <code>1:0, 3:4, 13:24, 63:124, 313:624</code>.
       The triangular family grows faster and approaches twice the circular one.</p>
@@ -115,6 +121,7 @@
       const filter = document.getElementById('filter');
       const colorMode = document.getElementById('color');
       const numbersToggle = document.getElementById('numbers');
+      const lowestToggle = document.getElementById('lowest');
       const note = document.getElementById('note');
       const noteToggle = document.getElementById('note-toggle');
 
@@ -217,7 +224,12 @@
             if (region.type !== 'J') continue;
             const circle = region.m.applyTo(REAL_LINE);
             if (circle === null) continue;
-            if (drawNumeral(ctx, view, circle, String(circle.b), INK, metrics)) numbered++;
+            // Lowest terms changes the number, not the picture. The rescaled circle
+            // is a genuinely different circle — twice the radius, twice as far from
+            // the origin — so it supplies the bend and nothing else. Placement still
+            // comes from the circle actually on screen.
+            const shown = lowestToggle.checked ? circle.rescale(2n) ?? circle : circle;
+            if (drawNumeral(ctx, view, circle, String(shown.b), INK, metrics)) numbered++;
           }
         }
 
@@ -228,7 +240,9 @@
           `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
           `built ${built} ms`,
           `drew ${Math.round(performance.now() - t0)} ms`,
-          numbersToggle.checked ? `${numbered.toLocaleString()} numbered` : '',
+          numbersToggle.checked
+            ? `${numbered.toLocaleString()} numbered${lowestToggle.checked ? ', lowest terms' : ''}`
+            : '',
         ].filter(Boolean).join('   ');
       }
 
@@ -242,7 +256,9 @@
       genUp.addEventListener('click', () => step(1));
       genDown.addEventListener('click', () => step(-1));
       viewMode.addEventListener('change', build);
-      for (const el of [filter, colorMode, numbersToggle]) el.addEventListener('change', () => { dirty = true; });
+      for (const el of [filter, colorMode, numbersToggle, lowestToggle]) {
+        el.addEventListener('change', () => { dirty = true; });
+      }
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
 
       let dragging = false;
