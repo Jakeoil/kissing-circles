@@ -488,11 +488,11 @@ That is testable, and it is the reason the share fragment matters beyond conveni
 The commitment has three parts:
 
 1. **The default view does not change.** Loading the page with no fragment gives the
-   `(−1, 2, 2, 3)` packing, framed on its bounding circle, coloured by curvature, with
+   `(−1, 2, 2, 3)` packing, framed on its bounding circle, colored by curvature, with
    numerals on. A new mode may be *offered*, but must not become the default.
 2. **Old fragments keep working.** `decode()` already returns `null` for anything it
    cannot parse and falls back rather than breaking, and unknown keys are ignored. Any
-   new mode key must therefore default to "the current behaviour" when absent — never
+   new mode key must therefore default to "the current behavior" when absent — never
    the reverse.
 3. **A set of canonical URLs is kept and checked.** A handful of fragments — default
    view, deep zoom, strip packing, custom root, depth filter — rendered and compared
@@ -534,7 +534,7 @@ oldstyle already.
 **Sizing and placement stay measured, never assumed.** Nothing in `src/` names a font.
 The size still comes from the digit box measured once per face, so every numeral holds
 the same constant ratio to its circle (§Phase 3 — settled, and not to be capped). But
-each numeral is now centred on **its own** measured box rather than on the average over
+each numeral is now centerd on **its own** measured box rather than on the average over
 all ten digits, because with oldstyle figures `11` has no descender and `39` has two; a
 shared offset leaves one of them sitting visibly wrong.
 
@@ -560,13 +560,45 @@ Descartes' theorem. Drag one of four mutually tangent circles and watch
 `(Σb)² = 2Σb²` hold. *Ends on:* given three circles, there are exactly two that
 complete them — so which one do you draw?
 
+This chapter carries **Soddy's poem**, which states the theorem in verse and gives the
+circles their other name. Frederick Soddy, "The Kiss Precise", *Nature* **137**, 1021
+(20 June 1936) — the second stanza ends:
+
+> Since zero bend's a dead straight line
+> And concave bends have minus sign,
+> **The sum of the squares of all four bends**
+> **Is half the square of their sum.**
+
+which is `Σb² = ½(Σb)²`, our relation rearranged. Soddy states the sign conventions the
+code uses — a line has bend zero, an enclosing circle has negative bend — in two lines
+of verse, thirty-nine years before Schmidt and sixty-six before Lagarias, Mallows and
+Wilks. The poem has a third stanza extending to spheres; quote what is used and cite
+the rest.
+
+**On the name.** Jake's Android original called the class `SoddyCircle`, and that is
+the better name for what the workbench draws. The code keeps `Circle` — it also
+represents lines, and the arrangement's circles are not all Soddy circles — but the
+prose and the interface should say *Soddy circles* where that is what is meant.
+
 **2 · The jump.**
 Both answers are roots of the same quadratic, so they sum to `2(b₁+b₂+b₃)`. Click a
 triple, watch the fourth circle flip between its two positions. *Ends on:* the second
 circle costs one subtraction. No square root. That is the whole recursion.
 
+This chapter is also what the workbench's **custom** field should be explained by, and
+redesigned around. The rules, which the field currently hides:
+
+- **Three curvatures force the fourth — to two values**, `b₄ = b₁+b₂+b₃ ± 2√(b₁b₂+b₂b₃+b₃b₁)`.
+  So the field should take *three* and offer both completions, not demand four and
+  reject three of every four attempts.
+- **Two do not force anything.** A free parameter remains; there are infinitely many
+  completions.
+- The four curvatures are a **multiset, not a set** — unordered, and duplicates are
+  ordinary: `(−1, 2, 2, 3)` has two 2s. `rootFromCurvatures` already treats order as
+  irrelevant, trying all 24 permutations internally.
+
 **3 · Why the numbers stay whole.**
-Curvature and centre together, `(b, b·z)` in ℤ[i]. Side by side: the same packing in
+Curvature and center together, `(b, b·z)` in ℤ[i]. Side by side: the same packing in
 exact integers and in floating point, zoomed until the float version's tangencies
 visibly come apart. *Ends on:* the picture is made of integers, so it can be counted.
 
@@ -606,6 +638,21 @@ that he could not draw.
 
 ---
 
+**The packings list has no principled basis yet, and should.** Every integral packing
+has a unique **root quadruple** — the minimal one under the Apollonian group,
+characterised by `a ≤ b ≤ c ≤ d`, `a ≤ 0` and `a + b + c ≥ d` (Graham, Lagarias,
+Mallows, Wilks and Yan). Enumerated, they begin:
+
+```
+(−1,2,2,3) (−2,3,6,7) (−3,4,12,13) (−3,5,8,8) (−4,5,20,21) (−4,8,9,9)
+(−5,6,30,31) (−5,7,18,18) (−6,7,42,43) (−6,10,15,19) (−6,11,14,15) …
+```
+
+The workbench currently offers #1, #2, #4 and #11 — an arbitrary subset, chosen because
+they were the ones I had verified, not for any reason. It was not a limitation:
+`rootFromCurvatures` builds all twelve of the first twelve without complaint. The list
+should be generated from the enumeration rather than hand-picked.
+
 **What each chapter needs from the core.** Most of it exists. The gaps, in order of
 appearance: a draggable-quadruple figure (1, 2), a float-arithmetic comparison mode (3),
 region-type-aware drawing so Fig. 1 and Fig. 1\* can be shown apart (6), the gasket's
@@ -642,7 +689,7 @@ Concretely, a mode supplies three things and nothing else:
 
 Everything else stays shared: viewport, renderer, palette, numerals, hover readout,
 export, share links, analysis. The mode id joins the share fragment as another key that
-**defaults to today's behaviour when absent**, per §7.2.
+**defaults to today's behavior when absent**, per §7.2.
 
 The honest risk: `Packing` currently hard-codes the reflection rule in `_expand`. Making
 it mode-agnostic means separating *what to expand* from *how to expand it*. That is a
@@ -696,12 +743,12 @@ This is the part to plan for rather than discover. Three assumptions in the curr
 renderer hold only because an Apollonian gasket never subdivides a disk:
 
 1. **Draw order does not matter.** Interiors are disjoint today, so circles can be
-   batched by colour and painted in any order. Once a disk contains circles, that
+   batched by color and painted in any order. Once a disk contains circles, that
    fails completely.
 
    > **Settled, and more simply than this predicted.** I expected to bucket by depth
-   > and batch by colour within a depth. The real answer is not to fill at all: the
-   > arrangement is drawn as **outlines**, which need no ordering, keep the colour
+   > and batch by color within a depth. The real answer is not to fill at all: the
+   > arrangement is drawn as **outlines**, which need no ordering, keep the color
    > batching intact, and are how these pictures are conventionally drawn. Filled, the
    > arrangement is a solid mass with no structure visible whatsoever — see the lab
    > page. `draw()` now takes `style: 'fill' | 'stroke'`, defaulting to `fill` so the
@@ -779,7 +826,7 @@ Neither is hard. Both are silent, and the second produces a plausible-looking nu
   legibility was never about density; it was about fill versus outline. Generation 7 is
   97,782 circles built in 320 ms. This is exactly what the lab page was for, and it
   overturned a prediction in §8.3 within minutes of existing.
-- Whether curvature-mod-24 colouring means anything in the arrangement. The analysis
+- Whether curvature-mod-24 coloring means anything in the arrangement. The analysis
   panel assumes a single gasket; it may need a different question entirely.
 - Memory. The arrangement grows faster than a gasket, and circles are still never
   evicted. The budget deferred after Phase 6 stops being optional here.
@@ -843,7 +890,7 @@ checked against a primary source, that is said explicitly.
   method is the source of the "generations" framing; two of its counts are loose and
   are corrected against the paper in the notes.
 
-- **OEIS**, [A042944](https://oeis.org/search?q=6,11,14,15,18,23,26,27) and neighbours —
+- **OEIS**, [A042944](https://oeis.org/search?q=6,11,14,15,18,23,26,27) and neighbors —
   the curvature sequences of the `(−1,2,2,3)` packing, used informally as a check on
   the generator's output.
 

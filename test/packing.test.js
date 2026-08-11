@@ -292,7 +292,7 @@ describe('Packing', () => {
 
   test('tangency survives generation', () => {
     // Spot-check that circles produced deep in the recursion still touch their
-    // neighbours exactly.
+    // neighbors exactly.
     const p = generate(ROOTS.apollonian.quad, { maxCurvature: 400n });
     const [outer] = ROOTS.apollonian.quad;
     let touching = 0;

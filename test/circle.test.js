@@ -95,7 +95,7 @@ describe('Circle', () => {
   describe('lines', () => {
     const [line0, line2, unit] = ROOTS.strip.quad;
 
-    test('a line is recognised and has infinite radius', () => {
+    test('a line is recognized and has infinite radius', () => {
       assert.ok(line0.isLine());
       assert.equal(line0.toFloat().r, Infinity);
       assert.ok(!unit.isLine());
