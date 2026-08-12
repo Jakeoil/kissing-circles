@@ -2,7 +2,17 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { arrangement, regionCount, REAL_LINE } from '../src/math/schmidt.js';
+import {
+  arrangement,
+  regionCount,
+  REAL_LINE,
+  seed,
+  subdivide,
+  regionBox,
+  canReach,
+  regionsAt,
+  geometry,
+} from '../src/math/schmidt.js';
 import { GENERATORS } from '../src/math/mobius.js';
 
 describe('the Schmidt arrangement', () => {
@@ -149,5 +159,124 @@ describe('the Schmidt arrangement', () => {
 
   test('the seven generators are the ones used', () => {
     assert.deepEqual(Object.keys(GENERATORS).sort(), ['C', 'E1', 'E2', 'E3', 'V1', 'V2', 'V3']);
+  });
+});
+
+describe('pruning the traversal', () => {
+  test('a child region never leaves its parent box', () => {
+    // The whole basis of the pruning: subdivision is a partition, so one box bounds a
+    // subtree's position and its size at once. If this fails, pruning silently loses
+    // regions and every picture drawn from a windowed walk is wrong.
+    let frontier = [seed()];
+    let pairs = 0;
+    for (let g = 0; g < 6; g++) {
+      const next = [];
+      for (const parent of frontier) {
+        const pb = regionBox(parent);
+        for (const child of subdivide(parent)) {
+          next.push(child);
+          const cb = regionBox(child);
+          if (pb === null || cb === null) continue;
+          pairs++;
+          assert.ok(
+            cb.minX >= pb.minX - 1e-9 && cb.maxX <= pb.maxX + 1e-9 &&
+            cb.minY >= pb.minY - 1e-9 && cb.maxY <= pb.maxY + 1e-9,
+            `child box escapes parent at generation ${g}`,
+          );
+        }
+      }
+      frontier = next;
+    }
+    assert.ok(pairs > 20000, `only checked ${pairs} pairs`);
+  });
+
+  test('a windowed walk terminates instead of expanding 5^n', () => {
+    // Unpruned this is 5^n forever; the failure it replaces was a 4 GB heap death.
+    const bounds = { minX: 0.3, minY: 0.05, maxX: 0.7, maxY: 0.45 };
+    let regions = [seed()];
+    let generations = 0;
+    let peak = 0;
+    while (regions.length > 0 && generations < 200) {
+      generations++;
+      const next = [];
+      for (const region of regions) {
+        for (const child of subdivide(region)) {
+          if (canReach(child, bounds, 0.01)) next.push(child);
+        }
+      }
+      regions = next;
+      peak = Math.max(peak, regions.length);
+    }
+    assert.equal(regions.length, 0, `still expanding after ${generations} generations`);
+    // A 0.4-wide window holds about (0.4/0.01)^2 = 1,600 regions of that size; the
+    // frontier should stay within a small factor of what actually fits.
+    assert.ok(peak < 8000, `frontier peaked at ${peak}`);
+  });
+
+  test('a pruned walk still returns a partition, with no holes', () => {
+    // The regression this guards against: pruning a branch at the resolution floor and
+    // dropping it, which leaves gaps in a picture whose whole point is that it covers
+    // the plane. Regions that stop early have to come back as leaves.
+    const bounds = { minX: 0.3, minY: 0.05, maxX: 0.7, maxY: 0.45 };
+    const regions = regionsAt(30, { bounds, minSize: 0.03 });
+    assert.ok(regions.length > 0, 'walk returned nothing at all');
+
+    // Same rule the renderer fills by: inside every constraint, on the interior's side.
+    const contains = (region, x, y) => {
+      const g = geometry(region);
+      if (g === null) return false;
+      return g.constraints.every((c) => {
+        if (c.isLine()) {
+          const nx = Number(c.bz.re);
+          const ny = Number(c.bz.im);
+          const off = c.lineOffset();
+          return (nx * x + ny * y - off) * (nx * g.interior.x + ny * g.interior.y - off) >= 0;
+        }
+        const f = c.toFloat();
+        const r = Math.abs(f.r);
+        return (
+          (Math.hypot(x - f.x, y - f.y) - r) *
+            (Math.hypot(g.interior.x - f.x, g.interior.y - f.y) - r) >= 0
+        );
+      });
+    };
+
+    let uncovered = 0;
+    for (let i = 1; i < 12; i++) {
+      for (let j = 1; j < 12; j++) {
+        const x = bounds.minX + ((bounds.maxX - bounds.minX) * i) / 12;
+        const y = bounds.minY + ((bounds.maxY - bounds.minY) * j) / 12;
+        if (!regions.some((region) => contains(region, x, y))) uncovered++;
+      }
+    }
+    assert.equal(uncovered, 0, `${uncovered} of 121 sample points fell in no region`);
+  });
+
+  test('the walk saturates rather than growing without end', () => {
+    // Once every branch has hit the resolution floor, deeper generations add nothing.
+    // This is what makes a generation control safe to hand a user.
+    const bounds = { minX: 0.3, minY: 0.05, maxX: 0.7, maxY: 0.45 };
+    // The floor is reached at generation 15 here; 20 and 30 are both past it.
+    const at20 = regionsAt(20, { bounds, minSize: 0.03 }).length;
+    const at30 = regionsAt(30, { bounds, minSize: 0.03 }).length;
+    assert.ok(at20 > 0);
+    assert.equal(at20, at30, 'region count still changing between generations 20 and 30');
+  });
+
+  test('pruning does not change what an unwindowed walk produces', () => {
+    // With no window and no size floor, canReach must admit everything — otherwise the
+    // pruning is not a filter on the limits but a change to the arrangement itself.
+    for (const n of [3, 4, 5]) {
+      let unpruned = [seed()];
+      for (let g = 0; g < n; g++) {
+        unpruned = unpruned.flatMap((region) => subdivide(region));
+      }
+      assert.equal(regionsAt(n).length, unpruned.length, `generation ${n}`);
+    }
+  });
+
+  test('maxRegions stops rather than exhausting the heap', () => {
+    const held = regionsAt(12, { maxRegions: 1000 });
+    assert.ok(held.length <= 1000, `returned ${held.length} regions`);
   });
 });

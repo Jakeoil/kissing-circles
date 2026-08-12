@@ -126,8 +126,23 @@
       const noteToggle = document.getElementById('note-toggle');
 
       const MIN_GEN = 0;
-      const MAX_GEN = 6;
+      // Was 6, which is where an unpruned walk ran out of patience and then out of
+      // heap. The walk now expands only what the window can show, so the ceiling is
+      // about how deep the numbers stay legible rather than about what fits in memory.
+      const MAX_GEN = 20;
       let generation = 3;
+
+      // Regions smaller than this many pixels are not worth descending into. The count
+      // grows as the square of it, so this is the single number that decides whether
+      // the page stays interactive: at 3 px a zoomed generation 14 wants 148,000
+      // regions and blocks for nine seconds, at 8 px it is a few thousand and instant.
+      // A lab is for turning knobs, so it has to stay live.
+      const RESOLUTION = 8;
+
+      // A hard stop well below the point where the tab would die, since the build runs
+      // on the main thread. Reaching it means the view is asking for more than it can
+      // show, and the honest answer is the last complete generation.
+      const MAX_REGIONS = 40000;
 
       const CIRCULAR = 'hsl(157 52% 46%)';
       const TRIANGULAR = 'hsl(330 46% 52%)';
@@ -143,16 +158,34 @@
 
       function build() {
         genOut.textContent = String(generation);
+        // A margin, so a small pan does not immediately expose unbuilt space.
+        const bounds = view.visibleBounds(0.25);
+        const minSize = view.worldRadius(RESOLUTION);
         const t0 = performance.now();
         if (viewMode.value === 'regions') {
-          regions = regionsAt(generation);
+          regions = regionsAt(generation, { bounds, minSize, maxRegions: MAX_REGIONS });
           circles = null;
         } else {
-          circles = arrangement({ maxGeneration: generation, maxCurvature: 4000n });
+          circles = arrangement({
+            maxGeneration: generation,
+            maxCurvature: 4000n,
+            bounds,
+            minRadius: minSize / 2,
+          });
           regions = [];
         }
         built = Math.round(performance.now() - t0);
         dirty = true;
+      }
+
+      // Panning and zooming change what the walk should have generated, so the build
+      // has to follow the view. Rebuilding on every wheel tick is wasteful, so it
+      // trails the gesture by a beat.
+      let rebuildTimer = 0;
+      function viewChanged() {
+        dirty = true;
+        clearTimeout(rebuildTimer);
+        rebuildTimer = setTimeout(build, 140);
       }
 
       function home() {
@@ -165,7 +198,7 @@
         canvas.height = Math.round(canvas.clientHeight * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         view.resize(canvas.clientWidth, canvas.clientHeight);
-        dirty = true;
+        viewChanged();
       }
 
       function paint() {
@@ -236,8 +269,15 @@
         const circular = wanted.filter((r) => r.type === 'J').length;
         hud.textContent = [
           `regions — the partition at generation ${generation}`,
-          `${regions.length.toLocaleString()} regions (formula ${regionCount(generation).toLocaleString()})`,
+          // The formula counts the whole partition; the walk builds only the part the
+          // window can show. They agree until pruning starts, and the gap after that is
+          // the point of the pruning rather than a discrepancy.
+          `${regions.length.toLocaleString()} of ${regionCount(generation).toLocaleString()} regions`,
           `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
+          // Worth saying out loud, because it explains why stepping the generation
+          // eventually stops changing the picture: the walk has reached the resolution
+          // floor, and everything deeper is smaller than a few pixels.
+          `nothing below ${RESOLUTION} px`,
           `built ${built} ms`,
           `drew ${Math.round(performance.now() - t0)} ms`,
           numbersToggle.checked
@@ -269,18 +309,18 @@
         if (!dragging || !last) return;
         view.panBy(e.clientX - last.x, e.clientY - last.y);
         last = { x: e.clientX, y: e.clientY };
-        dirty = true;
+        viewChanged();
       });
       canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const r = canvas.getBoundingClientRect();
         view.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016));
-        dirty = true;
+        viewChanged();
       }, { passive: false });
 
       window.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
-        if (e.key === '0') { view.fit(home(), 0.04); dirty = true; }
+        if (e.key === '0') { view.fit(home(), 0.04); viewChanged(); }
         else if (e.key === ']') step(1);
         else if (e.key === '[') step(-1);
         else return;
@@ -294,8 +334,8 @@
       }
 
       resize();
-      build();
       view.fit(home(), 0.04);
+      build();
       requestAnimationFrame(frame);
     </script>
   </body>

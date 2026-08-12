@@ -23,8 +23,8 @@ from `render/` or `ui/` and runs under bare Node.
 | Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
 | §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
 | Chapters | **1** (Soddy's poem, Descartes), **2** (the jump, Vieta), **6** (two regions) written; 3, 4, 5, 7, 8, 9 outlined in §7.4 |
-| Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms |
-| Tests | 229, `npm test`, no dependencies |
+| Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms. Generations to 20, windowed (§8.4b) |
+| Tests | 235, `npm test`, no dependencies |
 
 **Verify visually before claiming anything works.** `playwright-core` driving the system
 Chrome, installed in the session scratchpad, never in the repo. Several real defects
@@ -33,21 +33,17 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
 
 ### Open, in the order I would take them
 
-1. **Prune the arrangement's traversal, not just its output** (§8.4a). `maxCurvature`
-   and `bounds` decide what gets recorded while the walk still expands 5ⁿ regions, so
-   generation 12 exhausts a 4 GB heap. Needs the analogue of `branchBounds`. **This
-   blocks chapter 7 and the "where the gasket sits" lab.**
-2. **Memory has no ceiling.** Circles accumulate and are never evicted — 600k after a
+1. **Memory has no ceiling.** Circles accumulate and are never evicted — 600k after a
    sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
    `Packing._expand` calls it three times per emit to look up parent indices. Carrying
    indices on the frame removes those without the ~50 MB a string cache would cost.
-3. **Chapters 3, 4, 5.** 4 and 5 need no new code at all. 3 needs a float-vs-exact
+2. **Chapters 3, 4, 5.** 4 and 5 need no new code at all. 3 needs a float-vs-exact
    comparison, which is also a listed lab.
-4. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
+3. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
-5. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
+4. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-6. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
+5. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
    place. Probably a limit of the translation-and-ordering search, not of the
    mathematics.
 
@@ -889,18 +885,97 @@ the curvature. One such quadruple passes `validateQuad` and generates a packing.
 Two things that came out of trying to demonstrate it, both worth fixing before
 chapter 7 can be written:
 
-- **`arrangement()` prunes emission, not traversal.** `maxCurvature` and `bounds`
-  decide what gets *recorded*; the region walk expands everything regardless. So the
-  cost is 5ⁿ whatever the limits say, and generation 12 exhausts memory on a machine
-  with 4 GB of heap. The limits need to prune the walk, which needs a bound on what a
-  region's subtree can reach — the analogue of `branchBounds` in `packing.js`.
+- ~~**`arrangement()` prunes emission, not traversal.**~~ **Fixed — see §8.4b.**
 - **"Circles of curvature ≤ N" is not a finite set here.** The arrangement is invariant
   under translation by 1 and by i, so every curvature occurs infinitely often across
   the plane. Any comparison against a bounded gasket has to be windowed spatially, or
   it is measuring the wrong thing. My first attempt at the embedding check did exactly
   that and reported a meaningless 141 of 412.
 
-Neither is hard. Both are silent, and the second produces a plausible-looking number.
+Both are silent, and the second produces a plausible-looking number.
+
+### 8.4b Pruning the traversal — three wrong bounds and the right one
+
+The walk expanded 5ⁿ regions however tight the limits were, because `maxCurvature` and
+`bounds` only decided what got *recorded*. What it needed was a bound on everything a
+region's subtree can reach. Three candidates failed, and it is worth saying how, because
+each is plausible enough to try again later:
+
+| Candidate bound | Verdict |
+|---|---|
+| The circumscribed disc contains the subtree's circles | **False** — 294 of 3,478 escape |
+| ρ, or the circumscribed radius, decreases downward | **False** — 856 of 5,848 pairs rise |
+| The vertex triangle inflated by each arc's sagitta | **False** — 8,030 of 126,328 escape |
+
+The right bound is simpler than any of them. **Subdivision is a partition**: the children
+of a region tile it exactly, so every descendant lies inside its parent. One box
+therefore bounds a whole subtree's *position and its size at once* — which is the thing
+none of the three candidates did, since each bounded only one of the two.
+
+`regionBox` computes it exactly rather than estimating. A curvilinear triangle's extent
+in x is attained either at a vertex or where a bounding arc has a vertical tangent, and
+the latter is a leftmost or rightmost point of the underlying circle. So the candidate
+set is the three vertices — Lemma 1.3 gives them as `m` applied to `∞`, `0` and `1` — plus
+the four compass points of each bounding circle, each admitted only if it satisfies the
+region's *other* constraints. Same argument in y. Verified over 146,262 parent/child
+pairs with no escapes, which is a test (`test/schmidt.test.js`) rather than a one-off.
+
+**Schmidt's own bound is sound but does not bite.** Lemma 1.4(iii) gives
+`diam F ≤ 4/√N` with `N = N(c) + N(d) + N(c+d)`, and Lemma 1.3(iv) says N never decreases
+downward — confirmed, 0 drops over 5,848 pairs. But firing it needs `N > 16/minSize²`,
+and the region count reaches 300,000 several generations before N gets there. It survives
+as a free early-out: two BigInt multiplies ahead of four Möbius applications.
+
+**The last thing to fall was the regions containing ∞.** They have no box and no size
+bound, so once every bounded region had died out the walk still would not terminate — a
+residue growing linearly forever, which is what turned an explosion into a hang. They are
+prunable after all: such a region recedes toward ∞ as its complement grows, so eventually
+one of its constraints puts the whole window outside it. That recession is what lets a
+walk over a fixed window terminate at all.
+
+**Two callers, two position tests.** `regionsAt` draws regions, so the box is exact for
+it. `arrangement` draws each region's *circumscribed* circle, which for a triangular
+region bulges outside the box — pruning it on the box would drop circles that arc into
+view — so it keeps the disc for position and takes the box only for size. The disc still
+does not contain a *descendant's* circle, so `arrangement`'s spatial limit remains the
+viewing aid this section already called it.
+
+What it bought, on a 0.4-wide window:
+
+| `minSize` | Before | After |
+|---|---|---|
+| 0.01 | never terminates | 32 generations, peak 2,451, 0.6 s |
+| 0.002 | never terminates | 149 generations, peak 48,483, 21 s |
+
+A 0.4 window holds about `(0.4/minSize)²` regions — 1,600 and 40,000 — so the frontier is
+now within a small factor of what genuinely fits, rather than merely bounded. The test
+suite also went from 220 s to 14 s.
+
+**It is still possible to ask for more than fits.** At `minSize` 0.0005 that window wants
+~640,000 regions, which is the honest content at that resolution and still exhausts a
+4 GB heap. So `regionsAt` takes a `maxRegions` valve and returns the last complete
+generation rather than dying. The lab sets it to 40,000 against an 8-pixel floor, which
+is what keeps the page interactive — at 3 pixels a zoomed generation 14 wanted 148,000
+regions and blocked for nine seconds, and a lab that cannot be fiddled with is not a lab.
+
+**Pruning by itself punched holes in the partition, which is the one thing it must not
+do.** A branch stopped at the resolution floor simply vanished, and generation 14 zoomed
+came back as lace — visibly wrong, and invisible to every test then written. The two
+prunes mean opposite things and cannot share a code path: *outside the window* means the
+subtree is not wanted, but *below the floor* means the region is still there and still
+has to be drawn. So they are separate predicates now, `withinBounds` and
+`belowResolution`, and a region that hits the floor is returned as a **leaf at whatever
+depth it stopped**. What comes back is the frontier plus those leaves, which covers the
+window whether the walk ran to completion or was cut off by `maxRegions`. The test is a
+coverage check — 121 sample points, each must land in exactly one returned region — since
+counting regions would never have caught it.
+
+**A second bug surfaced only once deep zoom was reachable: `renderer.js` ignored
+`flipY`.** It transformed y by `scale` instead of `yScale`, mirroring every circle about
+the horizontal midline. At the default view enough survived to look plausible; zoomed, it
+drew **1 circle of 6,821**. Region drawing was never affected because it goes through
+`view.worldToScreen`, which is why this sat undetected behind chapter 6 and the partition
+view. Fixed in all four places; lines and labels already used `worldToScreen`.
 
 ### 8.5 What this does not answer
 

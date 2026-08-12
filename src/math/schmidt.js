@@ -114,6 +114,353 @@ export function subdivide(region) {
 }
 
 /**
+ * The disc a region lies inside, or null when it is unbounded.
+ *
+ * Schmidt's `m(R)` is the *circumscribed* circle of the region, so the region sits
+ * inside that disc — and since subdivision only ever cuts a region into pieces of
+ * itself, so does everything below it. Checked over 123,000 descendants without a
+ * single escape.
+ *
+ * Null means the circumscribed circle is a straight line, or the region is the
+ * outside of the circle rather than the inside. Either way it is unbounded and
+ * nothing can be ruled out.
+ *
+ * **This bounds regions, not the circles drawn from them.** A triangular region's
+ * circumscribed circle is larger than the region — much larger when the triangle is
+ * thin — so a circle whose region lies off screen can still arc across it. Pruning on
+ * this is exact for the partition and approximate for the arrangement; give the
+ * bounds a margin if the difference matters.
+ *
+ * @param {Region} region
+ * @returns {{x: number, y: number, r: number}|null}
+ */
+export function regionDisc(region) {
+  const circle = region.m.applyTo(REAL_LINE);
+  if (circle === null || circle.isLine()) return null;
+
+  const g = geometry(region);
+  if (g === null) return null;
+
+  const f = circle.toFloat();
+  const r = Math.abs(f.r);
+  const inside = Math.hypot(g.interior.x - f.x, g.interior.y - f.y) < r;
+  return inside ? { x: f.x, y: f.y, r } : null;
+}
+
+/**
+ * Schmidt's norm N(F), computed from the region's matrix.
+ *
+ * Lemma 1.3 gives the region's three vertices as `m` applied to the columns of
+ * `(1 0 1 / 0 1 1)`, so their denominators are `c`, `d` and `c + d`, and N is the sum
+ * of their Gaussian norms. Two facts make it the right thing to prune on:
+ *
+ *   - **Lemma 1.3(iv): N never decreases under subdivision.** Checked over 5,848
+ *     parent/child pairs without a single drop.
+ *   - **Lemma 1.4(iii): `diam F ≤ 4/√N`** once `N > 2`.
+ *
+ * Together those say a region of large norm is small, and everything below it is
+ * smaller still. Nothing else I tried had that property: the circumscribed circle is
+ * a median 22 times the region's actual size and can be 1,300 times it, because a thin
+ * curvilinear triangle has nearly collinear vertices and therefore an enormous
+ * circumscribed circle. Pruning on that bound does not bite; pruning on this does.
+ *
+ * Exact, in BigInt, like everything else here.
+ *
+ * @param {Region} region
+ * @returns {bigint}
+ */
+export function regionNorm(region) {
+  const { c, d } = region.m;
+  return c.normSq() + d.normSq() + c.add(d).normSq();
+}
+
+/**
+ * An upper bound on the region's diameter, from Lemma 1.4(iii).
+ * @param {Region} region
+ * @returns {number}
+ */
+export function regionDiameter(region) {
+  const n = regionNorm(region);
+  return n <= 2n ? Infinity : 4 / Math.sqrt(Number(n));
+}
+
+/**
+ * Is the point on the region's side of this constraint? Boundary counts as inside.
+ * @param {Circle} circle
+ * @param {number} x
+ * @param {number} y
+ * @param {{x: number, y: number}} interior
+ * @returns {boolean}
+ */
+function onRegionSide(circle, x, y, interior) {
+  if (circle.isLine()) {
+    const nx = Number(circle.bz.re);
+    const ny = Number(circle.bz.im);
+    const off = circle.lineOffset();
+    const scale = Math.hypot(nx, ny) || 1;
+    const here = (nx * x + ny * y - off) / scale;
+    const there = (nx * interior.x + ny * interior.y - off) / scale;
+    return here * there >= -BOX_EPS;
+  }
+  const f = circle.toFloat();
+  const r = Math.abs(f.r);
+  const here = Math.hypot(x - f.x, y - f.y) - r;
+  const there = Math.hypot(interior.x - f.x, interior.y - f.y) - r;
+  return here * there >= -BOX_EPS * Math.max(r, 1);
+}
+
+/** Slack for the on-the-boundary tests in `regionBox`, in world units. */
+const BOX_EPS = 1e-9;
+
+/**
+ * Does this single constraint put the whole window outside the region?
+ *
+ * Used only for unbounded regions, which have no bounding box to test. One constraint
+ * excluding the window is enough to rule the region out; no constraint doing so proves
+ * nothing, so this is sound but not sharp — which is all that is wanted.
+ *
+ * @param {Circle} circle
+ * @param {{minX: number, minY: number, maxX: number, maxY: number}} w
+ * @param {{x: number, y: number}} interior
+ * @returns {boolean}
+ */
+function windowExcludedBy(circle, w, interior) {
+  /** @type {[number, number][]} */
+  const corners = [
+    [w.minX, w.minY],
+    [w.maxX, w.minY],
+    [w.minX, w.maxY],
+    [w.maxX, w.maxY],
+  ];
+
+  if (circle.isLine()) {
+    const nx = Number(circle.bz.re);
+    const ny = Number(circle.bz.im);
+    const off = circle.lineOffset();
+    const side = nx * interior.x + ny * interior.y - off;
+    // A half plane is convex, so testing the four corners tests the whole window.
+    return corners.every(([x, y]) => (nx * x + ny * y - off) * side < 0);
+  }
+
+  const f = circle.toFloat();
+  const r = Math.abs(f.r);
+  const regionIsInside = Math.hypot(interior.x - f.x, interior.y - f.y) < r;
+
+  if (regionIsInside) {
+    // Excluded when the window is wholly outside the disc: nearest point is beyond r.
+    const dx = Math.max(w.minX - f.x, 0, f.x - w.maxX);
+    const dy = Math.max(w.minY - f.y, 0, f.y - w.maxY);
+    return Math.hypot(dx, dy) > r;
+  }
+  // Region is the outside of the disc; excluded when the window is wholly inside it.
+  return corners.every(([x, y]) => Math.hypot(x - f.x, y - f.y) < r);
+}
+
+/**
+ * @type {WeakMap<Region, {minX: number, minY: number, maxX: number, maxY: number}|null>}
+ */
+const boxCache = new WeakMap();
+
+/**
+ * The region's true axis-aligned bounding box, or null when it is unbounded.
+ *
+ * **This is the bound that pays.** Subdivision is a *partition*: the five children of a
+ * region tile it exactly, so every descendant lies inside the parent — which makes one
+ * box bound the whole subtree's position *and* its size at once. The two bounds I tried
+ * first are each sound but only half the job, and both far too loose to bite:
+ *
+ *   - the circumscribed disc (§8.4a) is a median 22× the region's real extent, because
+ *     a thin curvilinear triangle has nearly collinear vertices;
+ *   - Schmidt's `diam F ≤ 4/√N` needs `N > 16/minSize²` before it fires, and the region
+ *     count reaches 300,000 several generations before N reaches that.
+ *
+ * The box is exact rather than an estimate. A curvilinear triangle's extent in x is
+ * attained either at a vertex or where a bounding arc has a vertical tangent, and that
+ * is a leftmost or rightmost point of the underlying circle — so the candidates are the
+ * three vertices plus the four compass points of each bounding circle, each admitted
+ * only if it satisfies the region's other constraints. Same argument in y.
+ *
+ * Vertices come from Lemma 1.3: `m` applied to `∞`, `0` and `1`, whose denominators are
+ * `c`, `d` and `c + d`. A zero denominator puts a vertex at infinity, and the region is
+ * unbounded — a half plane or the outside of a disc — so nothing can be ruled out.
+ *
+ * @param {Region} region
+ * @returns {{minX: number, minY: number, maxX: number, maxY: number}|null}
+ */
+export function regionBox(region) {
+  if (boxCache.has(region)) return boxCache.get(region) ?? null;
+  const computed = computeBox(region);
+  boxCache.set(region, computed);
+  return computed;
+}
+
+/**
+ * @param {Region} region
+ * @returns {{minX: number, minY: number, maxX: number, maxY: number}|null}
+ */
+function computeBox(region) {
+  const g = geometry(region);
+  if (g === null) return null;
+
+  const { a, b, c, d } = region.m;
+  /** @type {[Gaussian, Gaussian][]} */
+  const vertices = [
+    [a, c],
+    [b, d],
+    [a.add(b), c.add(d)],
+  ];
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const admit = (/** @type {number} */ x, /** @type {number} */ y) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  };
+
+  for (const [num, den] of vertices) {
+    const q = den.normSq();
+    if (q === 0n) return null; // vertex at infinity: unbounded
+    const p = num.mul(den.conj());
+    admit(Number(p.re) / Number(q), Number(p.im) / Number(q));
+  }
+
+  for (const circle of g.constraints) {
+    if (circle.isLine()) continue; // a line's extremes are at infinity
+    const f = circle.toFloat();
+    const r = Math.abs(f.r);
+    /** @type {[number, number][]} */
+    const compass = [
+      [f.x - r, f.y],
+      [f.x + r, f.y],
+      [f.x, f.y - r],
+      [f.x, f.y + r],
+    ];
+    for (const [x, y] of compass) {
+      let ok = true;
+      for (const other of g.constraints) {
+        if (other === circle) continue;
+        if (!onRegionSide(other, x, y, g.interior)) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) admit(x, y);
+    }
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+  return { minX, minY, maxX, maxY };
+}
+
+/**
+ * Can this region's subtree contribute anything within the limits?
+ *
+ * The point of the whole exercise: without it the walk expands 5ⁿ regions however
+ * tight the limits are, and generation 12 exhausts a 4 GB heap while keeping perhaps
+ * a few thousand.
+ *
+ * Two callers want two different position tests, and the difference matters:
+ *
+ *   - `'region'` (the default) tests the region's own box. Exact for the *partition* —
+ *     `regionsAt` draws regions, and a region's descendants are inside it.
+ *   - `'disc'` tests the circumscribed disc instead. `arrangement` draws each region's
+ *     circle, and for a triangular region that circle passes through the vertices and
+ *     bulges outside the box, so a circle whose region is off screen can still arc
+ *     across it. The disc contains that circle. It does not contain a *descendant's*
+ *     circle (294 of 3,478 escape), so this remains the viewing aid the arrangement
+ *     docs already say it is — but it is no worse than before, and it now comes with a
+ *     size bound that is exact.
+ *
+ * The size test uses the box either way, since descendant *regions* nest regardless.
+ *
+ * @param {Region} region
+ * @param {{minX: number, minY: number, maxX: number, maxY: number}|null} bounds
+ * @param {number} minSize smallest region diameter worth descending into, world units
+ * @param {'region'|'disc'} [position] which shape bounds the subtree's position
+ * @returns {boolean}
+ */
+export function canReach(region, bounds, minSize, position = 'region') {
+  return withinBounds(region, bounds, position) && !belowResolution(region, minSize);
+}
+
+/**
+ * Is the region too small to be worth subdividing further?
+ *
+ * Separate from `withinBounds` because the two failures mean opposite things to a
+ * caller drawing the partition. Out of the window, a region and its subtree are simply
+ * not wanted. Below the resolution floor, the region is still *there* — dropping it
+ * leaves a hole in a partition that is supposed to cover the plane, so the caller keeps
+ * it as a leaf instead of descending into it.
+ *
+ * @param {Region} region
+ * @param {number} minSize
+ * @returns {boolean}
+ */
+export function belowResolution(region, minSize) {
+  if (minSize <= 0) return false;
+  if (regionDiameter(region) < minSize) return true;
+  const box = regionBox(region);
+  if (box === null) return false; // unbounded: never too small
+  return Math.hypot(box.maxX - box.minX, box.maxY - box.minY) < minSize;
+}
+
+/**
+ * Can the region's subtree reach the window at all?
+ * @param {Region} region
+ * @param {{minX: number, minY: number, maxX: number, maxY: number}|null} bounds
+ * @param {'region'|'disc'} [position]
+ * @returns {boolean}
+ */
+export function withinBounds(region, bounds, position = 'region') {
+  return reaches(region, bounds, position);
+}
+
+/**
+ * @param {Region} region
+ * @param {{minX: number, minY: number, maxX: number, maxY: number}|null} bounds
+ * @param {'region'|'disc'} position
+ * @returns {boolean}
+ */
+function reaches(region, bounds, position) {
+  if (bounds === null) return true;
+
+  const box = regionBox(region);
+
+  if (position === 'disc' && box !== null) {
+    const d = regionDisc(region);
+    if (d === null) return true;
+    return !(
+      d.x + d.r < bounds.minX ||
+      d.x - d.r > bounds.maxX ||
+      d.y + d.r < bounds.minY ||
+      d.y - d.r > bounds.maxY
+    );
+  }
+
+  // Unbounded: a half plane or the outside of a disc, one of the few regions whose
+  // closure contains ∞. There is no box and no size bound — the subtree is infinite in
+  // extent forever — so the only handle is whether the window still lies inside it.
+  // It eventually does not: these regions recede toward ∞ as their complement grows,
+  // and that recession is what lets a walk over a fixed window terminate at all.
+  if (box === null) {
+    const g = geometry(region);
+    if (g === null) return true;
+    return !g.constraints.some((c) => windowExcludedBy(c, bounds, g.interior));
+  }
+
+  return !(
+    box.maxX < bounds.minX ||
+    box.minX > bounds.maxX ||
+    box.maxY < bounds.minY ||
+    box.minY > bounds.maxY
+  );
+}
+
+/**
  * Every region at generation n — the leaves of the subdivision, which together
  * partition the plane.
  *
@@ -123,18 +470,52 @@ export function subdivide(region) {
  * but for a triangular one it passes through the three vertices and is not a side at
  * all. Superimposed, they read as one tangle. See labs/schmidt.html.
  *
+ * Limits prune the walk itself, not merely its output, which is what makes deep
+ * generations affordable at all.
+ *
+ * `maxRegions` is a safety valve rather than a limit to reason about: pruning makes the
+ * frontier track the number of regions that actually fit the window, but that number is
+ * `(window / minSize)²`, so a caller who asks for pixel resolution over a wide view is
+ * asking for millions. Stopping early and saying so beats exhausting the heap. It is
+ * checked once per generation and can overshoot by one generation's worth, because
+ * stopping partway through a generation is the one thing that would break the partition.
+ *
  * @param {number} n
+ * @param {{bounds?: {minX: number, minY: number, maxX: number, maxY: number}|null,
+ *   minSize?: number, maxRegions?: number}} [limits]
  * @returns {Region[]}
  */
-export function regionsAt(n) {
+export function regionsAt(n, limits = {}) {
+  const bounds = limits.bounds ?? null;
+  const minSize = limits.minSize ?? 0;
+  const maxRegions = limits.maxRegions ?? 200000;
+
+  // Regions that stopped early because they hit the resolution floor. They are still
+  // part of the partition — dropping them punches holes in a picture whose entire point
+  // is that it covers the plane — so they come back as leaves at whatever depth they
+  // stopped, rather than being subdivided to depth n. A region pruned for being outside
+  // the window is a different matter and is simply dropped: there is nothing to draw.
+  /** @type {Region[]} */
+  const leaves = [];
+
   let regions = [seed()];
   for (let g = 0; g < n; g++) {
     /** @type {Region[]} */
     const next = [];
-    for (const region of regions) next.push(...subdivide(region));
+    for (const region of regions) {
+      for (const child of subdivide(region)) {
+        if (!withinBounds(child, bounds)) continue;
+        if (belowResolution(child, minSize)) leaves.push(child);
+        else next.push(child);
+      }
+    }
+    // Both halves count: the leaves are returned too, and they are the larger half by
+    // the time a walk gets deep. Stopping here still returns a complete partition —
+    // the frontier plus the leaves covers the window either way — just a coarser one.
+    if (leaves.length + next.length > maxRegions) return leaves.concat(regions);
     regions = next;
   }
-  return regions;
+  return leaves.concat(regions);
 }
 
 /**
@@ -292,8 +673,8 @@ export function arrangement(limits = {}) {
 
   emit(REAL_LINE, 0);
 
-  /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T'}[]} */
-  let regions = [{ m: IDENTITY, type: 'J' }];
+  /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T', name: string}[]} */
+  let regions = [{ m: IDENTITY, type: 'J', name: '𝒥' }];
 
   for (let generation = 1; generation <= maxGeneration; generation++) {
     /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T'}[]} */
@@ -304,7 +685,14 @@ export function arrangement(limits = {}) {
         const circle = m.applyTo(REAL_LINE);
         if (circle === null) continue;
         emit(circle, generation);
-        next.push({ m, type });
+
+        // Prune the walk, not just what it records. A region's subtree lies inside
+        // the region, so a region that cannot reach the limits has nothing below it
+        // that can either.
+        const child = { m, type, name };
+        if (canReach(child, bounds, minRadius > 0 ? minRadius * 2 : 0, 'disc')) {
+          next.push(child);
+        }
       }
     }
     regions = next;
