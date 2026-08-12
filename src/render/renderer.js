@@ -96,6 +96,12 @@ export function draw(ctx, packing, view, options = {}) {
   const style = options.style ?? 'fill';
 
   const { width, height, scale, tx, ty } = view;
+  // Not `scale`: a viewport with `flipY` set draws y upward, and its yScale is negative.
+  // Using scale for y silently mirrors every circle about the horizontal midline, which
+  // on a zoomed view puts nearly all of them off screen — the arrangement lab drew 1 of
+  // 6,821 circles. Radii still take `scale`, since |yScale| == scale and a radius is
+  // unsigned. Region drawing was never affected: it goes through view.worldToScreen.
+  const yScale = view.yScale;
 
   ctx.save();
   ctx.fillStyle = palette.background;
@@ -141,7 +147,7 @@ export function draw(ctx, packing, view, options = {}) {
     }
 
     const sx = xs[i] * scale + tx;
-    const sy = ys[i] * scale + ty;
+    const sy = ys[i] * yScale + ty;
 
     if (sx + sr < 0 || sx - sr > width || sy + sr < 0 || sy - sr > height) {
       skipped++;
@@ -178,7 +184,7 @@ export function draw(ctx, packing, view, options = {}) {
     for (const i of indices) {
       const sr = Math.abs(rs[i]) * scale;
       const sx = xs[i] * scale + tx;
-      const sy = ys[i] * scale + ty;
+      const sy = ys[i] * yScale + ty;
       // moveTo before each arc, or the subpaths get joined by stray line segments.
       ctx.moveTo(sx + sr, sy);
       ctx.arc(sx, sy, sr, 0, TAU);
@@ -203,7 +209,7 @@ export function draw(ctx, packing, view, options = {}) {
   if (highlight >= 0 && highlight < n && Number.isFinite(rs[highlight])) {
     const sr = Math.abs(rs[highlight]) * scale;
     ctx.beginPath();
-    ctx.arc(xs[highlight] * scale + tx, ys[highlight] * scale + ty, sr, 0, TAU);
+    ctx.arc(xs[highlight] * scale + tx, ys[highlight] * yScale + ty, sr, 0, TAU);
     ctx.strokeStyle = palette.highlight;
     ctx.lineWidth = 2.5;
     ctx.stroke();
