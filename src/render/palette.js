@@ -93,8 +93,12 @@ function build(spec) {
 export const THEMES = {
   dark: build({
     background: '#0d1117',
-    interior: '#1b222c',
-    rim: '#3d4655',
+    // The bounding circle. It was #1b222c, barely a step off the background, so in the
+    // story figures the disk everything sits inside was hard to make out at all — and
+    // in chapter 1 that disk *is* one of the four circles being talked about. Lifted
+    // until the edge reads without competing with the fills, which stay much lighter.
+    interior: '#2c3646',
+    rim: '#55617a',
     line: '#8b949e',
     highlight: '#ffffff',
     fillS: 62,
