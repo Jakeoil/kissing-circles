@@ -67,7 +67,7 @@
       <label>color
         <select id="color">
           <option value="type">by region type</option>
-          <option value="cycle">per region</option>
+          <option value="cycle">per family (circle + its triangles)</option>
         </select>
       </label>
       <label><input type="checkbox" id="numbers" /> curvatures</label>
@@ -96,6 +96,13 @@
       the bends by 2 is exactly scaling the plane by 2, which gives a <i>similar</i>
       figure: same shape, twice the size, and therefore identical once the view refits.
       So only the numbers move, and they land on the workbench's own convention.</p>
+      <p><b>Per family</b> colours each region with the circle it was cut out of. A
+      circular region splits into three circles and four triangles; those triangles
+      split into more triangles, so every triangle belongs to some circle however far
+      back. Each circle takes a hue, its triangular fringe takes the same hue lighter,
+      and the hue is derived from the circle itself — so stepping the generation grows
+      the structure instead of repainting it. Half planes are circles of bend 0 and
+      behave the same way.</p>
       <p>Region counts follow <code>(3·5ⁿ − 1)/2</code>, splitting
       <code>circular : triangular</code> as <code>1:0, 3:4, 13:24, 63:124, 313:624</code>.
       The triangular family grows faster and approaches twice the circular one.</p>
@@ -147,6 +154,40 @@
       const CIRCULAR = 'hsl(157 52% 46%)';
       const TRIANGULAR = 'hsl(330 46% 52%)';
       const INK = '#0d1117';
+
+      /**
+       * The colour a region takes under "per family": the colour of the circle it was
+       * cut out of.
+       *
+       * A circular region splits into three circles and four triangles, and those
+       * triangles split into more triangles — so every triangle belongs to some circle,
+       * however far back. `region.anchor` is that circle (or the region itself, when it
+       * is one), and colouring by it makes the ownership visible: each circle and the
+       * triangular fringe it left behind read as one piece.
+       *
+       * The hue comes from the anchor's own boundary circle rather than from its
+       * position in the array, so a circle keeps its colour when the generation changes.
+       * Stepping then shows the structure growing instead of the whole picture
+       * repainting. Lines — curvature 0, the half planes — get a hue like anything else.
+       */
+      const familyHues = new Map();
+      function familyColor(region) {
+        const anchor = region.anchor ?? region;
+        const circle = anchor.m.applyTo(REAL_LINE);
+        if (circle === null) return 'hsl(0 0% 40%)';
+        const key = circle.key();
+        let hue = familyHues.get(key);
+        if (hue === undefined) {
+          // FNV-ish hash of the exact circle, so the hue is a property of the circle.
+          let h = 2166136261;
+          for (let i = 0; i < key.length; i++) {
+            h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+          }
+          hue = (h >>> 0) % 360;
+          familyHues.set(key, hue);
+        }
+        return `hsl(${hue} 58% ${anchor === region ? 46 : 60}%)`;
+      }
 
       const view = new Viewport(1, 1);
       view.flipY = true;                    // Schmidt draws the upper half plane up.
@@ -232,7 +273,7 @@
           const fill =
             colorMode.value === 'type'
               ? region.type === 'J' ? CIRCULAR : TRIANGULAR
-              : `hsl(${(i * 173) % 360} 55% 52%)`;
+              : familyColor(region);
           fillRegion(ctx, view, g, fill);
           drawn++;
         });

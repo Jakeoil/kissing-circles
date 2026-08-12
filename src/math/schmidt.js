@@ -80,6 +80,12 @@ export const JSTAR_INTERIOR = { x: 0.5, y: 0.9 };
  * @property {import('./mobius.js').Mobius} m
  * @property {'J'|'T'} type circular or triangular
  * @property {string} name Schmidt's label, e.g. `𝒱₂` or `C*`
+ * @property {Region} [anchor] the nearest circular ancestor, or the region itself when
+ *   it is circular. A circular region's four triangular children fill the space its
+ *   three circular children leave over, and those triangles subdivide into more
+ *   triangles — so a triangle belongs to the circle it was cut out of, however many
+ *   generations back that was. Carried here because regions have no parent link and a
+ *   renderer cannot recover it. See labs/schmidt.html.
  */
 
 /** Schmidt's labels for the children of each region type. */
@@ -106,11 +112,20 @@ export function seed() {
  * @returns {Region[]}
  */
 export function subdivide(region) {
-  return SUBDIVISION[region.type].map(([name, type]) => ({
-    m: region.m.mul(GENERATORS[name]),
-    type,
-    name: LABELS[region.type][name],
-  }));
+  // What a triangular child inherits: this region if it is circular, else whatever this
+  // region inherited. A circular child anchors to itself and starts a new family.
+  const inherited = region.type === 'J' ? region : region.anchor ?? region;
+
+  return SUBDIVISION[region.type].map(([name, type]) => {
+    /** @type {Region} */
+    const child = {
+      m: region.m.mul(GENERATORS[name]),
+      type,
+      name: LABELS[region.type][name],
+    };
+    child.anchor = type === 'J' ? child : inherited;
+    return child;
+  });
 }
 
 /**
