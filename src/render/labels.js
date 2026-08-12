@@ -22,14 +22,28 @@ import { font as fontById, DEFAULT_FONT } from './fonts.js';
 export let NUMERAL_FONT = fontById(DEFAULT_FONT).stack;
 
 /**
+ * The weight the current face wants, as a CSS numeric weight.
+ *
+ * This used to be the literal 700 everywhere, decided when every face on offer looked
+ * better bold. Latin Modern does not — at 700 it loses the hairline on the 5 and the
+ * flag on the 1, which is most of why one would choose it — and its 17pt optical cut
+ * has no bold at all, so asking for one gets synthetic bolding. Hence a per-face
+ * setting rather than a constant. See plan.md §7.3b.
+ *
+ * @type {number}
+ */
+export let NUMERAL_WEIGHT = fontById(DEFAULT_FONT).weight;
+
+/**
  * Choose the numeral font. Invalidates the cached metrics, since they describe the
  * previous face.
  * @param {string} id
  */
 export function setNumeralFont(id) {
-  const next = fontById(id).stack;
-  if (next === NUMERAL_FONT) return;
-  NUMERAL_FONT = next;
+  const f = fontById(id);
+  if (f.stack === NUMERAL_FONT && f.weight === NUMERAL_WEIGHT) return;
+  NUMERAL_FONT = f.stack;
+  NUMERAL_WEIGHT = f.weight;
   resetFontMetrics();
 }
 
@@ -84,12 +98,13 @@ export function resetFontMetrics() {
  * @param {string} [family]
  * @returns {DigitMetrics}
  */
-export function digitMetrics(ctx, family = NUMERAL_FONT) {
-  if (cached !== null && cachedFor === family) return cached;
+export function digitMetrics(ctx, family = NUMERAL_FONT, weight = NUMERAL_WEIGHT) {
+  const key = `${weight} ${family}`;
+  if (cached !== null && cachedFor === key) return cached;
 
   const probe = 100;
   const saved = ctx.font;
-  ctx.font = `700 ${probe}px ${family}`;
+  ctx.font = `${weight} ${probe}px ${family}`;
   const m = ctx.measureText('0123456789');
   ctx.font = saved;
 
@@ -102,7 +117,7 @@ export function digitMetrics(ctx, family = NUMERAL_FONT) {
     height: (ascent + descent) / probe,
     advance: m.width / 10 / probe,
   };
-  cachedFor = family;
+  cachedFor = key;
   return cached;
 }
 
@@ -168,7 +183,7 @@ export function drawNumeral(ctx, view, circle, text, color, metrics) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = color;
-  ctx.font = `700 ${size}px ${NUMERAL_FONT}`;
+  ctx.font = `${NUMERAL_WEIGHT} ${size}px ${NUMERAL_FONT}`;
 
   // Center on this numeral's own box, not on the average over all ten digits. With
   // oldstyle figures the difference is visible: "11" has no descender while "39" has

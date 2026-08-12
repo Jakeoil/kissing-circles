@@ -56,6 +56,24 @@
         src: url('./assets/stixtwotext-onum.woff2') format('woff2');
       }
 
+      /* Latin Modern Roman, optical size 10 — GUST Font Licence. Declared across the
+         whole weight range on purpose: the file is the regular cut, and covering
+         100–900 with it means a request for any weight draws these glyphs rather than
+         a synthetic bold. Nothing asks for bold today, since the entry in fonts.js
+         says 400, but this makes that safe rather than merely true. */
+      @font-face {
+        font-family: 'LMRoman10';
+        font-weight: 100 900;
+        font-display: swap;
+        src: url('./assets/lmroman10.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'LMRoman10 Oldstyle';
+        font-weight: 100 900;
+        font-display: swap;
+        src: url('./assets/lmroman10-onum.woff2') format('woff2');
+      }
+
       /* Caladea: metric-compatible with Cambria, Apache 2.0. See assets/README.md. */
       @font-face {
         font-family: 'Caladea';

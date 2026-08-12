@@ -19,6 +19,9 @@
  * @property {string} stack CSS font-family list
  * @property {boolean} oldstyle whether its figures descend
  * @property {boolean} hosted whether the project ships the file
+ * @property {number} weight the CSS weight it is drawn at. 700 for everything that
+ *   predates the field, which is how adding it changed no existing picture; Latin
+ *   Modern is drawn at 400 because bold coarsens exactly what one picks it for.
  */
 
 /** @type {NumeralFont[]} */
@@ -29,6 +32,7 @@ export const FONTS = [
     stack: 'Caladea, Cambria, Georgia, serif',
     oldstyle: false,
     hosted: true,
+    weight: 700,
   },
   {
     id: 'times',
@@ -36,6 +40,7 @@ export const FONTS = [
     stack: '"Times New Roman", Times, "Liberation Serif", serif',
     oldstyle: false,
     hosted: false,
+    weight: 700,
   },
   {
     id: 'georgia',
@@ -43,6 +48,7 @@ export const FONTS = [
     stack: 'Georgia, "Liberation Serif", serif',
     oldstyle: true,
     hosted: false,
+    weight: 700,
   },
   {
     id: 'garamond',
@@ -50,6 +56,7 @@ export const FONTS = [
     stack: '"EB Garamond", Georgia, serif',
     oldstyle: true,
     hosted: true,
+    weight: 700,
   },
   {
     id: 'crimson',
@@ -57,6 +64,7 @@ export const FONTS = [
     stack: '"Crimson Pro", Georgia, serif',
     oldstyle: true,
     hosted: true,
+    weight: 700,
   },
   {
     id: 'stix',
@@ -64,6 +72,26 @@ export const FONTS = [
     stack: '"STIX Two Text", Georgia, serif',
     oldstyle: true,
     hosted: true,
+    weight: 700,
+  },
+  {
+    // GUST's OpenType successor to Computer Modern — the face TeX has set mathematics
+    // in since 1978, and the reason the numerals in a TeX-drawn gasket look the way
+    // they do. Drawn at 400: see the weight property above.
+    id: 'lmroman',
+    label: 'Latin Modern Roman',
+    stack: '"LMRoman10", Georgia, serif',
+    oldstyle: false,
+    hosted: true,
+    weight: 400,
+  },
+  {
+    id: 'lmroman-onum',
+    label: 'Latin Modern Roman (oldstyle)',
+    stack: '"LMRoman10 Oldstyle", Georgia, serif',
+    oldstyle: true,
+    hosted: true,
+    weight: 400,
   },
 ];
 

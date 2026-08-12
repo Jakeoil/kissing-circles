@@ -22,7 +22,7 @@ from `render/` or `ui/` and runs under bare Node.
 |---|---|
 | Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
 | §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
-| Chapters | **1** (Soddy's poem, Descartes), **2** (the jump, Vieta), **6** (two regions) written; 3, 4, 5, 7, 8, 9 outlined in §7.4 |
+| Chapters | **1** (Soddy's poem, Descartes), **2** (the jump, Vieta), **6** (two regions), **7** (the arrangement, the gasket inside it) written; 3, 4, 5, 8, 9 outlined in §7.4 |
 | Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms. Generations to 20, windowed (§8.4b) |
 | Tests | 235, `npm test`, no dependencies |
 
@@ -38,12 +38,16 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    `Packing._expand` calls it three times per emit to look up parent indices. Carrying
    indices on the frame removes those without the ~50 MB a string cache would cost.
 2. **Chapters 3, 4, 5.** 4 and 5 need no new code at all. 3 needs a float-vs-exact
-   comparison, which is also a listed lab.
-3. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
+   comparison, which is also a listed lab. Then 8 and 9, where 9 is the payoff.
+3. **`arrangement()` is the slow path** — 12 s at generation 14 against 0.4 s for the
+   partition, because it prunes position on the circumscribed disc (median 22× the
+   region) rather than the box. Chapter 7's figure stops at generation 8 for this
+   reason. Sound, but the weakest of the three bounds in §8.4b.
+4. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
-4. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
+5. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-5. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
+6. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
    place. Probably a limit of the translation-and-ordering search, not of the
    mathematics.
 
@@ -563,17 +567,19 @@ Reading curvatures off the picture is the point of the tool, so the typeface is 
 decoration. The catalogue is `src/render/fonts.js`; the mechanics are in
 [assets/FONTS.md](assets/FONTS.md).
 
-**Six faces, chosen in the app**, with the choice carried in the share link and
+**Eight faces, chosen in the app**, with the choice carried in the share link and
 remembered locally:
 
-| Font | Figures | Source |
-|---|---|---|
-| **Caladea** (default) | lining | shipped, Apache 2.0 |
-| Times New Roman | lining | system |
-| Georgia | **oldstyle** | system |
-| EB Garamond | **oldstyle** | shipped, SIL OFL |
-| Crimson Pro | **oldstyle** | shipped, SIL OFL |
-| STIX Two Text | **oldstyle** | shipped, SIL OFL |
+| Font | Figures | Weight | Source |
+|---|---|---|---|
+| **Caladea** (default) | lining | 700 | shipped, Apache 2.0 |
+| Times New Roman | lining | 700 | system |
+| Georgia | **oldstyle** | 700 | system |
+| EB Garamond | **oldstyle** | 700 | shipped, SIL OFL |
+| Crimson Pro | **oldstyle** | 700 | shipped, SIL OFL |
+| STIX Two Text | **oldstyle** | 700 | shipped, SIL OFL |
+| Latin Modern Roman | lining | **400** | shipped, GUST Font Licence |
+| Latin Modern Roman | **oldstyle** | **400** | shipped, GUST Font Licence |
 
 Caladea stays the default because it is what the deployed site already draws with, and
 §7.2 says adding a control must not change the default view.
@@ -602,7 +608,80 @@ faces from x-height rather than from the full box — a per-face metric, not a g
 change.
 
 **Adding a face** is: an entry in `src/render/fonts.js`, an `@font-face` in `index.html`
-if it is shipped, and nothing else.
+if it is shipped, and nothing else. The entry carries a `weight`, because the literal
+`700` in `labels.js` was an assumption rather than a decision — see §7.3b.
+
+### 7.3b A seventh face — Latin Modern Roman
+
+Jake's pick, and the strongest candidate on the list. **Latin Modern Roman** is GUST's
+OpenType successor to Computer Modern, the typeface TeX has set mathematics in since
+1978. For a tool whose whole output is numbers in circles, "the font mathematics is
+already written in" is the right instinct.
+
+Everything below was measured against the copy installed on Jake's Mac
+(`~/Library/Fonts/lmroman10-regular.otf`, version 2.007), not looked up.
+
+| | |
+|---|---|
+| Family | Latin Modern Roman, optical size 10 — `LMRoman10` |
+| Licence | **GUST Font Licence**, legally identical to the LPPL. Free to redistribute and to embed on the web. |
+| Units/em | 1000 |
+| OpenType features | `dlig frac liga lnum locl onum pnum tnum zero` — in every face checked |
+| Size as woff2 | **44.5 KB** regular, 44.5 KB bold |
+
+**It must be self-hosted, and that is the whole answer to "will it work everywhere".**
+Latin Modern ships with TeX distributions; it is on no stock Mac, Windows, Android or
+iPhone. Naming it in a font stack would render it for Jake and silently fall back to
+Georgia for everyone else — the failure that is hardest to notice, because the person
+who chose it is the one person who sees it working. Shipping the woff2 makes the
+question moot: it is then exactly as portable as Caladea, which is to say completely.
+
+At 44.5 KB it is cheaper than three of the five faces already in `assets/` — half of
+Crimson Pro's neighbourhood, a third of STIX Two Text, a quarter of EB Garamond.
+
+**It can be offered twice, lining and oldstyle.** The `onum` feature is present, and the
+oldstyle glyphs are real rather than nominal — measured against the 1000-unit em:
+
+```
+lining     1:0..666   2:0..666   3:−22..666  4:0..677   7:−22..676  9:−22..666
+oldstyle   1:0..472   2:0..472   3:−216..472 4:−194..485 7:−213..485 9:−216..472
+```
+
+3, 4, 7 and 9 descend 19–22 units per 100 while 1 and 2 sit on the baseline, and the
+tops drop from cap height to x-height. That is the signature `assets/FONTS.md` already
+uses to tell a genuine oldstyle face from a font that merely advertises the feature, and
+Latin Modern passes it. So the existing `pyftfeatfreeze -f onum` pipeline applies
+unchanged — necessary, because canvas still cannot select `onum` at draw time.
+
+**Small caps: available, but it is a prose face, not a numeral one.**
+`lmromancaps10-regular.otf` is on the same machine and carries the same feature set. It
+belongs to the story pages if anywhere — §7.3 is about numerals, and a caps face has
+nothing to offer a digit that the roman does not.
+
+**The weight is the decision, not the optical size.** Rendered side by side against
+Jake's reference image — which is this project's own `(−6, 11, 14, 15)`, the 86 between
+14, 15 and 11 being the Vieta jump `2(11+14+15) − (−6)` — **LMRoman10 regular matches it
+and LMRoman10 bold does not.** The flagged `1` with its full serif foot, the curled `2`,
+the hairline on the `5`: all present at 400 and coarsened at 700. The optical sizes are a
+much smaller effect; 17 is slightly finer than 10 at these sizes and 12 sits between
+them, but any of the three would pass. The weight is not close.
+
+**Which is a problem, because `labels.js` hard-codes 700.** Every numeral is drawn
+`700 ${size}px`, decided when the only faces on offer looked better bold. Latin Modern
+does not, and `lmroman17` has no bold cut at all — asking for 700 there gets synthetic
+bolding, which is worse than either. So adding this face properly means **a `weight`
+field on the entry in `src/render/fonts.js`**, defaulting to 700 so no existing face
+changes, and `labels.js` reading it instead of the literal. That is a small change and
+the only one; §7.3 already promises that adding a face is an entry plus an `@font-face`,
+and this is the one thing that promise did not cover.
+
+*(The comparison page is `_scratch/compare.html`, gitignored. It defeats synthetic
+bolding by declaring one file across `font-weight: 100 900`, which is the trick that
+lets it show a real 400 through a code path that asks for 700.)*
+
+**Latin Modern Math** matches the roman by construction and would be the consistent
+source if the project ever needs symbols rather than digits. Not needed yet; noted so
+the choice is not re-litigated later.
 
 ### 7.3a Pinned — a quadruple you can handle
 
@@ -1036,10 +1115,24 @@ checked against a primary source, that is said explicitly.
   of the paper; see [notes/schmidt-generations.md](notes/schmidt-generations.md).*
   Not redistributed here — `*.pdf` is gitignored.
 
+- **Stange, K. E.**, "The Apollonian structure of Bianchi groups",
+  *Transactions of the American Mathematical Society* **370** (2018), 6169–6219.
+  [arXiv:1505.03121](https://arxiv.org/abs/1505.03121).
+  **The source of chapter 7's result and of the term "Schmidt arrangement" itself.**
+  Schmidt (1975) built the subdivision; this is the paper that framed it as the orbit of
+  the extended real line under the Bianchi group PSL(2, O_K) and located Apollonian
+  packings inside it. What chapter 7 does — find a Descartes quadruple in the
+  arrangement, grow a packing from it, check the circles are already there — is a
+  demonstration of her theorem, not a discovery, and the chapter says so.
+  Jake's reference figure `bigger-soddy.png`, the `(−6, 11, 14, 15)` packing labelled in
+  Computer Modern, is from this paper — and is what set the numeral typeface for §7.3b.
+  *Cited from the reference; the embedding was verified computationally here rather than
+  read out of the proof.*
+
 - **Stange, K. E.**, [Schmidt Arrangements](https://math.katestange.net/illustration/schmidt-arrangements/)
   and [Visualizing imaginary quadratic fields](https://math.colorado.edu/~kstange/papers/Stange-short-exp.pdf).
-  The modern framing: the orbit of the extended real line under PSL(2, O_K), and where
-  Apollonian packings sit inside it.
+  The expository companions to the above, and the illustrations worth comparing our
+  rendering against.
 
 - **Ford, L. R.**, "Fractions", *American Mathematical Monthly* **45** (1938), 586–601.
   Ford circles and mesh triangles, which Schmidt names as the thing Farey sets extend.
