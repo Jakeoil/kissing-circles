@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The arrangement — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+  </head>
+  <body>
+    <nav class="crumbs">
+      <a href="./index.html">Contents</a> ·
+      <a href="../index.html">Workbench</a>
+    </nav>
+
+    <main>
+      <span class="chapter-number">Chapter 7</span>
+      <h1>The arrangement</h1>
+
+      <p class="lede">
+        Chapter 6 gave two rules and one region. Apply both rules to every region, and
+        keep going. What appears is bigger than the packing this project started with —
+        and the packing is sitting inside it.
+      </p>
+
+      <p>
+        Schmidt's subdivision does not stop at one step. Every circular region splits
+        into seven; every triangular region splits into four; each of those pieces is
+        itself circular or triangular, and splits in turn. Nothing chooses between the
+        rules. Both apply, everywhere, forever.
+      </p>
+
+      <p>
+        Draw the boundary circle of every region at every generation and you get the
+        <b>Schmidt arrangement</b> of <code>ℤ[i]</code>. Schmidt built the subdivision in
+        1975; the name, and the modern reading of it, are Katherine Stange's — the
+        arrangement is the orbit of the real line under the Bianchi group
+        <code>PSL(2, ℤ[i])</code>.
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <span>show</span>
+          <button id="show-outline" type="button" aria-pressed="true">outlines</button>
+          <button id="show-fill" type="button" aria-pressed="false">filled</button>
+          <button id="show-gasket" type="button" aria-pressed="false">the gasket inside it</button>
+          <span class="spacer"></span>
+          <span>generation</span>
+          <button id="gen-down" type="button">−</button>
+          <b id="genv">5</b>
+          <button id="gen-up" type="button">+</button>
+        </div>
+        <canvas id="figure" width="1100" height="620"></canvas>
+        <figcaption id="caption"></figcaption>
+      </figure>
+
+      <h2>Why outlines</h2>
+
+      <p>
+        Press <b>filled</b>. What comes back is wallpaper.
+      </p>
+
+      <p>
+        An Apollonian packing can be filled because its circles have disjoint interiors —
+        nothing covers anything, so draw order does not matter and a fill is honest.
+        <b>The arrangement's circles nest.</b> A region's boundary circle contains the
+        boundary circles of every one of its descendants, so each generation paints over
+        its own parent. What survives is only the last coat: the boundary between
+        whichever circles happened to be drawn most recently.
+      </p>
+
+      <p>
+        The result is not blank — it is a handsome repeating pattern, which is the
+        trap. It has the visual busyness of structure while carrying none of the actual
+        structure. You cannot tell from it which circle contains which, and containment
+        is the entire content of the arrangement. Outlines keep it because an outline
+        does not hide what is behind it.
+      </p>
+
+      <p>
+        This is the same lesson as chapter 6 from the other side. There the mistake was
+        superimposing two subdivisions that bound different regions; here it is using a
+        drawing operation whose correctness depended on an assumption that has quietly
+        stopped holding. Both were made in this project before they were understood.
+      </p>
+
+      <h2>The factor of two</h2>
+
+      <p>
+        Every curvature in the arrangement is even. Schmidt writes this as
+        <code>ρ(F) ∈ 2ℕ₀</code>, and it is not a convention that could have gone the
+        other way — it falls out of the construction. The first generation is the unit
+        square with a circle of radius ½ at the midpoint of each side, so the smallest
+        curvature that appears at all is 2.
+      </p>
+
+      <p>
+        So the strip packing <code>(0, 0, 1, 1)</code> appears here as
+        <code>(0, 0, 2, 2)</code>, and the classic packing <code>(−1, 2, 2, 3)</code>
+        appears as <code>(−2, 4, 4, 6)</code>. Same picture at half the size. Dividing
+        every bend by 2 is exactly scaling the plane by 2, which is why the lab's
+        <b>lowest terms</b> toggle changes the numbers and not the geometry.
+      </p>
+
+      <h2>The packing inside the arrangement</h2>
+
+      <p>
+        Press <b>the gasket inside it</b>. The lit circles are an ordinary Apollonian
+        packing — the one on the workbench — and every one of them is a circle the
+        arrangement had already drawn.
+      </p>
+
+      <p>
+        <b>This is Stange's theorem, and what follows is a demonstration of it rather
+        than a discovery.</b> That Apollonian packings sit inside the Schmidt arrangement
+        is the result her 2018 paper is built around. The figure that prompted this
+        chapter — the <code>(−6, 11, 14, 15)</code> packing with its bends set in
+        Computer Modern — is hers too.
+      </p>
+
+      <p>
+        What the program can add is the check. Searching the arrangement for four
+        mutually tangent circles satisfying Descartes'
+        theorem, allowing one to be re-oriented because a bounding circle must have
+        negative bend, turns up <code>(−2, 4, 4, 6)</code> — and also
+        <code>(−4, 6, 12, 14)</code>, <code>(−2, 4, 6, 12)</code> and
+        <code>(0, 2, 2, 8)</code>, which are <code>(−2, 3, 6, 7)</code>,
+        <code>(−1, 2, 3, 6)</code> and <code>(0, 1, 1, 4)</code> doubled. Grow a packing
+        from the first of these and compare it against the arrangement:
+      </p>
+
+      <div class="aside">
+        <p>
+          Of the gasket's circles with curvature up to 100, <b>all 69 are present in the
+          arrangement</b>. Up to 200, 94 of 100 — and the six absent are exactly the ones
+          the arrangement has not reached at this depth, not circles it lacks. Push the
+          generation up and they arrive.
+        </p>
+      </div>
+
+      <p>
+        This is chapter 6's aside made concrete. The Apollonian move is the letter
+        <code>C</code> applied to a triangular region. A packing is what you get by using
+        that one letter and discarding <code>𝒱₁ 𝒱₂ 𝒱₃ ℰ₁ ℰ₂ ℰ₃</code> — one letter's
+        worth of a seven-letter alphabet. Every circle of the packing is therefore a
+        circle of the arrangement, reached by a word that happens to use no other letter.
+      </p>
+
+      <p>
+        <b>The packing was never the whole object.</b> It is one orbit inside a larger
+        one, and the larger one is where the arithmetic lives: the arrangement is
+        indexed by <code>ℤ[i]</code>, and chapter 8 asks what the same construction looks
+        like one dimension down, over <code>ℤ</code>.
+      </p>
+
+      <div class="aside">
+        <p>
+          <b>On being able to draw this at all.</b> Until recently this figure stopped at
+          generation 6, because the subdivision expands 5<sup>n</sup> regions whether or
+          not they are anywhere near the picture. Pruning it needs a bound on everything a
+          region's subtree can reach, and the one that works is that subdivision is a
+          <em>partition</em>: a region's descendants lie inside it, so one exact bounding
+          box bounds a whole subtree's position and its size at once. See
+          <a href="../labs/schmidt.html">the Schmidt lab</a>, which now steps to
+          generation 20.
+        </p>
+      </div>
+
+      <p style="color: var(--dim); font-size: .9rem;">
+        Asmus L. Schmidt, “Diophantine approximation of complex numbers”,
+        <i>Acta Mathematica</i> <b>134</b> (1975), 1–85 — the arrangement is his Fig. 1
+        and Fig. 1* applied recursively. Katherine E. Stange, “The Apollonian structure
+        of Bianchi groups”, <i>Transactions of the American Mathematical Society</i>
+        <b>370</b> (2018), 6169–6219,
+        <a href="https://arxiv.org/abs/1505.03121">arXiv:1505.03121</a> — the name
+        “Schmidt arrangement”, the Bianchi-group framing, and the embedding this chapter
+        demonstrates.
+      </p>
+
+      <div class="pager">
+        <a href="./06-two-regions.html">← Two kinds of region</a>
+        <span>Next: Ford circles, one dimension down</span>
+      </div>
+    </main>
+
+    <script type="module">
+      import { arrangement } from '../src/math/schmidt.js';
+      import { Circle } from '../src/math/circle.js';
+      import { Packing } from '../src/math/packing.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { draw } from '../src/render/renderer.js';
+
+      const canvas = document.getElementById('figure');
+      const ctx = canvas.getContext('2d');
+      const caption = document.getElementById('caption');
+      const genOut = document.getElementById('genv');
+      const buttons = {
+        outline: document.getElementById('show-outline'),
+        fill: document.getElementById('show-fill'),
+        gasket: document.getElementById('show-gasket'),
+      };
+
+      const MIN_GEN = 2;
+      const MAX_GEN = 8;
+      let generation = 5;
+      let mode = 'outline';
+
+      const view = new Viewport(1, 1);
+      view.flipY = true;              // Schmidt's upper half plane is drawn up.
+
+      const GASKET = '#ffd479';
+      const DIM = 'rgba(139, 148, 158, 0.34)';
+      const BACKDROP = '#0d1117';
+
+      // The doubled classic packing, sitting in the arrangement tangent to the real line
+      // at the origin: bounding circle centre (0, ½) radius ½, so bend −2. Found by
+      // searching the arrangement for a valid Descartes quadruple rather than assumed —
+      // (−2, 4, 4, 6) is (−1, 2, 2, 3) at half the size.
+      const gasketRoot = [
+        Circle.fromCurvature(-2, 0, -1),
+        Circle.fromCurvature(4, 0, 3),
+        Circle.fromCurvature(4, 0, 1),
+        Circle.fromCurvature(6, 2, 3),
+      ];
+
+      /** Keys of every circle in the packing, so arrangement circles can be tested. */
+      const gasketKeys = (() => {
+        const pk = new Packing(gasketRoot, { maxCurvature: 3000n, maxDepth: 4096 });
+        pk.grow(Infinity);
+        const keys = new Set();
+        for (let i = 0; i < pk.count; i++) {
+          const c = pk.circles[i];
+          keys.add(c.key());
+          // The bounding circle appears in the arrangement with the opposite
+          // orientation, since the arrangement has no negatively bent circles.
+          keys.add(new Circle(-c.bbar, -c.b, c.bz.scale(-1n)).key());
+        }
+        return keys;
+      })();
+
+      let built = null;
+
+      function build() {
+        genOut.textContent = String(generation);
+        built = arrangement({ maxGeneration: generation, maxCurvature: 600n });
+      }
+
+      function fit() {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.564);
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(cssWidth, cssHeight);
+        view.fit({ minX: -0.55, minY: -0.12, maxX: 1.55, maxY: 1.12 }, 0.03);
+        render();
+      }
+
+      function render() {
+        const stats = draw(ctx, built, view, {
+          colorMode: 'depth',
+          theme: 'dark',
+          labels: false,
+          style: mode === 'fill' ? 'fill' : 'stroke',
+        });
+
+        if (mode === 'gasket') {
+          // draw() is only run here for its `visible` list — stroking dim over its
+          // colored circles would not hide them, so the canvas is cleared and both
+          // passes are drawn by hand. A second draw() call would clear it too, but it
+          // would also throw away the list.
+          ctx.save();
+          ctx.fillStyle = BACKDROP;
+          ctx.fillRect(0, 0, view.width, view.height);
+          ctx.strokeStyle = DIM;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (const i of stats.visible) {
+            const r = Math.abs(built.r[i]) * view.scale;
+            const p = view.worldToScreen(built.x[i], built.y[i]);
+            ctx.moveTo(p.x + r, p.y);
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+
+          let lit = 0;
+          ctx.strokeStyle = GASKET;
+          ctx.lineWidth = 1.75;
+          ctx.beginPath();
+          for (const i of stats.visible) {
+            if (!gasketKeys.has(built.circles[i].key())) continue;
+            const r = Math.abs(built.r[i]) * view.scale;
+            const p = view.worldToScreen(built.x[i], built.y[i]);
+            ctx.moveTo(p.x + r, p.y);
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            lit++;
+          }
+          ctx.stroke();
+          ctx.restore();
+
+          caption.textContent =
+            `The arrangement to generation ${generation}, with ${lit.toLocaleString()} of its `
+            + `${stats.drawn.toLocaleString()} drawn circles belonging to the doubled `
+            + '(−1, 2, 2, 3) packing. The packing is a sub-orbit: the letter C applied '
+            + 'to triangular regions, and nothing else.';
+          return;
+        }
+
+        caption.textContent = mode === 'fill'
+          ? 'The same arrangement, filled. The circles nest, so each generation paints '
+            + 'over its own parent and only the last coat survives. It reads as a '
+            + 'pattern, but containment — the whole content of the arrangement — is no '
+            + 'longer visible anywhere in it.'
+          : `The Schmidt arrangement of ℤ[i] to generation ${generation} — `
+            + `${stats.drawn.toLocaleString()} circles, every curvature even.`;
+      }
+
+      function step(d) {
+        const next = Math.min(MAX_GEN, Math.max(MIN_GEN, generation + d));
+        if (next === generation) return;
+        generation = next;
+        build();
+        render();
+      }
+
+      for (const [key, button] of Object.entries(buttons)) {
+        button.addEventListener('click', () => {
+          mode = key;
+          for (const [k, b] of Object.entries(buttons)) {
+            b.setAttribute('aria-pressed', String(k === mode));
+          }
+          render();
+        });
+      }
+      document.getElementById('gen-up').addEventListener('click', () => step(1));
+      document.getElementById('gen-down').addEventListener('click', () => step(-1));
+      window.addEventListener('resize', fit);
+
+      build();
+      fit();
+    </script>
+  </body>
+</html>

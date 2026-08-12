@@ -131,6 +131,9 @@ figcaption {
   color: var(--dim);
 }
 .figure-controls label { display: flex; gap: .4rem; align-items: center; }
+/* Pushes what follows to the right, so a figure can group its controls into a set that
+   chooses what to draw and a set that chooses how deep. Collapses when the row wraps. */
+.figure-controls .spacer { flex: 1 1 0; min-width: 0; }
 
 button, select {
   background: var(--bg);
