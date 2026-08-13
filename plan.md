@@ -22,7 +22,7 @@ from `render/` or `ui/` and runs under bare Node.
 |---|---|
 | Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
 | §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
-| Chapters | **1** (Soddy), **2** (the jump), **4** (generations), **5** (which numbers), **6** (two regions), **7** (the arrangement) written; **3, 8, 9** outlined in §7.4 |
+| Chapters | **All nine written.** 1 Soddy · 2 the jump · 3 whole numbers · 4 generations · 5 which numbers · 6 two regions · 7 the arrangement · 8 Ford circles · 9 walking to e^i |
 | Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms. Generations to 20, windowed (§8.4b) |
 | Tests | 235, `npm test`, no dependencies |
 
@@ -37,8 +37,12 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
    `Packing._expand` calls it three times per emit to look up parent indices. Carrying
    indices on the frame removes those without the ~50 MB a string cache would cost.
-2. **Chapters 3, 8, 9.** 3 needs a float-vs-exact comparison, which is also a listed
-   lab; 8 needs Ford-circle word recognition; 9 is the payoff and should not be rushed.
+2. **The walk deserves exact input** (§7.4 ch. 9). The expansion of `e^i` reproduces
+   Schmidt's closed form — runs of `𝒱₃` of length 1, 3, 5, 7, 9, 11 — and then stops at
+   depth 51, because the target arrives as a double and the regions outrun it. The
+   subdivision is exact; feeding it a high-precision or exact target would push the
+   confirmation as deep as wanted. The stop is principled, not a bug, but it is the one
+   place where this project's exactness ends at the *input* rather than at draw time.
 3. **`arrangement()` is the slow path** — 12 s at generation 14 against 0.4 s for the
    partition, because it prunes position on the circumscribed disc (median 22× the
    region) rather than the box. Chapter 7's figure stops at generation 8 for this

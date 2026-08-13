@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Walking to e^i — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+    <style>
+      #word { font-family: ui-monospace, Menlo, monospace; font-size: .82rem;
+              line-height: 1.9; padding: .5rem .9rem; border-top: 1px solid var(--edge);
+              color: var(--dim); word-break: break-word; min-height: 2.4em; }
+      #word b { color: var(--bright); font-weight: 600; }
+      #word .run { color: var(--accent); }
+      #target { font-family: ui-monospace, Menlo, monospace; width: 11rem; }
+    </style>
+  </head>
+  <body>
+    <nav class="crumbs">
+      <a href="./index.html">Contents</a> ·
+      <a href="../index.html">Workbench</a>
+    </nav>
+
+    <main>
+      <span class="chapter-number">Chapter 9</span>
+      <h1>Walking to e<sup>i</sup></h1>
+
+      <p class="lede">
+        A real number's continued fraction is the sequence of intervals closing in on it.
+        A complex number's is the sequence of <em>regions</em>. Here is one being
+        computed, and it comes out matching a formula written down in 1975.
+      </p>
+
+      <p>
+        Chapter 8 left the question. On the line, you pin a number down by choosing, at
+        each mediant, which side it falls on. In the plane, chapter 6 gave you seven
+        pieces to choose from instead of two, and chapter 7 applied that everywhere. So
+        the algorithm writes itself: <b>ask which child region contains the number, step
+        into it, and repeat.</b>
+      </p>
+
+      <p>
+        The letters that come out — <code>𝒱₁ 𝒱₂ 𝒱₃ ℰ₁ ℰ₂ ℰ₃ C</code> — are the expansion.
+        Nothing else is needed. There is no division, no remainder, no
+        <code>⌊x⌋</code>: just containment, tested against the exact circles from
+        chapter 6.
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <span>number</span>
+          <select id="preset"></select>
+          <input id="target" type="text" spellcheck="false" />
+          <span class="spacer"></span>
+          <button id="back" type="button" title="[">−</button>
+          <b id="depthv">0</b>
+          <button id="fwd" type="button" title="]">+</button>
+          <button id="run" type="button">walk</button>
+          <button id="reset" type="button">reset</button>
+        </div>
+        <canvas id="figure" width="1100" height="560"></canvas>
+        <div id="word"></div>
+        <figcaption id="caption"></figcaption>
+      </figure>
+
+      <h2>What the walk says about e<sup>i</sup></h2>
+
+      <p>
+        Press <b>walk</b> with <code>e^i</code> selected and let it run. The word is not
+        random and not periodic. It falls into blocks:
+      </p>
+
+      <div class="aside">
+        <p style="text-align:center; margin:0">
+          <code>C C* 𝒱₃ · C C* 𝒱₃³ · C C* 𝒱₃⁵ · C C* 𝒱₃⁷ · C C* 𝒱₃⁹ · C C* 𝒱₃¹¹ · …</code>
+        </p>
+      </div>
+
+      <p>
+        A pair of <code>C</code> moves, then a run of <code>𝒱₃</code>; and the runs go
+        <b>1, 3, 5, 7, 9, 11</b> — the odd numbers, in order. <b>Schmidt derived that
+        closed form in 1975</b>, and this program does not know it. The walk above tests
+        geometric containment and nothing else; the pattern is what comes out.
+      </p>
+
+      <p>
+        That is the check worth having. A picture can be made to look convincing by
+        accident. A word that reproduces a formula derived independently, fifty years
+        earlier, cannot.
+      </p>
+
+      <div class="aside">
+        <p>
+          If this feels familiar, it should. The ordinary continued fraction of
+          <code>e</code> is <code>[2; 1, 2, 1, 1, 4, 1, 1, 6, 1, 1, 8, …]</code> — a
+          fixed preamble and then <b>even</b> numbers climbing by two. One dimension up,
+          <code>e<sup>i</sup></code> gives a fixed preamble and <b>odd</b> numbers
+          climbing by two. The same number keeping the same kind of secret in a different
+          alphabet.
+        </p>
+      </div>
+
+      <h2>Where it stops, and why that is the right ending</h2>
+
+      <p>
+        The walk halts around depth 50. Not because the subdivision runs out — it is
+        exact and goes on forever — but because <code>e<sup>i</sup></code> arrives here
+        as a <em>double</em>. By depth 50 the regions are smaller than the last bit of a
+        64-bit float, and the number can no longer say which one it is in.
+      </p>
+
+      <p>
+        Chapter 3 made the case for exact arithmetic and drew the line at the edge of the
+        system: one rounding per circle, at draw time, never fed back. This is the other
+        edge. <b>The machinery is exact; the input is not.</b> Feed it a Gaussian
+        rational and it would run as deep as you like — which is exactly why the
+        interesting numbers are the ones that are not.
+      </p>
+
+      <h2>Three kinds of number</h2>
+
+      <p>
+        Try the other presets, and the parallel with ordinary continued fractions comes
+        out complete:
+      </p>
+
+      <ul>
+        <li><b>A rational point terminates.</b> <code>(1+i)/2</code> is a vertex of the
+          subdivision, so the walk reaches it and stops — as <code>3/8</code> has a
+          finite continued fraction and nothing after it.</li>
+        <li><b>Some numbers go periodic.</b> <code>φ·i</code> repeats
+          <code>𝒱₁ 𝒱₂</code> forever, the way the golden ratio is
+          <code>[1; 1, 1, 1, …]</code>. <code>i</code> settles into
+          <code>𝒱₂*</code> repeating after a short preamble — eventually periodic, like a
+          quadratic irrational.</li>
+        <li><b>And some do neither</b>, but are not thereby random. That is
+          <code>e<sup>i</sup></code>.</li>
+      </ul>
+
+      <h2>The figure that was wanted</h2>
+
+      <p>
+        In March 2004, writing about Gaussian integers and complex continued fractions,
+        Ed Pegg Jr described this construction and said he could not produce the picture.
+        That column is what set this project going, and this chapter is that picture:
+        the region containing <code>e<sup>i</sup></code>, generation by generation, in
+        exact integer arithmetic, in a browser.
+      </p>
+
+      <p>
+        Which is the end of the story, and about a fifth of what is in the paper.
+        Schmidt's construction runs over <code>ℤ[i]</code>; there are other imaginary
+        quadratic fields, each with its own arrangement and its own continued fraction.
+        The workbench is still there, and it still goes deeper than you can look.
+      </p>
+
+      <p style="color: var(--dim); font-size: .9rem;">
+        Asmus L. Schmidt, “Diophantine approximation of complex numbers”,
+        <i>Acta Mathematica</i> <b>134</b> (1975), 1–85 — the algorithm, and the closed
+        form for the expansion. Ed Pegg Jr, “Gaussian Numbers”, <i>MAA Math Games</i>,
+        15 March 2004.
+      </p>
+
+      <div class="pager">
+        <a href="./08-ford-circles.html">← Ford circles</a>
+        <a href="./index.html">Contents</a>
+      </div>
+    </main>
+
+    <script type="module">
+      import { setupChapter } from './chapter.js';
+      import { seed, subdivide, geometry, regionBox } from '../src/math/schmidt.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { theme as themeFor } from '../src/render/palette.js';
+      import { fillRegion, outlineRegion, labelRegion } from '../src/render/regions.js';
+
+      const canvas = document.getElementById('figure');
+      const ctx = canvas.getContext('2d');
+      const caption = document.getElementById('caption');
+      const wordBox = document.getElementById('word');
+      const depthOut = document.getElementById('depthv');
+      const preset = document.getElementById('preset');
+      const targetInput = document.getElementById('target');
+
+      const PHI = (1 + Math.sqrt(5)) / 2;
+      const PRESETS = [
+        { label: 'e^i', x: Math.cos(1), y: Math.sin(1) },
+        { label: 'i', x: 0, y: 1 },
+        { label: 'φ·i', x: 0, y: PHI },
+        { label: '(1+i)/2 — a vertex', x: 0.5, y: 0.5 },
+        { label: '√2 + i/√3', x: Math.SQRT2, y: 1 / Math.sqrt(3) },
+      ];
+      for (const [i, p] of PRESETS.entries()) {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = p.label;
+        preset.append(o);
+      }
+
+      let target = { x: PRESETS[0].x, y: PRESETS[0].y };
+      /** The chain of regions from the seed down, one per generation. */
+      let chain = [seed()];
+      let timer = 0;
+
+      /**
+       * Below this, a double no longer determines which region a point is in.
+       *
+       * Not a fudge factor — the honest end of the walk. The subdivision is exact and
+       * unbounded; the *number* is 53 bits. Once a region is narrower than the spacing
+       * of doubles near the target, "which child contains it" has no answer the input
+       * can support, and continuing would be inventing letters.
+       */
+      const FLOOR = 8 * Number.EPSILON;
+
+      function redrawFigure() { render(); }
+
+      const chapter = setupChapter({
+        prev: { href: './08-ford-circles.html', title: 'Ford circles' },
+        redraw: () => redrawFigure(),
+      });
+
+      const view = new Viewport(1, 1);
+      view.flipY = true;
+
+      /** Same rule the renderer fills by: on the interior's side of every constraint. */
+      function contains(region, x, y) {
+        const g = geometry(region);
+        if (g === null) return false;
+        return g.constraints.every((c) => {
+          if (c.isLine()) {
+            const nx = Number(c.bz.re);
+            const ny = Number(c.bz.im);
+            const off = c.lineOffset();
+            return (nx * x + ny * y - off)
+              * (nx * g.interior.x + ny * g.interior.y - off) >= 0;
+          }
+          const f = c.toFloat();
+          const r = Math.abs(f.r);
+          return (Math.hypot(x - f.x, y - f.y) - r)
+            * (Math.hypot(g.interior.x - f.x, g.interior.y - f.y) - r) >= 0;
+        });
+      }
+
+      /** @returns {boolean} whether a step was actually taken */
+      function step() {
+        const here = chain[chain.length - 1];
+        const box = regionBox(here);
+        if (box !== null) {
+          const size = Math.max(box.maxX - box.minX, box.maxY - box.minY);
+          const grain = Math.max(Math.abs(target.x), Math.abs(target.y), 1) * FLOOR;
+          if (size < grain) return false;
+        }
+        const kid = subdivide(here).find((c) => contains(c, target.x, target.y));
+        if (!kid) return false;
+        chain.push(kid);
+        return true;
+      }
+
+      function render() {
+        const palette = themeFor(chapter.theme());
+        const depth = chain.length - 1;
+        depthOut.textContent = String(depth);
+
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.51);
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(cssWidth, cssHeight);
+
+        // Frame the region we are standing in, with room to see its neighbours.
+        const here = chain[chain.length - 1];
+        const box = regionBox(here);
+        if (box === null) {
+          view.fit({ minX: -1.15, minY: -0.25, maxX: 2.15, maxY: 1.5 }, 0.02);
+        } else {
+          const pad = Math.max(box.maxX - box.minX, box.maxY - box.minY) * 0.12 + 1e-18;
+          view.fit({
+            minX: box.minX - pad, minY: box.minY - pad,
+            maxX: box.maxX + pad, maxY: box.maxY + pad,
+          }, 0.02);
+        }
+
+        ctx.fillStyle = palette.background;
+        ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+        // The children of where we are, so the choice being made is visible.
+        const kids = subdivide(here);
+        // Figure and ground. The region holding the number takes a full-strength fill;
+        // the six it was chosen over take the muted backdrop tints, so the choice being
+        // made reads at a glance instead of being one colour among seven.
+        kids.forEach((kid, i) => {
+          const g = geometry(kid);
+          if (g === null) return;
+          const holds = contains(kid, target.x, target.y);
+          fillRegion(ctx, view, g,
+            holds ? palette.fills[(i * 5 + 11) % 24] : palette.interiors[(i * 5 + 11) % 24]);
+        });
+        for (const kid of kids) {
+          const g = geometry(kid);
+          if (g === null) continue;
+          const holds = contains(kid, target.x, target.y);
+          outlineRegion(ctx, view, g, palette.background, holds ? 2 : 1);
+          labelRegion(ctx, view, g, kid.name,
+            holds ? palette.background : palette.dim ?? palette.line, 15);
+        }
+
+        // The number itself.
+        const p = view.worldToScreen(target.x, target.y);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = palette.highlight;
+        ctx.fill();
+        ctx.strokeStyle = palette.background;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // The word so far, run-length encoded, since the runs are the point.
+        const letters = chain.slice(1).map((r) => r.name);
+        const runs = [];
+        for (const s of letters) {
+          if (runs.length && runs[runs.length - 1].s === s) runs[runs.length - 1].n++;
+          else runs.push({ s, n: 1 });
+        }
+        wordBox.replaceChildren();
+        if (runs.length === 0) {
+          wordBox.textContent = 'the word appears here as the walk descends';
+        } else {
+          for (const r of runs) {
+            const span = document.createElement(r.n > 1 ? 'b' : 'span');
+            if (r.n > 1) span.className = 'run';
+            span.textContent = r.n > 1 ? `${r.s}^${r.n} ` : `${r.s} `;
+            wordBox.append(span);
+          }
+        }
+
+        const stuck = !canStep();
+        caption.textContent =
+          `Generation ${depth}. The lit region is the one containing the number; its `
+          + `label is the next letter of the expansion.`
+          + (stuck && depth > 0
+            ? '  The walk ends here — the region is now finer than a double can resolve, '
+              + 'so the number no longer says which child it is in.'
+            : '');
+      }
+
+      /** Peek without moving, for the caption. */
+      function canStep() {
+        const here = chain[chain.length - 1];
+        const box = regionBox(here);
+        if (box !== null) {
+          const size = Math.max(box.maxX - box.minX, box.maxY - box.minY);
+          const grain = Math.max(Math.abs(target.x), Math.abs(target.y), 1) * FLOOR;
+          if (size < grain) return false;
+        }
+        return subdivide(here).some((c) => contains(c, target.x, target.y));
+      }
+
+      function setTarget(x, y) {
+        clearInterval(timer);
+        target = { x, y };
+        chain = [seed()];
+        targetInput.value = `${x.toPrecision(12)}, ${y.toPrecision(12)}`;
+        render();
+      }
+
+      document.getElementById('fwd').addEventListener('click', () => { step(); render(); });
+      document.getElementById('back').addEventListener('click', () => {
+        if (chain.length > 1) chain.pop();
+        render();
+      });
+      document.getElementById('reset').addEventListener('click', () => {
+        clearInterval(timer);
+        chain = [seed()];
+        render();
+      });
+      document.getElementById('run').addEventListener('click', () => {
+        clearInterval(timer);
+        timer = setInterval(() => {
+          if (!step()) { clearInterval(timer); render(); return; }
+          render();
+        }, 160);
+      });
+      preset.addEventListener('change', () => {
+        const p = PRESETS[Number(preset.value)];
+        setTarget(p.x, p.y);
+      });
+      targetInput.addEventListener('change', () => {
+        const parts = targetInput.value.split(/[, ]+/).map(Number).filter((v) => !Number.isNaN(v));
+        if (parts.length === 2 && parts[1] > 0) setTarget(parts[0], parts[1]);
+        else targetInput.value = `${target.x.toPrecision(12)}, ${target.y.toPrecision(12)}`;
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+        if (e.key === ']') { step(); render(); }
+        else if (e.key === '[') { if (chain.length > 1) chain.pop(); render(); }
+        else return;
+        e.preventDefault();
+      });
+      window.addEventListener('resize', render);
+
+      setTarget(PRESETS[0].x, PRESETS[0].y);
+    </script>
+  </body>
+</html>
