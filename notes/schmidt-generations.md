@@ -109,6 +109,35 @@ these regions. A complex number's expansion *is* the infinite sequence of nested
 containing it, one per generation — which is why "e^i at generation 50" is a meaningful
 request and why the expansion above is a word in the matrix letters.
 
+### Built, and what it showed — chapter 9
+
+`story/09-walking-to-e-i.html` computes this. It asks which child region contains the
+number, steps into it, repeats: containment against the exact circles, and nothing else.
+No division, no remainder, no floor function.
+
+On `e^i` the word comes out `C C* 𝒱₃ · C C* 𝒱₃³ · C C* 𝒱₃⁵ · C C* 𝒱₃⁷ · C C* 𝒱₃⁹ ·
+C C* 𝒱₃¹¹` — the runs are the odd numbers in order, which is Schmidt's closed form,
+reproduced by a program that does not contain it. Six terms. **That is the whole point
+of the exercise and it is a demonstration, not a precision test.**
+
+Two things learned by going further than that, recorded so the ground is not covered
+twice:
+
+- **The renormalising form is the algorithm.** Rather than descending into shrinking
+  regions, apply the inverse generator at each step — `adjugate()` already does it — and
+  the number stays O(1) near a canonical region. Same idea as the Gauss map for ordinary
+  continued fractions.
+- **It buys no depth in floating point.** Error amplifies through the inverse maps at
+  about the rate the regions shrink, so it emits `𝒱₃¹⁵` where the truth is 13 and then
+  runs on indefinitely. Its real cost is that it *removes the honest stop*: the
+  descending walk knows when the regions are finer than a double can resolve and halts
+  there, which is why the chapter uses it.
+
+Going deeper would need the target as a Gaussian rational `P/Q` in `ℤ[i]`, with
+containment as a BigInt sign test — the generators are integer matrices, so `P/Q` stays
+exact forever. That is a different program from a chapter figure, and not one this
+project needs.
+
 ---
 
 ## 4. The matrices are already in your Kotlin — with one wrong entry

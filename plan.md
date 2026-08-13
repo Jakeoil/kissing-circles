@@ -37,21 +37,15 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
    `Packing._expand` calls it three times per emit to look up parent indices. Carrying
    indices on the frame removes those without the ~50 MB a string cache would cost.
-2. **The walk deserves exact input** (§7.4 ch. 9). The expansion of `e^i` reproduces
-   Schmidt's closed form — runs of `𝒱₃` of length 1, 3, 5, 7, 9, 11 — and then stops at
-   depth 51, because the target arrives as a double and the regions outrun it. The
-   subdivision is exact; feeding it a high-precision or exact target would push the
-   confirmation as deep as wanted. The stop is principled, not a bug, but it is the one
-   place where this project's exactness ends at the *input* rather than at draw time.
-3. **`arrangement()` is the slow path** — 12 s at generation 14 against 0.4 s for the
+2. **`arrangement()` is the slow path** — 12 s at generation 14 against 0.4 s for the
    partition, because it prunes position on the circumscribed disc (median 22× the
    region) rather than the box. Chapter 7's figure stops at generation 8 for this
    reason. Sound, but the weakest of the three bounds in §8.4b.
-4. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
+3. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
-5. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
+4. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-6. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
+5. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
    place. Probably a limit of the translation-and-ordering search, not of the
    mathematics.
 
@@ -65,6 +59,17 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
 - **The legacy guarantee** (§7.2): the default view does not change, and every URL
   already emitted keeps rendering the same picture.
 - **The address bar is never written.** A share link is produced on request.
+- **Chapter 9 is a demonstration, not a precision test** (Jake, 2026-08-13). Six terms
+  of Schmidt's closed form is the confirmation; more digits would not make it more of
+  one. I went looking anyway, so: his algorithm is the *renormalising* form — apply the
+  inverse generator each step rather than descending, which `Mobius.adjugate()` already
+  supports — and in floating point it reaches no further, because error amplifies
+  through the inverse maps about as fast as the regions shrink. It emits `𝒱₃¹⁵` where
+  the truth is 13 and then runs on indefinitely, which *removes the honest stop*. The
+  descending walk halts when the regions outrun a double and says so, and is the better
+  demonstration for that reason. Exact depth would need the target as a Gaussian
+  rational `P/Q` in ℤ[i] with a BigInt sign test; a different program. See
+  `notes/schmidt-generations.md` §3.
 
 ---
 
