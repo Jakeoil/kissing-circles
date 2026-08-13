@@ -190,6 +190,7 @@
       import { Packing } from '../src/math/packing.js';
       import { Viewport } from '../src/render/viewport.js';
       import { draw } from '../src/render/renderer.js';
+      import { theme as themeFor } from '../src/render/palette.js';
 
       const canvas = document.getElementById('figure');
       const ctx = canvas.getContext('2d');
@@ -209,9 +210,13 @@
       const view = new Viewport(1, 1);
       view.flipY = true;              // Schmidt's upper half plane is drawn up.
 
-      const GASKET = '#ffd479';
-      const DIM = 'rgba(139, 148, 158, 0.34)';
-      const BACKDROP = '#0d1117';
+      /**
+       * The gasket highlight, per theme. One value cannot serve both: pale gold reads
+       * strongly against near-black and almost vanishes against pale grey, which is
+       * what happened the moment the theme became switchable.
+       */
+      const GASKET = { dark: '#ffd479', light: '#9a5b00' };
+      const DIM = { dark: 'rgba(139, 148, 158, 0.34)', light: 'rgba(88, 96, 106, 0.30)' };
 
       // The doubled classic packing, sitting in the arrangement tangent to the real line
       // at the origin: bounding circle centre (0, ½) radius ½, so bend −2. Found by
@@ -284,9 +289,12 @@
           // passes are drawn by hand. A second draw() call would clear it too, but it
           // would also throw away the list.
           ctx.save();
-          ctx.fillStyle = BACKDROP;
+          // The renderer's own background for whichever theme is in force. This was a
+          // hard-coded #0d1117 until the theme became switchable, at which point the
+          // gasket view painted a dark slab into a light page.
+          ctx.fillStyle = themeFor(chapter.theme()).background;
           ctx.fillRect(0, 0, view.width, view.height);
-          ctx.strokeStyle = DIM;
+          ctx.strokeStyle = DIM[chapter.theme()];
           ctx.lineWidth = 1;
           ctx.beginPath();
           for (const i of stats.visible) {
@@ -298,7 +306,7 @@
           ctx.stroke();
 
           let lit = 0;
-          ctx.strokeStyle = GASKET;
+          ctx.strokeStyle = GASKET[chapter.theme()];
           ctx.lineWidth = 1.75;
           ctx.beginPath();
           for (const i of stats.visible) {
