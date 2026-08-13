@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ford circles, one dimension down — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+  </head>
+  <body>
+    <nav class="crumbs">
+      <a href="./index.html">Contents</a> ·
+      <a href="../index.html">Workbench</a>
+    </nav>
+
+    <main>
+      <span class="chapter-number">Chapter 8</span>
+      <h1>Ford circles, one dimension down</h1>
+
+      <p class="lede">
+        Everything so far has happened over the Gaussian integers, in the plane. Run the
+        same idea over the ordinary integers, on a line, and something familiar falls
+        out — the continued fraction.
+      </p>
+
+      <p>
+        Put a circle on every rational number. At <code>p/q</code> in lowest terms, sit a
+        circle tangent to the real line at that point, with radius
+        <code>1/(2q²)</code> — so the bigger the denominator, the smaller the circle.
+        These are <b>Ford circles</b>, and their bend is <code>2q²</code>.
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <span>depth</span>
+          <button id="down" type="button" title="[">−</button>
+          <b id="depthv">4</b>
+          <button id="up" type="button" title="]">+</button>
+          <span class="spacer"></span>
+          <label><input type="checkbox" id="labels" checked /> fractions</label>
+          <label><input type="checkbox" id="newest" checked /> ring the new mediants</label>
+        </div>
+        <canvas id="figure" width="1100" height="420"></canvas>
+        <figcaption id="caption"></figcaption>
+      </figure>
+
+      <h2>They never overlap, and they touch for a reason</h2>
+
+      <p>
+        No two Ford circles ever cross. Any two are either disjoint or exactly tangent,
+        and there is a clean rule for which:
+      </p>
+
+      <div class="aside">
+        <p style="text-align:center; margin:0">
+          <code>p/q</code> and <code>r/s</code> are tangent &nbsp;⟺&nbsp;
+          <code>|ps − qr| = 1</code>
+        </p>
+      </div>
+
+      <p>
+        That is the condition for two fractions to be <b>Farey neighbours</b> — adjacent
+        at some stage of the Farey sequence. So the tangency graph of the Ford circles
+        <em>is</em> the neighbour relation on the rationals. Geometry and arithmetic are
+        the same statement here, which is the whole reason the picture is worth drawing.
+      </p>
+
+      <h2>Mediants: the subdivision</h2>
+
+      <p>
+        Between two neighbours <code>p/q</code> and <code>r/s</code>, the fraction that
+        goes in the gap is the <b>mediant</b>:
+      </p>
+
+      <div class="aside">
+        <p style="text-align:center; margin:0">
+          <code>p/q ⊕ r/s = (p + r)/(q + s)</code>
+        </p>
+      </div>
+
+      <p>
+        Add the tops, add the bottoms — the thing every schoolchild is told is wrong, and
+        which is exactly right here. Its Ford circle drops into the curvilinear gap
+        between the other two and touches both. <b>That is the Apollonian move, one
+        dimension down.</b> Press <b>+</b> above and watch each new round of circles land
+        in the gaps left by the last, exactly as chapter 4's circles did in the plane.
+      </p>
+
+      <p>
+        Do this from <code>0/1</code> and <code>1/1</code> and you generate every
+        rational in <code>[0, 1]</code>, each exactly once, in lowest terms and with no
+        repeats. The tree of mediants is the Stern–Brocot tree, and a path down it is a
+        <b>continued fraction</b>: go left, left, right, left … and the fraction you
+        converge on is the number whose expansion is that sequence.
+      </p>
+
+      <div class="aside">
+        <p>
+          <b>These circles are in the arrangement.</b> Chapter 7's Schmidt arrangement of
+          <code>ℤ[i]</code> contains them — a Ford circle at <code>p/q</code> is the row
+          <code>(2p², 2q², 2pq + i)</code>, which satisfies the same invariant
+          <code>|bz|² − b·b̄ = 1</code> as everything else in this project. Of those with
+          <code>q ≤ 20</code>, generation 8 of the arrangement already contains 85; the
+          rest lie deeper than it reaches. Not deeper than they exist — deeper than the
+          generator currently goes, which is a limitation of the pruning noted in
+          <code>plan.md</code> §0 and not a fact about the mathematics.
+        </p>
+      </div>
+
+      <h2>What this was rehearsal for</h2>
+
+      <p>
+        On the line, a real number is pinned down by a nested sequence of intervals, each
+        chosen from the two on either side of a mediant. That sequence of choices is its
+        continued fraction, and the Ford circles make it visible: the number sits under a
+        shrinking chain of tangent circles.
+      </p>
+
+      <p>
+        Now put the plane back. Schmidt's regions from chapter 6 are the interval's
+        replacement, the subdivision from chapter 7 is the mediant's, and a complex
+        number is pinned down by a nested sequence of regions rather than intervals.
+        <b>So what does a continued fraction look like on the plane?</b> That is the last
+        chapter, and it is the question this whole project started from.
+      </p>
+
+      <p style="color: var(--dim); font-size: .9rem;">
+        L. R. Ford, “Fractions”, <i>American Mathematical Monthly</i> <b>45</b> (1938),
+        586–601 — where these circles are introduced. Schmidt names Ford's mesh
+        triangles as the thing his Farey sets extend, in the introduction to the 1975
+        paper.
+      </p>
+
+      <div class="pager">
+        <a href="./07-the-arrangement.html">← The arrangement</a>
+        <a href="./09-walking-to-e-i.html">Walking to e<sup>i</sup> →</a>
+      </div>
+    </main>
+
+    <script type="module">
+      import { setupChapter } from './chapter.js';
+      import { Circle } from '../src/math/circle.js';
+      import { Gaussian } from '../src/math/gaussian.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { theme as themeFor } from '../src/render/palette.js';
+      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+
+      const canvas = document.getElementById('figure');
+      const ctx = canvas.getContext('2d');
+      const caption = document.getElementById('caption');
+      const depthOut = document.getElementById('depthv');
+      const labelToggle = document.getElementById('labels');
+      const newestToggle = document.getElementById('newest');
+
+      const MIN = 0;
+      const MAX = 7;
+      let depth = 4;
+
+      const NEWEST = { dark: '#ffd479', light: '#9a5b00' };
+
+      function redrawFigure() { render(); }
+
+      const chapter = setupChapter({
+        prev: { href: './07-the-arrangement.html', title: 'The arrangement' },
+        next: { href: './09-walking-to-e-i.html', title: 'Walking to e^i' },
+        redraw: () => redrawFigure(),
+      });
+
+      const view = new Viewport(1, 1);
+
+      /**
+       * The Farey/Stern–Brocot mediants of [0/1, 1/1], to a given depth.
+       *
+       * Each round inserts `(p+r)/(q+s)` between every adjacent pair, which is exactly
+       * the Apollonian move here: the new fraction's circle lands in the gap between the
+       * two circles either side and is tangent to both. Everything stays in integers.
+       *
+       * @returns {{p: bigint, q: bigint, level: number}[]}
+       */
+      function mediants(n) {
+        let row = [{ p: 0n, q: 1n, level: 0 }, { p: 1n, q: 1n, level: 0 }];
+        for (let k = 1; k <= n; k++) {
+          const next = [row[0]];
+          for (let i = 1; i < row.length; i++) {
+            const a = row[i - 1];
+            const b = row[i];
+            next.push({ p: a.p + b.p, q: a.q + b.q, level: k });
+            next.push(b);
+          }
+          row = next;
+        }
+        return row;
+      }
+
+      /**
+       * The Ford circle of p/q, exactly.
+       *
+       * Tangent to the real line at p/q with radius 1/(2q²), so b = 2q² and
+       * bz = 2pq + i. Then b̄ = 2p², and the project's invariant holds on the nose:
+       * |bz|² − b·b̄ = 4p²q² + 1 − 4p²q² = 1.
+       */
+      function ford(p, q) {
+        return new Circle(2n * p * p, 2n * q * q, new Gaussian(2n * p * q, 1n));
+      }
+
+      function render() {
+        depthOut.textContent = String(depth);
+        const palette = themeFor(chapter.theme());
+
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.38);
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(cssWidth, cssHeight);
+        view.flipY = true;                    // the circles sit above the line
+        // The circles at the integers have radius ½, so the window has to reach y = 1
+        // or they are cut off and the small ones get squeezed into a sliver. Three
+        // periods across, which fills a wide frame and shows the pattern repeating.
+        view.fit({ minX: -1.04, minY: -0.03, maxX: 2.04, maxY: 1.06 }, 0.02);
+
+        ctx.fillStyle = palette.background;
+        ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+        const rows = mediants(depth);
+
+        // The real line, which every one of them touches.
+        const y0 = view.worldToScreen(0, 0).y;
+        ctx.strokeStyle = palette.line;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, y0);
+        ctx.lineTo(cssWidth, y0);
+        ctx.stroke();
+
+        let drawn = 0;
+        const metrics = digitMetrics(ctx);
+        // Ford circles repeat with period 1 — translating p/q by an integer k gives
+        // (p + kq)/q, the same denominator and the same size. Three copies fill the
+        // frame without generating anything new.
+        const shifted = [];
+        for (const row of rows) {
+          for (const k of [-1n, 0n, 1n]) {
+            if (k !== 0n && row.q === 1n && row.p === 1n) continue; // 1/1 + k duplicates 0/1
+            shifted.push({ p: row.p + k * row.q, q: row.q, level: row.level });
+          }
+        }
+        for (const { p, q, level } of shifted) {
+          const c = ford(p, q);
+          const f = c.toFloat();
+          const sr = Math.abs(f.r) * view.scale;
+          if (sr < 0.4) continue;
+          const s = view.worldToScreen(f.x, f.y);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, sr, 0, Math.PI * 2);
+          // Bend is 2q², so colouring by bend mod 24 is colouring by q — the same
+          // convention chapters 1, 4 and 5 use, applied to the same kind of number.
+          ctx.fillStyle = palette.fills[Number(c.b % 24n)];
+          ctx.fill();
+          if (newestToggle.checked && level === depth && depth > 0) {
+            ctx.strokeStyle = NEWEST[chapter.theme()];
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+          drawn++;
+
+          if (labelToggle.checked) {
+            drawNumeral(ctx, view, c, `${p}/${q}`, palette.labels[Number(c.b % 24n)], metrics);
+          }
+        }
+
+        const added = rows.filter((r) => r.level === depth).length;
+        caption.textContent =
+          `Ford circles to mediant depth ${depth}, three periods across — `
+          + `${rows.length.toLocaleString()} fractions in [0, 1], ${drawn.toLocaleString()} circles big enough to draw`
+          + (depth > 0 ? `, ${added.toLocaleString()} of them new this round` : '')
+          + '. The circle at p/q has bend 2q², so a deep fraction is a small circle.';
+      }
+
+      function step(d) {
+        const next = Math.min(MAX, Math.max(MIN, depth + d));
+        if (next === depth) return;
+        depth = next;
+        render();
+      }
+
+      document.getElementById('up').addEventListener('click', () => step(1));
+      document.getElementById('down').addEventListener('click', () => step(-1));
+      for (const el of [labelToggle, newestToggle]) el.addEventListener('change', render);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === ']') step(1);
+        else if (e.key === '[') step(-1);
+        else return;
+        e.preventDefault();
+      });
+      window.addEventListener('resize', render);
+      render();
+    </script>
+  </body>
+</html>
