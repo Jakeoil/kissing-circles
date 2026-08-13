@@ -230,8 +230,16 @@ describe('renderer', () => {
 
     assert.equal(dark.rectFills[0], THEMES.dark.background);
     assert.equal(light.rectFills[0], THEMES.light.background);
-    assert.ok(dark.fills.includes(THEMES.dark.interior));
-    assert.ok(light.fills.includes(THEMES.light.interior));
+    // The bounding circle is filled with a tint of its own class now, not one flat
+    // slate, so the check is that *some* interior tint from the right theme was used.
+    assert.ok(
+      THEMES.dark.interiors.some((c) => dark.fills.includes(c)),
+      'no dark interior tint was used for the bounding circle',
+    );
+    assert.ok(
+      THEMES.light.interiors.some((c) => light.fills.includes(c)),
+      'no light interior tint was used for the bounding circle',
+    );
     assert.notDeepEqual(dark.fills, light.fills);
   });
 

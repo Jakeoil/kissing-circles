@@ -57,6 +57,7 @@ function hue(i, saturation, lightness) {
  * @property {string} highlight outline for the circle under the cursor
  * @property {string[]} fills one per bucket
  * @property {string[]} labels numerals, one per bucket
+ * @property {string[]} interiors backdrop tint for a bounding circle, one per bucket
  */
 
 /**
@@ -70,6 +71,8 @@ function hue(i, saturation, lightness) {
  * @param {number} spec.fillL
  * @param {number} spec.labelS
  * @param {number} spec.labelL
+ * @param {number} spec.interiorS
+ * @param {number} spec.interiorL
  * @returns {Theme}
  */
 function build(spec) {
@@ -81,6 +84,11 @@ function build(spec) {
     highlight: spec.highlight,
     fills: Array.from({ length: BUCKETS }, (_, i) => hue(i, spec.fillS, spec.fillL)),
     labels: Array.from({ length: BUCKETS }, (_, i) => hue(i, spec.labelS, spec.labelL)),
+    // A bounding circle carries a class like any other circle, but it is also the field
+    // its whole packing is drawn on. At full saturation it would shout down its own
+    // contents, so it takes its class's hue at backdrop strength: enough to name the
+    // class, not enough to compete.
+    interiors: Array.from({ length: BUCKETS }, (_, i) => hue(i, spec.interiorS, spec.interiorL)),
   };
 }
 
@@ -105,6 +113,8 @@ export const THEMES = {
     fillL: 58,
     labelS: 72,
     labelL: 13,
+    interiorS: 20,
+    interiorL: 22,
   }),
   light: build({
     background: '#e7ebf0',
@@ -116,6 +126,8 @@ export const THEMES = {
     fillL: 74,
     labelS: 78,
     labelL: 25,
+    interiorS: 26,
+    interiorL: 92,
   }),
 };
 

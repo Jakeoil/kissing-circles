@@ -155,10 +155,20 @@ export function draw(ctx, packing, view, options = {}) {
     }
 
     if (r < 0 && style === 'fill') {
-      // A bounding circle: fill it as the backdrop its contents sit on.
+      // A bounding circle is the backdrop its contents sit on — but it is also a circle
+      // with a bend, and drawing it in one flat slate said otherwise. It now takes a
+      // tint of its own class, at backdrop strength.
+      //
+      // The class is that of the *additive inverse*: |b| mod 24, not b mod 24. Jake's
+      // call, and the measurement supports it — |b|'s class is outside the packing's
+      // own class set in four of the five roots checked, so the bounding circle gets a
+      // hue no other circle in the picture has. Its true residue would instead share a
+      // colour with every small circle in that class. Both are defensible; this one is
+      // legible. See plan.md §7.3c.
+      const mag = -packing.circles[i].b;
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, TAU);
-      ctx.fillStyle = palette.interior;
+      ctx.fillStyle = palette.interiors[bucket(mag, 0, 'curvature')] ?? palette.interior;
       ctx.fill();
       ctx.strokeStyle = palette.rim;
       ctx.lineWidth = 1;
