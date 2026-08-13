@@ -114,11 +114,12 @@
 
       <div class="pager">
         <a href="./02-the-jump.html">← The jump</a>
-        <span>Next: Which numbers appear</span>
+        <a href="./05-which-numbers.html">Which numbers appear →</a>
       </div>
     </main>
 
     <script type="module">
+      import { setupChapter } from './chapter.js';
       import { Packing } from '../src/math/packing.js';
       import { ROOTS } from '../src/math/descartes.js';
       import { Viewport } from '../src/render/viewport.js';
@@ -153,6 +154,18 @@
 
       const view = new Viewport(1, 1);
 
+      /**
+       * Redraw after a settings change. A new numeral face has different digit
+       * metrics, and every numeral is sized from those, so this cannot be skipped
+       * on the grounds that the geometry has not moved.
+       */
+      function redrawFigure() { render(); }
+
+      const chapter = setupChapter({
+        prev: { href: './02-the-jump.html', title: 'The jump' },
+        next: { href: './05-which-numbers.html', title: 'Which numbers appear' },
+        redraw: () => redrawFigure(),
+      });
       function fit() {
         const dpr = window.devicePixelRatio || 1;
         const cssWidth = canvas.clientWidth;
@@ -175,7 +188,7 @@
         // circles alone — needs the smallest positive value that still excludes round 1.
         const stats = draw(ctx, packing, view, {
           colorMode: 'depth',
-          theme: 'dark',
+          theme: chapter.theme(),
           labels: labelToggle.checked,
           maxDepth: generation === 0 ? 0.5 : generation,
         });

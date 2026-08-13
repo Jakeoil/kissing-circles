@@ -153,6 +153,7 @@
     </main>
 
     <script type="module">
+      import { setupChapter } from './chapter.js';
       import { ROOTS, fourthCurvature } from '../src/math/descartes.js';
       import { generate } from '../src/math/packing.js';
       import { Viewport } from '../src/render/viewport.js';
@@ -187,6 +188,18 @@
       let modelHere = null;
       let modelOther = null;
 
+      /**
+       * Redraw after a settings change. A new numeral face has different digit
+       * metrics, and every numeral is sized from those, so this cannot be skipped
+       * on the grounds that the geometry has not moved.
+       */
+      function redrawFigure() { render(); }
+
+      const chapter = setupChapter({
+        prev: { href: './01-four-circles.html', title: 'Four circles that touch' },
+        next: { href: './04-generations.html', title: 'Generations' },
+        redraw: () => redrawFigure(),
+      });
       function load() {
         choice = CHOICES[Number(select.value)];
         // Both completions make a genuine quadruple with the triple, so the ordinary
@@ -227,7 +240,7 @@
       function render() {
         draw(ctx, showingOther ? modelOther : modelHere, view, {
           colorMode: 'curvature',
-          theme: 'dark',
+          theme: chapter.theme(),
           labels: true,
         });
 

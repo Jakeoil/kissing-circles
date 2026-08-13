@@ -22,7 +22,7 @@ from `render/` or `ui/` and runs under bare Node.
 |---|---|
 | Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
 | §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
-| Chapters | **1** (Soddy's poem, Descartes), **2** (the jump, Vieta), **6** (two regions), **7** (the arrangement, the gasket inside it) written; 3, 4, 5, 8, 9 outlined in §7.4 |
+| Chapters | **1** (Soddy), **2** (the jump), **4** (generations), **5** (which numbers), **6** (two regions), **7** (the arrangement) written; **3, 8, 9** outlined in §7.4 |
 | Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms. Generations to 20, windowed (§8.4b) |
 | Tests | 235, `npm test`, no dependencies |
 
@@ -37,8 +37,8 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
    `Packing._expand` calls it three times per emit to look up parent indices. Carrying
    indices on the frame removes those without the ~50 MB a string cache would cost.
-2. **Chapters 3, 4, 5.** 4 and 5 need no new code at all. 3 needs a float-vs-exact
-   comparison, which is also a listed lab. Then 8 and 9, where 9 is the payoff.
+2. **Chapters 3, 8, 9.** 3 needs a float-vs-exact comparison, which is also a listed
+   lab; 8 needs Ford-circle word recognition; 9 is the payoff and should not be rushed.
 3. **`arrangement()` is the slow path** — 12 s at generation 14 against 0.4 s for the
    partition, because it prunes position on the circumscribed disc (median 22× the
    region) rather than the box. Chapter 7's figure stops at generation 8 for this
@@ -708,6 +708,34 @@ Worth working out before building:
 - **Where it lives.** This is a figure with real interaction, so it starts as a lab,
   and graduates into chapter 1 or 2 if it earns it. Chapter 2 already explains the rule
   it would be demonstrating.
+
+### 7.3c Pinned — showing the negative circle
+
+**The problem.** A bounding circle has negative bend, and the figures currently show
+that by drawing it as a backdrop the others sit on. That reads as "the background",
+not as "a circle like the others, turned inside out" — which is what it is, and what
+Soddy's *three in one / one in three* stanza is about. Chapter 1 asserts it in prose
+and the picture does not carry it.
+
+**Jake's idea, pinned rather than built.** Hovering a triangular gap overlays a
+transparent *negative* of the circle — the complement, the part the bend's sign is
+actually describing. The interstices are where the negative circle is visible as a
+shape, so that is where the hover belongs.
+
+Worth working out before building:
+
+- **What exactly is drawn.** The complement of a disc is unbounded, so the overlay
+  needs a frame to be clipped against — probably the figure's own bounds, which makes
+  the shape depend on the viewport rather than on the mathematics.
+- **Which circle.** A triangular gap touches three circles. Hovering it could mean the
+  bounding circle of the whole packing, or the circle that would be dropped into that
+  gap next. Those teach different things and only one of them is "the negative circle".
+- **Whether hover is the right trigger.** It does not exist on a phone, and §Phase 4
+  settled that the workbench is desktop-first but the story is not.
+
+Related: the same question in reverse is why `renderer.js` fills a bounding circle with
+`palette.interior` rather than a hue from the colour scale — see the note on lightening
+it in §7.3.
 
 ### 7.4 The chapters
 

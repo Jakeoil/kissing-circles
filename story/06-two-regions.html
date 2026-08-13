@@ -112,12 +112,13 @@
       </p>
 
       <div class="pager">
-        <a href="./01-four-circles.html">← Four circles that touch</a>
+        <a href="./05-which-numbers.html">← Which numbers appear</a>
         <a href="./07-the-arrangement.html">The arrangement →</a>
       </div>
     </main>
 
     <script type="module">
+      import { setupChapter } from './chapter.js';
       import { seed, subdivide, geometry } from '../src/math/schmidt.js';
       import { Viewport } from '../src/render/viewport.js';
       import { fillRegion, outlineRegion, labelRegion } from '../src/render/regions.js';
@@ -149,6 +150,18 @@
       const tParent = jChildren.find((r) => r.name === 'C');
       const tChildren = subdivide(tParent);
 
+      /**
+       * Redraw after a settings change. A new numeral face has different digit
+       * metrics, and every numeral is sized from those, so this cannot be skipped
+       * on the grounds that the geometry has not moved.
+       */
+      function redrawFigure() { draw(); }
+
+      const chapter = setupChapter({
+        prev: { href: './05-which-numbers.html', title: 'Which numbers appear' },
+        next: { href: './07-the-arrangement.html', title: 'The arrangement' },
+        redraw: () => redrawFigure(),
+      });
       function fit() {
         const dpr = window.devicePixelRatio || 1;
         const cssWidth = canvas.clientWidth;

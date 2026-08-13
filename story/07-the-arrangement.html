@@ -184,6 +184,7 @@
     </main>
 
     <script type="module">
+      import { setupChapter } from './chapter.js';
       import { arrangement } from '../src/math/schmidt.js';
       import { Circle } from '../src/math/circle.js';
       import { Packing } from '../src/math/packing.js';
@@ -240,6 +241,17 @@
 
       let built = null;
 
+      /**
+       * Redraw after a settings change. A new numeral face has different digit
+       * metrics, and every numeral is sized from those, so this cannot be skipped
+       * on the grounds that the geometry has not moved.
+       */
+      function redrawFigure() { render(); }
+
+      const chapter = setupChapter({
+        prev: { href: './06-two-regions.html', title: 'Two kinds of region' },
+        redraw: () => redrawFigure(),
+      });
       function build() {
         genOut.textContent = String(generation);
         built = arrangement({ maxGeneration: generation, maxCurvature: 600n });
@@ -261,7 +273,7 @@
       function render() {
         const stats = draw(ctx, built, view, {
           colorMode: 'depth',
-          theme: 'dark',
+          theme: chapter.theme(),
           labels: false,
           style: mode === 'fill' ? 'fill' : 'stroke',
         });

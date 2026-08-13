@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Which numbers appear — Kissing Circles</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%238b5cf6' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='7' fill='%23a78bfa'/%3E%3Ccircle cx='21' cy='16' r='7' fill='%23a78bfa'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./story.css" />
+    <style>
+      #legend { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: .5rem 0 0; font-size: .85rem; color: var(--dim); }
+      #legend span { display: flex; gap: .4rem; align-items: center; }
+      #legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+      #misses { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; line-height: 1.7; }
+    </style>
+  </head>
+  <body>
+    <nav class="crumbs">
+      <a href="./index.html">Contents</a> ·
+      <a href="../index.html">Workbench</a>
+    </nav>
+
+    <main>
+      <span class="chapter-number">Chapter 5</span>
+      <h1>Which numbers appear</h1>
+
+      <p class="lede">
+        Every bend in the packing is a whole number. Not every whole number is a bend —
+        and the ones that go missing are the most interesting thing in the picture.
+      </p>
+
+      <p>
+        Chapter 4 counted how many circles arrive in each round. This one asks what is
+        written on them. Take the classic packing, list every bend it produces, and sort
+        the integers by their remainder on division by <b>24</b>.
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <span>packing</span>
+          <select id="packing"></select>
+          <span class="spacer"></span>
+          <span id="summary"></span>
+        </div>
+        <canvas id="circles" width="1100" height="480"></canvas>
+        <canvas id="figure" width="1100" height="620"></canvas>
+        <figcaption id="caption"></figcaption>
+      </figure>
+
+      <div id="legend">
+        <span><i style="background:#ffd479"></i> allowed by its remainder, never occurs</span>
+        <span><i style="background:#232a35"></i> ruled out by its remainder</span>
+        <span>every other colour is a class — and it is the colour those circles are drawn in above</span>
+      </div>
+
+      <p>
+        <b>The two halves of that figure are the same colours.</b> Above, the packing,
+        with each circle painted by its bend's remainder. Below, the grid of integers.
+        A column's colour <em>is</em> the colour of the circles in that class — find the
+        yellow-green column and every yellow-green circle in the packing is one of its
+        members. The grid is the packing's arithmetic with the geometry taken away.
+      </p>
+
+      <h2>Most of the columns are empty</h2>
+
+      <p>
+        Two thirds of the grid is dark, and not because the packing ran out of room.
+        <b>Sixteen of the twenty-four remainders never occur at all</b> in the classic
+        packing — at any size, in any part of it. It uses only
+        <code>2, 3, 6, 11, 14, 15, 18, 23</code>.
+      </p>
+
+      <p>
+        This is a congruence condition, and it comes straight out of Descartes' theorem.
+        The relation ties the four bends together tightly enough that once the root
+        quadruple is fixed, the whole packing is confined to a handful of classes
+        modulo 24. Which classes, and how many, depend on the root — step the selector
+        through and watch the columns move:
+      </p>
+
+      <div class="aside">
+        <p style="margin:0">
+          <code>(−1, 2, 2, 3)</code> &nbsp;→&nbsp; 2 3 6 11 14 15 18 23<br />
+          <code>(−6, 11, 14, 15)</code> &nbsp;→&nbsp; 2 3 6 11 14 15 18 23 — <i>the very same eight</i><br />
+          <code>(−2, 3, 6, 7)</code> &nbsp;→&nbsp; 3 6 7 10 15 18 19 22 — a different eight<br />
+          <code>(−3, 5, 8, 8)</code> &nbsp;→&nbsp; 0 5 8 12 20 21 — only <b>six</b>
+        </p>
+      </div>
+
+      <p>
+        So two different packings can occupy exactly the same classes, and the count is
+        not always eight. What is fixed is the modulus.
+      </p>
+
+      <h2>Where 24 comes from</h2>
+
+      <p>
+        <b>24 = 8 × 3, and the two halves come from different places.</b> The bends of
+        the classic packing satisfy two independent conditions —
+        <code>b ≡ 2, 3, 6, 7 (mod 8)</code> and <code>b ≡ 0, 2 (mod 3)</code> — and
+        four choices times two choices is the eight columns in the figure. The Chinese
+        remainder theorem glues them into a single statement modulo 24.
+      </p>
+
+      <p>
+        The mod 3 half falls straight out of the theorem. Write
+        <code>S = b₁+b₂+b₃+b₄</code> and <code>Q = b₁²+b₂²+b₃²+b₄²</code>, so Descartes
+        says <code>S² = 2Q</code>. Squares modulo 3 are only 0 or 1, so if <i>k</i> is
+        how many of the four bends are <em>not</em> divisible by 3, then
+        <code>Q ≡ k</code>. Checking the two cases — <code>S ≡ 0</code> forces
+        <code>k ≡ 0</code>, otherwise <code>k ≡ 2</code> — and knowing a primitive
+        packing cannot have all four bends divisible by 3, the only survivors are
+        <i>k</i> = 3 and <i>k</i> = 2. <b>Every Descartes quadruple therefore contains at
+        least one bend divisible by 3.</b> The mod 8 half works the same way, from the
+        fact that squares modulo 8 are only 0, 1 and 4.
+      </p>
+
+      <p>
+        And 24 is where it stops. Generating the classic packing to 30,000 gives 9,947
+        distinct bends; count how many classes they occupy at each modulus and the
+        answer is 2 of 3, 4 of 8, 8 of 24 — then 16 of 48, 24 of 72, 80 of 240. Past 24
+        every count is exactly what you get if the classes simply split evenly, with no
+        new condition. <b>Nothing finer than 24 knows anything 24 does not.</b>
+      </p>
+
+      <h2>And then there are the holes</h2>
+
+      <p>
+        Look inside the columns that <em>are</em> lit. They are not solid. Scattered
+        through them are numbers that pass the remainder test and still never turn up as
+        a bend anywhere in the packing, at any depth. In the classic packing the first
+        two are <b>78</b> and <b>159</b>:
+      </p>
+
+      <div class="aside">
+        <p id="misses"></p>
+      </div>
+
+      <p>
+        These are not an artefact of stopping early. Bends grow down every branch, so
+        generating until every branch has passed 10,000 finds every bend at or below
+        10,000 that the packing will ever contain. The gaps are real.
+      </p>
+
+      <h2>The conjecture that was wrong</h2>
+
+      <p>
+        For a long time the expectation — the <b>local–global conjecture</b> — was that
+        the holes run out. Congruence conditions would rule out most integers, and every
+        sufficiently large integer that survived them would eventually appear as a bend.
+        The exceptions would be a finite nuisance, a short list near the bottom.
+      </p>
+
+      <p>
+        <b>In 2023 that turned out to be false.</b> Summer Haag, Clyde Kertzer, James
+        Rickards and Katherine Stange showed there are further obstructions beyond the
+        congruence ones — coming from quadratic and quartic reciprocity — and that for
+        some packings infinitely many admissible integers never occur.
+      </p>
+
+      <p>
+        So the list above is not a table of exceptions waiting to be explained away. It
+        is the visible end of something that keeps going. This is a picture you can draw
+        in a browser with an open problem inside it.
+      </p>
+
+      <p style="color: var(--dim); font-size: .9rem;">
+        Congruence conditions: R. L. Graham, J. C. Lagarias, C. L. Mallows, A. R. Wilks
+        and C. H. Yan, “Apollonian Circle Packings: Number Theory”, <i>Journal of Number
+        Theory</i> <b>100</b> (2003), 1–45. The disproof: S. Haag, C. Kertzer, J.
+        Rickards and K. E. Stange, “The Local-Global Conjecture for Apollonian circle
+        packings is false” (2023),
+        <a href="https://arxiv.org/abs/2307.02749">arXiv:2307.02749</a>. The counts on
+        this page are computed here, by
+        <a href="https://github.com/Jakeoil/kissing-circles/blob/main/src/math/analysis.js">analysis.js</a>,
+        not quoted.
+      </p>
+
+      <div class="pager">
+        <a href="./04-generations.html">← Generations</a>
+        <a href="./06-two-regions.html">Two kinds of region →</a>
+      </div>
+    </main>
+
+    <script type="module">
+      import { setupChapter } from './chapter.js';
+      import { analyze, MODULUS } from '../src/math/analysis.js';
+      import { ROOTS, rootFromCurvatures } from '../src/math/descartes.js';
+      import { Packing } from '../src/math/packing.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { draw } from '../src/render/renderer.js';
+      import { theme as themeFor } from '../src/render/palette.js';
+
+      const canvas = document.getElementById('figure');
+      const ctx = canvas.getContext('2d');
+      const circlesCanvas = document.getElementById('circles');
+      const circlesCtx = circlesCanvas.getContext('2d');
+      const view = new Viewport(1, 1);
+      const caption = document.getElementById('caption');
+      const summary = document.getElementById('summary');
+      const missesOut = document.getElementById('misses');
+      const select = document.getElementById('packing');
+
+      const MISSING = '#ffd479';   // allowed by residue, never occurs
+      const RULED_DARK  = '#232a35';  // its whole residue class is impossible
+      const RULED_LIGHT = '#e3e8ee';
+      /** The grid's backdrop, taken from the page so the figure follows the theme. */
+      const paper = () =>
+        getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0d1117';
+
+      // How far up the integers the grid runs. 60 rows of 24 reaches 1,439, which covers
+      // the first ten misses of the classic packing — enough to show they keep coming,
+      // while leaving each row tall enough to see. 100 rows fits more of them and makes
+      // a figure three times the height of the page, which is worse than the trade.
+      const ROWS = 60;
+      const LIMIT = 10000n;
+
+      // The same list chapter 1 offers, so the two chapters discuss the same objects:
+      // the classic, the strip, two with a repeated bend, and three with four distinct
+      // bends.
+      const CHOICES = [
+        { label: '(−1, 2, 2, 3) — the classic', curvatures: [-1, 2, 2, 3] },
+        { label: '(0, 0, 1, 1) — the strip, two lines', root: 'strip', periodic: true },
+        { label: '(−2, 3, 6, 7)', curvatures: [-2, 3, 6, 7] },
+        { label: '(−3, 4, 12, 13)', curvatures: [-3, 4, 12, 13] },
+        { label: '(−3, 5, 8, 8) — a repeated bend', curvatures: [-3, 5, 8, 8] },
+        { label: '(−6, 11, 14, 15)', curvatures: [-6, 11, 14, 15] },
+      ];
+      for (const [i, c] of CHOICES.entries()) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = c.label;
+        select.append(opt);
+      }
+      select.value = '0';
+
+      /** analyze() is the slow step, so each packing is studied once and kept. */
+      const cache = new Map();
+      /**
+       * Redraw after a settings change. A new numeral face has different digit
+       * metrics, and every numeral is sized from those, so this cannot be skipped
+       * on the grounds that the geometry has not moved.
+       */
+      function redrawFigure() { render(); }
+
+      const chapter = setupChapter({
+        prev: { href: './04-generations.html', title: 'Generations' },
+        next: { href: './06-two-regions.html', title: 'Two kinds of region' },
+        redraw: () => redrawFigure(),
+      });
+      function study(i) {
+        if (!cache.has(i)) {
+          const choice = CHOICES[i];
+          const quad = choice.root
+            ? ROOTS[choice.root].quad
+            : rootFromCurvatures(choice.curvatures).quad;
+          // The picture is capped by *depth*, which is finite for every packing. The
+          // class statistics are capped by curvature, which is not: a periodic packing
+          // holds infinitely many circles of any given bend, so the strip gets a
+          // picture and no table. Chapter 4's aside is the same fact.
+          const packing = new Packing(quad, { maxDepth: 7, maxCurvature: 200000n });
+          packing.grow(Infinity);
+          cache.set(i, { packing, stats: choice.periodic ? null : analyze(quad, LIMIT) });
+        }
+        return cache.get(i);
+      }
+
+      function render() {
+        const { packing, stats } = study(Number(select.value));
+        const palette = themeFor(chapter.theme());
+
+        drawPacking(packing, palette);
+        drawGrid(stats, palette);
+
+        summary.textContent = stats
+          ? `${stats.present.length} of ${MODULUS} remainders · ${stats.missing.length} holes below ${Number(LIMIT).toLocaleString()}`
+          : 'periodic — no finite class table';
+
+        caption.textContent = stats
+          ? `Above: the packing to round 7, each circle painted by its bend modulo ${MODULUS}. `
+            + `Below: every integer from 1 to ${(ROWS * MODULUS - 1).toLocaleString()}, one cell each, in the same colours. `
+            + `${stats.circles.toLocaleString()} circles studied, ${stats.distinct.toLocaleString()} distinct bends. `
+            + 'Dark columns are ruled out by congruence; gold cells pass that test and still never occur.'
+          : 'The strip packing repeats left and right forever, so it holds infinitely many '
+            + 'circles of any given bend — "bends up to 10,000" is not a finite set, and the '
+            + 'class table below cannot be built. The picture is capped by round instead, '
+            + 'which is finite for every packing. Chapter 4 hit the same wall.';
+
+        if (!stats) {
+          missesOut.textContent = 'Not defined for a periodic packing — see the caption.';
+          return;
+        }
+        const shown = stats.missing.slice(0, 24).map(String);
+        missesOut.textContent =
+          shown.join('   ')
+          + (stats.missing.length > shown.length
+            ? `   … and ${stats.missing.length - shown.length} more below 10,000` : '');
+      }
+
+      /** The packing itself, coloured by bend mod 24 — which is what `curvature` mode is. */
+      function drawPacking(packing, palette) {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = circlesCanvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.42);
+        circlesCanvas.width = Math.round(cssWidth * dpr);
+        circlesCanvas.height = Math.round(cssHeight * dpr);
+        circlesCanvas.style.height = cssHeight + 'px';
+        circlesCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(cssWidth, cssHeight);
+
+        const f = packing.circles[0].toFloat();
+        if (Number.isFinite(f.r)) {
+          const r = Math.abs(f.r);
+          view.fit({ minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r }, 0.04);
+        } else {
+          // The strip has no bounding circle; frame two periods of it instead.
+          view.fit({ minX: -1.1, minY: -0.15, maxX: 1.1, maxY: 1.15 }, 0.04);
+        }
+
+        draw(circlesCtx, packing, view, {
+          colorMode: 'curvature',
+          theme: chapter.theme(),
+          labels: true,
+        });
+      }
+
+      /** The same classes as integers, in the same colours. */
+      function drawGrid(stats, palette) {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cellW = cssWidth / MODULUS;
+        // The same frame the other chapters use, rather than one derived from the cell
+        // count — a figure taller than the screen cannot be read as a whole.
+        const cssHeight = Math.round(cssWidth * 0.564);
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.height = cssHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const cellH = cssHeight / ROWS;
+
+        const ruled = chapter.theme() === 'light' ? RULED_LIGHT : RULED_DARK;
+        ctx.fillStyle = paper();
+        ctx.fillRect(0, 0, cssWidth, cssHeight);
+        if (stats === null) {
+          ctx.fillStyle = ruled;
+          ctx.fillRect(0, 0, cssWidth, cssHeight);
+          return;
+        }
+
+        const present = new Set(stats.present);
+        const missing = new Set(stats.missing.map(Number));
+        for (let row = 0; row < ROWS; row++) {
+          for (let col = 0; col < MODULUS; col++) {
+            const n = row * MODULUS + col;
+            if (n === 0) continue;
+            // A cell that occurs takes its class's own hue — the very colour the
+            // renderer paints those circles, since a colour bucket *is* the residue.
+            ctx.fillStyle = !present.has(col) ? ruled
+              : missing.has(n) ? MISSING
+              : palette.fills[col];
+            ctx.fillRect(col * cellW + 0.5, row * cellH + 0.5, cellW - 1, cellH - 1);
+          }
+        }
+      }
+
+      select.addEventListener('change', render);
+      window.addEventListener('resize', render);
+      render();
+    </script>
+  </body>
+</html>

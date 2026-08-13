@@ -14,6 +14,8 @@
   --measure: 34rem;
 }
 
+/* The media query is the default signal; an explicit choice from the settings crumb
+   stamps data-theme on the root and must win over it either way. */
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #fbfcfd;
@@ -168,3 +170,67 @@ button[aria-pressed='true'] { border-color: var(--accent); color: var(--bright);
 }
 .pager a { text-decoration: none; }
 .pager span { color: var(--dim); }
+
+/* ------------------------------------------------------- the settings crumb */
+
+:root[data-theme='dark'] {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --edge: #30363d;
+  --text: #c9d1d9;
+  --dim: #8b949e;
+  --bright: #f0f6fc;
+  --accent: #7ee2b8;
+}
+
+:root[data-theme='light'] {
+  --bg: #fbfcfd;
+  --panel: #ffffff;
+  --edge: #d6dde5;
+  --text: #24292f;
+  --dim: #57606a;
+  --bright: #0d1117;
+  --accent: #0f7d55;
+}
+
+nav.crumbs { position: relative; }
+/* Pushes the chapter links and the settings button to the right, leaving Contents
+   and Workbench where they have always been. */
+.crumb-spacer { flex: 1 1 0; min-width: 0; }
+.crumb-prev, .crumb-next { white-space: nowrap; }
+
+.crumb-settings {
+  background: none;
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  color: var(--dim);
+  font: inherit;
+  padding: 1px 9px;
+  cursor: pointer;
+}
+.crumb-settings:hover { color: var(--text); border-color: var(--dim); }
+
+.crumb-panel {
+  position: absolute;
+  top: 100%;
+  right: 1.5rem;
+  z-index: 10;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+}
+.crumb-panel[hidden] { display: none; }
+.crumb-panel label { display: flex; gap: .4rem; align-items: center; white-space: nowrap; }
+.crumb-panel select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  padding: 2px 6px;
+  font: inherit;
+}
