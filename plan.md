@@ -698,6 +698,25 @@ The custom field now takes three bends or four and offers the completions (§7.3
 is right arithmetically and still a text box. **Pinned for later: make the quadruple
 something you manipulate rather than type.**
 
+**The constraints are the feature** — Jake's point, and chapter 3 now establishes them.
+A designer nudging four bends is working inside a tight set of rules, and the field
+should be showing them rather than rejecting input after the fact:
+
+- **Three bends force the fourth**, to two values — offer both completions rather than
+  demanding four numbers. Already true of the text version.
+- **The four bends force the whole configuration**, up to sliding, turning and one
+  mirror. There is nothing else to choose, so the tool never has to ask about placement.
+- **One or two rational placements, never more.** Two bends equal → the configuration is
+  its own mirror image. All distinct → a left and a right, both rational, since
+  conjugation preserves ℤ[i]. Verified over the first twelve root quadruples.
+- **Three equal positive bends are impossible.** `3b² − 6ab − a² = 0` forces
+  `b = a(1 ± 2/√3)`, irrational for every integer `a`. A stepper walking toward that
+  configuration should say why it cannot arrive rather than merely refuse.
+- **Congruence mod 24** (chapter 5) rules out most integers before they are typed.
+- **Root quadruples are characterised** by `a ≤ 0`, `a ≤ b ≤ c ≤ d`, `a + b + c ≥ d`
+  (Graham–Lagarias–Mallows–Wilks–Yan) — which is what "this is a minimal quadruple"
+  means, and worth showing when a nudge reaches one.
+
 The shape of it: four fields, each with its own `−`/`+`, and the drawing responds as
 you press. Nudge one bend and its circle grows or shrinks while the other three hold
 their tangencies — which they cannot always do, and that is the interesting part.

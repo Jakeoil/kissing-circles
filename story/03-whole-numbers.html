@@ -31,41 +31,129 @@
       <h1>Why the numbers stay whole</h1>
 
       <p class="lede">
-        Every bend in the packing is an integer, at every depth, forever. That is not a
-        happy accident of the first few rounds — it is forced, and it is forced by what
-        the rule does <em>not</em> do.
+        Every bend in the packing is an integer, at every depth, forever. So is every
+        centre a ratio of them. The picture never needs a real number at all — and the
+        reason it does not is a constraint with a price.
+      </p>
+
+      <h2>The picture never leaves ℚ(i)</h2>
+
+      <p>
+        A circle here is three numbers: <code>(b̄, b, b·z)</code>, with the bend
+        <code>b</code> an ordinary integer and <code>b·z</code> a <b>Gaussian
+        integer</b> — a number <code>m + ni</code> with <code>m, n</code> whole. The
+        centre is then <code>b·z</code> divided by <code>b</code>, and the radius is
+        <code>1/b</code>.
       </p>
 
       <p>
-        Chapter 2 gave the rule. Given three circles and one of the two that complete
-        them, the other is
+        Which means every centre in every packing this program draws is a ratio of
+        Gaussian integers, with denominator exactly the bend, and every radius is the
+        reciprocal of a whole number. <b>The whole picture lives in
+        <code>ℚ(i)</code></b> — the Gaussian rationals, the plane's version of ordinary
+        fractions. Not the reals. Not even the algebraic numbers. Fractions.
+      </p>
+
+      <p>
+        That is not a convenience of this implementation, it is what the object is. And
+        it survives the recursion because chapter 2's rule is
+        <code>b′ = 2(b₁ + b₂ + b₃) − b</code>: addition, doubling, subtraction. No
+        division, no square root. Integers are closed under those, so you cannot leave
+        them however deep you go.
+      </p>
+
+      <h2>The four bends force everything else</h2>
+
+      <p>
+        Three mutually tangent circles with given radii are <b>rigid</b>: the triangle
+        joining their centres has sides <code>r₁+r₂</code>, <code>r₂+r₃</code>,
+        <code>r₃+r₁</code>, and a triangle with given sides has one shape. Drop in the
+        fourth by chapter 2's jump and it is determined too.
+      </p>
+
+      <p>
+        So four bends satisfying Descartes do not merely constrain the picture — they
+        <em>are</em> the picture, up to sliding and turning it. There is exactly one
+        freedom left, and it is a coin flip: <b>the mirror image.</b>
+      </p>
+
+      <figure>
+        <div class="figure-controls">
+          <span>quadruple</span>
+          <select id="quad"></select>
+          <span class="spacer"></span>
+          <span id="verdict2"></span>
+        </div>
+        <canvas id="mirror" width="1100" height="440"></canvas>
+        <figcaption id="mirror-caption"></figcaption>
+      </figure>
+
+      <h2>One placement, or two — never more</h2>
+
+      <p>
+        <b>And the mirror image is rational too.</b> Reflecting the plane conjugates
+        every coordinate, <code>m + ni ↦ m − ni</code>, which maps the Gaussian integers
+        onto themselves. You cannot fall out of <code>ℤ[i]</code> by looking at a packing
+        in a mirror.
+      </p>
+
+      <p>
+        So a set of four bends admits <b>exactly one or two</b> rational placements, and
+        which one depends on nothing but whether two of the bends agree:
       </p>
 
       <div class="aside">
-        <p style="text-align:center; margin:0"><code>b′ = 2(b₁ + b₂ + b₃) − b</code></p>
+        <p style="margin:0">
+          <b>Two bends equal</b> — <code>(−1, 2, 2, 3)</code>, <code>(−3, 5, 8, 8)</code>,
+          <code>(−4, 8, 9, 9)</code> — the configuration <em>is</em> its own mirror
+          image. One placement.<br />
+          <b>All bends distinct</b> — <code>(−2, 3, 6, 7)</code>,
+          <code>(−6, 11, 14, 15)</code> — the mirror is a genuinely different
+          configuration, and just as rational. Two placements, a left and a right.
+        </p>
       </div>
 
       <p>
-        Look at what is on that line: addition, multiplication by two, and subtraction.
-        <b>There is no division and no square root.</b> Integers are closed under those
-        three operations, so if you start with whole numbers you cannot leave them. The
-        same holds for the centres, which the project carries as <code>b·z</code> in the
-        Gaussian integers, so the positions stay exact too.
+        Checked against the first twelve root quadruples, and it holds without exception.
+        There is no third case.
+      </p>
+
+      <h2>Why symmetry is the thing you cannot have</h2>
+
+      <p>
+        It is natural to want more symmetry than that. Suppose the three positive bends
+        were all equal — a bounding circle with three identical circles inside, turning
+        into itself under a third of a turn. Ask Descartes what that costs:
+      </p>
+
+      <div class="aside">
+        <p style="text-align:center; margin:0">
+          <code>(3b − a)² = 2(a² + 3b²)</code> &nbsp;⟹&nbsp;
+          <code>3b² − 6ab − a² = 0</code> &nbsp;⟹&nbsp;
+          <code>b = a(1 ± 2/√3)</code>
+        </p>
+      </div>
+
+      <p>
+        <b>Irrational, for every integer <code>a</code>.</b> The three-fold symmetric
+        configuration exists perfectly well as a picture — it just has no integral
+        version, and no rational one. The same happens, worse, for four-fold.
       </p>
 
       <p>
-        The quadratic formula that <em>does</em> have a square root —
-        <code>b₄ = b₁+b₂+b₃ ± 2√(b₁b₂+b₂b₃+b₃b₁)</code> — is how you find the first
-        circle. After that you never need it again. That is the whole reason this
-        program can zoom as far as it likes.
+        So an integral packing gets a mirror or two and nothing more: the classic
+        <code>(−1, 2, 2, 3)</code> has the symmetry of a rectangle, order 4, and that is
+        the ceiling. <b>The numbers stay whole because the picture gives up its
+        symmetry.</b> Those are the same fact, seen from two sides.
       </p>
 
       <h2>So how long would floating point last?</h2>
 
       <p>
-        Longer than you would guess. Below, the same chain computed twice: once in exact
-        integers, once in ordinary double-precision floating point. Both do nothing but
-        add, double and subtract.
+        Longer than you would guess — which is worth knowing, because it means the case
+        for exact arithmetic is not the one usually made for it. Below, the same chain
+        computed twice: once in exact integers, once in ordinary double precision. Both
+        do nothing but add, double and subtract.
       </p>
 
       <figure>
@@ -149,6 +237,11 @@
 
     <script type="module">
       import { setupChapter } from './chapter.js';
+      import { ROOTS, rootFromCurvatures } from '../src/math/descartes.js';
+      import { Circle } from '../src/math/circle.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { theme as themeFor } from '../src/render/palette.js';
+      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
 
       const body = document.querySelector('#ladder tbody');
       const stepOut = document.getElementById('stepv');
@@ -159,7 +252,134 @@
       const MIN = 6;
       const MAX = 44;
 
-      function redrawFigure() { render(); }
+      function redrawFigure() { render(); renderMirror(); }
+
+      // ------------------------------------------------- the mirror-image figure
+
+      const mirrorCanvas = document.getElementById('mirror');
+      const mirrorCtx = mirrorCanvas.getContext('2d');
+      const mirrorCaption = document.getElementById('mirror-caption');
+      const quadSelect = document.getElementById('quad');
+      const verdict2 = document.getElementById('verdict2');
+
+      const QUADS = [
+        [-1, 2, 2, 3], [-3, 5, 8, 8], [-4, 8, 9, 9],
+        [-2, 3, 6, 7], [-6, 11, 14, 15], [-3, 4, 12, 13],
+      ];
+      for (const [i, q] of QUADS.entries()) {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = '(' + q.join(', ') + ')';
+        quadSelect.append(o);
+      }
+
+      const leftView = new Viewport(1, 1);
+      const rightView = new Viewport(1, 1);
+
+      /** Reflecting the plane conjugates bz, and leaves b and b-bar alone. */
+      const reflect = (quad) => quad.map((c) => new Circle(c.bbar, c.b, c.bz.conj()));
+
+      /**
+       * Is this configuration its own mirror image?
+       *
+       * Compare the reflected quad against the original under the four rotations of the
+       * square lattice, each normalised so the bounding circle sits at the origin. If
+       * any rotation matches, the mirror is the same picture turned round; if none does,
+       * it is genuinely a second configuration.
+       */
+      function achiral(quad) {
+        const norm = (q) => {
+          const bnd = q.find((c) => c.b < 0n) ?? q[0];
+          const f0 = bnd.toFloat();
+          return q.map((c) => {
+            const f = c.toFloat();
+            return [String(c.b), (f.x - f0.x).toFixed(9), (f.y - f0.y).toFixed(9)].join(':');
+          }).sort().join('|');
+        };
+        const here = norm(quad);
+        let m = reflect(quad);
+        for (let k = 0; k < 4; k++) {
+          if (norm(m) === here) return true;
+          m = m.map((c) => new Circle(c.bbar, c.b, c.bz.mul(new c.bz.constructor(0n, 1n))));
+        }
+        return false;
+      }
+
+      function paintQuad(context, view, quad, w, h, palette) {
+        const bnd = quad.find((c) => c.b < 0n) ?? quad[0];
+        const f = bnd.toFloat();
+        const r = Math.abs(f.r);
+        view.resize(w, h);
+        view.fit({ minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r }, 0.08);
+        const metrics = digitMetrics(context);
+        // Bounding circle first, as the field the rest sits on.
+        for (const c of [...quad].sort((a, b) => Number(a.b - b.b))) {
+          const g = c.toFloat();
+          const sr = Math.abs(g.r) * view.scale;
+          const p = view.worldToScreen(g.x, g.y);
+          context.beginPath();
+          context.arc(p.x, p.y, sr, 0, Math.PI * 2);
+          context.fillStyle = c.b < 0n
+            ? palette.interiors[Number(((-c.b) % 24n + 24n) % 24n)]
+            : palette.fills[Number((c.b % 24n + 24n) % 24n)];
+          context.fill();
+          if (c.b < 0n) { context.strokeStyle = palette.rim; context.lineWidth = 1; context.stroke(); }
+          if (c.b > 0n) {
+            drawNumeral(context, view, c, String(c.b),
+              palette.labels[Number(c.b % 24n)], metrics);
+          }
+        }
+      }
+
+      function renderMirror() {
+        const palette = themeFor(chapter.theme());
+        const bends = QUADS[Number(quadSelect.value)];
+        const built = bends[0] === -1 && bends[3] === 3
+          ? ROOTS.apollonian.quad
+          : rootFromCurvatures(bends)?.quad;
+        if (!built) { mirrorCaption.textContent = 'could not place this quadruple'; return; }
+
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = mirrorCanvas.clientWidth;
+        const cssHeight = Math.round(cssWidth * 0.36);
+        mirrorCanvas.width = Math.round(cssWidth * dpr);
+        mirrorCanvas.height = Math.round(cssHeight * dpr);
+        mirrorCanvas.style.height = cssHeight + 'px';
+        mirrorCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        mirrorCtx.fillStyle = palette.background;
+        mirrorCtx.fillRect(0, 0, cssWidth, cssHeight);
+
+        const half = cssWidth / 2;
+        mirrorCtx.save();
+        paintQuad(mirrorCtx, leftView, built, half, cssHeight, palette);
+        mirrorCtx.restore();
+        mirrorCtx.save();
+        mirrorCtx.translate(half, 0);
+        paintQuad(mirrorCtx, rightView, reflect(built), half, cssHeight, palette);
+        mirrorCtx.restore();
+
+        // A divider, so the two panels read as two.
+        mirrorCtx.strokeStyle = palette.rim;
+        mirrorCtx.lineWidth = 1;
+        mirrorCtx.beginPath();
+        mirrorCtx.moveTo(half, 0);
+        mirrorCtx.lineTo(half, cssHeight);
+        mirrorCtx.stroke();
+
+        const same = achiral(built);
+        const pos = bends.filter((b) => b > 0);
+        verdict2.textContent = same ? 'one rational placement' : 'two rational placements';
+        mirrorCaption.textContent = same
+          ? `Left: the quadruple. Right: its mirror image — the same configuration turned `
+            + `round, because ${new Set(pos).size < pos.length ? 'two of the bends agree' : 'of its symmetry'}. `
+            + 'One placement.'
+          : 'Left: the quadruple. Right: its mirror image, which no rotation carries back '
+            + 'onto the original — a genuinely second configuration, and just as rational, '
+            + 'since conjugating a Gaussian integer gives a Gaussian integer. Two placements.';
+      }
+
+      quadSelect.addEventListener('change', renderMirror);
+      window.addEventListener('resize', renderMirror);
 
       const chapter = setupChapter({
         prev: { href: './02-the-jump.html', title: 'The jump' },
@@ -234,6 +454,7 @@
         steps = Math.max(MIN, steps - 4); render();
       });
       render();
+      renderMirror();
     </script>
   </body>
 </html>
