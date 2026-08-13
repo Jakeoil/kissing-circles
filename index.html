@@ -225,9 +225,58 @@
       }
       #custom-hint a { color: var(--dim); }
 
-      #story-link, #labs-link { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--edge); }
-      #story-link:hover, #labs-link:hover { color: var(--text); }
-      #story-link { color: var(--text); }
+      #labs-link { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--edge); }
+      #labs-link:hover { color: var(--text); }
+
+      /* The story was a dim text link among a dozen buttons and read as one more
+         control. It is the part of this project meant to be read, so it gets the one
+         accented affordance on the toolbar — and opens in place rather than sending
+         anyone away to find out what is in it. */
+      #story-toggle {
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      #story-toggle:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+      #story-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 20;
+        width: min(34rem, calc(100vw - 2rem));
+        /* Not var(--panel): that carries alpha, and a translucent list over a packing
+           is unreadable. This one needs to be a page, so it gets an opaque backdrop. */
+        background: var(--bg);
+        backdrop-filter: blur(14px);
+        border: 1px solid var(--edge);
+        border-radius: 10px;
+        padding: 14px 16px;
+        box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+        text-align: left;
+      }
+      #story-panel[hidden] { display: none; }
+      .story-lede { margin: 0 0 10px; color: var(--dim); line-height: 1.5; font-size: 12.5px; }
+      .story-toc { list-style: none; margin: 0; padding: 0; counter-reset: ch; }
+      .story-toc li { counter-increment: ch; }
+      .story-toc a {
+        display: grid; grid-template-columns: 1.6em 1fr; gap: 2px 10px; align-items: baseline;
+        padding: 5px 7px; border-radius: 6px; text-decoration: none; color: var(--text);
+      }
+      .story-toc a::before {
+        content: counter(ch, decimal-leading-zero);
+        color: var(--dim); font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+      }
+      .story-toc a:hover { background: var(--bg); }
+      .story-toc b { font-weight: 600; }
+      /* Second column, second row: the blurb sits under its title rather than fighting
+         it for the same line. */
+      .story-toc span { grid-column: 2; color: var(--dim); font-size: 12px; }
+      .story-all {
+        display: inline-block; margin-top: 10px; color: var(--accent);
+        text-decoration: none; font-weight: 600;
+      }
+      .story-all:hover { text-decoration: underline; }
 
       /* Shown only when "link" is pressed. The URL is never written to the address
          bar — see main.js shareURL(). */
@@ -467,8 +516,25 @@
       <button id="png" type="button">PNG</button>
       <button id="svg" type="button">SVG</button>
       <button id="settings-toggle" type="button">settings</button>
-      <a id="story-link" href="./story/index.html">story →</a>
+      <button id="story-toggle" type="button" aria-expanded="false">Read the story</button>
       <a id="labs-link" href="./labs/index.html">labs</a>
+      <div id="story-panel" hidden>
+        <p class="story-lede">
+          Seven chapters on where this picture comes from — Descartes' theorem, why the
+          bends are whole numbers, and the larger object the packing turns out to sit
+          inside. Every figure is live and computed by this same code.
+        </p>
+        <ol class="story-toc">
+          <li><a href="./story/01-four-circles.html"><b>Four circles that touch</b><span>Descartes' theorem, in Soddy's verse</span></a></li>
+          <li><a href="./story/02-the-jump.html"><b>The jump</b><span>Why the second circle costs one subtraction</span></a></li>
+          <li><a href="./story/03-whole-numbers.html"><b>Why the numbers stay whole</b><span>Exact integers against floating point</span></a></li>
+          <li><a href="./story/04-generations.html"><b>Generations</b><span>4·3ⁿ⁻¹ new circles each round</span></a></li>
+          <li><a href="./story/05-which-numbers.html"><b>Which numbers appear</b><span>Bends mod 24, and an open problem</span></a></li>
+          <li><a href="./story/06-two-regions.html"><b>Two kinds of region</b><span>Schmidt's other subdivision rule</span></a></li>
+          <li><a href="./story/07-the-arrangement.html"><b>The arrangement</b><span>The gasket located inside a larger orbit</span></a></li>
+        </ol>
+        <a class="story-all" href="./story/index.html">All chapters →</a>
+      </div>
       <div id="custom-result">
         <div id="error"></div>
         <div id="custom-offers"></div>

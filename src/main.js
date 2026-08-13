@@ -96,6 +96,30 @@ settingsToggle.addEventListener('click', () => {
   if (!settingsPanel.hidden) placeSettings();
 });
 
+// The story, opened in place. A dim link that says "story →" tells a first-time
+// visitor nothing about what is behind it; a list of seven titles does, without
+// making them leave the picture to find out.
+const storyToggle = /** @type {HTMLButtonElement} */ (document.getElementById('story-toggle'));
+const storyPanel = /** @type {HTMLElement} */ (document.getElementById('story-panel'));
+storyToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  storyPanel.hidden = !storyPanel.hidden;
+  storyToggle.setAttribute('aria-expanded', String(!storyPanel.hidden));
+});
+document.addEventListener('click', (e) => {
+  const t = /** @type {Node} */ (e.target);
+  if (!storyPanel.hidden && !storyPanel.contains(t) && t !== storyToggle) {
+    storyPanel.hidden = true;
+    storyToggle.setAttribute('aria-expanded', 'false');
+  }
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !storyPanel.hidden) {
+    storyPanel.hidden = true;
+    storyToggle.setAttribute('aria-expanded', 'false');
+  }
+});
+
 const view = new Viewport(canvas.clientWidth, canvas.clientHeight);
 
 /** @type {Packing} */
