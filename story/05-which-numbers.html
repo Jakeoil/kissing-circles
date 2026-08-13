@@ -11,6 +11,9 @@
       #legend span { display: flex; gap: .4rem; align-items: center; }
       #legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
       #misses { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; line-height: 1.7; }
+      #readout { font-family: ui-monospace, Menlo, monospace; font-size: .8rem;
+                 padding: .45rem .9rem; border-top: 1px solid var(--edge);
+                 color: var(--dim); min-height: 1.2em; }
     </style>
   </head>
   <body>
@@ -43,6 +46,7 @@
         </div>
         <canvas id="circles" width="1100" height="480"></canvas>
         <canvas id="figure" width="1100" height="620"></canvas>
+        <div id="readout">hover the grid to name a number</div>
         <figcaption id="caption"></figcaption>
       </figure>
 
@@ -189,6 +193,8 @@
       import { Viewport } from '../src/render/viewport.js';
       import { draw } from '../src/render/renderer.js';
       import { theme as themeFor } from '../src/render/palette.js';
+      // A live binding: setNumeralFont reassigns it when the setting changes.
+      import { NUMERAL_FONT } from '../src/render/labels.js';
 
       const canvas = document.getElementById('figure');
       const ctx = canvas.getContext('2d');
@@ -323,11 +329,17 @@
         });
       }
 
-      /** The same classes as integers, in the same colours. */
+      /** Gutters for the axis labels: remainders across the top, integers down the side. */
+      const PAD_TOP = 20;
+      const PAD_LEFT = 46;
+
+      /** Where the grid's cells actually live, so hit-testing and drawing agree. */
+      let layout = null;
+
+      /** The same classes as integers, in the same colours, now with axes. */
       function drawGrid(stats, palette) {
         const dpr = window.devicePixelRatio || 1;
         const cssWidth = canvas.clientWidth;
-        const cellW = cssWidth / MODULUS;
         // The same frame the other chapters use, rather than one derived from the cell
         // count — a figure taller than the screen cannot be read as a whole.
         const cssHeight = Math.round(cssWidth * 0.564);
@@ -335,14 +347,37 @@
         canvas.height = Math.round(cssHeight * dpr);
         canvas.style.height = cssHeight + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const cellH = cssHeight / ROWS;
+
+        const cellW = (cssWidth - PAD_LEFT) / MODULUS;
+        const cellH = (cssHeight - PAD_TOP) / ROWS;
+        layout = { cellW, cellH };
 
         const ruled = chapter.theme() === 'light' ? RULED_LIGHT : RULED_DARK;
+        const ink = getComputedStyle(document.documentElement)
+          .getPropertyValue('--dim').trim() || '#8b949e';
+
         ctx.fillStyle = paper();
         ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+        // The axes go on whether or not there is a table, so a periodic packing still
+        // shows what the grid *would* have been indexed by.
+        ctx.fillStyle = ink;
+        ctx.font = `11px ${NUMERAL_FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        for (let col = 0; col < MODULUS; col++) {
+          ctx.fillText(String(col), PAD_LEFT + (col + 0.5) * cellW, PAD_TOP - 6);
+        }
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        // Every fifth row, or sixty labels would be a solid smear.
+        for (let row = 0; row < ROWS; row += 5) {
+          ctx.fillText(String(row * MODULUS), PAD_LEFT - 7, PAD_TOP + (row + 0.5) * cellH);
+        }
+
         if (stats === null) {
           ctx.fillStyle = ruled;
-          ctx.fillRect(0, 0, cssWidth, cssHeight);
+          ctx.fillRect(PAD_LEFT, PAD_TOP, cssWidth - PAD_LEFT, cssHeight - PAD_TOP);
           return;
         }
 
@@ -357,10 +392,42 @@
             ctx.fillStyle = !present.has(col) ? ruled
               : missing.has(n) ? MISSING
               : palette.fills[col];
-            ctx.fillRect(col * cellW + 0.5, row * cellH + 0.5, cellW - 1, cellH - 1);
+            ctx.fillRect(
+              PAD_LEFT + col * cellW + 0.5,
+              PAD_TOP + row * cellH + 0.5,
+              cellW - 1,
+              cellH - 1,
+            );
           }
         }
       }
+
+      /** Which integer is under the pointer, and what the grid is saying about it. */
+      function describeAt(clientX, clientY) {
+        const stats = study(Number(select.value)).stats;
+        const r = canvas.getBoundingClientRect();
+        if (layout === null) return null;
+        const col = Math.floor((clientX - r.left - PAD_LEFT) / layout.cellW);
+        const row = Math.floor((clientY - r.top - PAD_TOP) / layout.cellH);
+        if (col < 0 || col >= MODULUS || row < 0 || row >= ROWS) return null;
+        const n = row * MODULUS + col;
+        if (n === 0) return null;
+        const verdict = stats === null
+          ? 'no class table for a periodic packing'
+          : !stats.present.includes(col)
+            ? `remainder ${col} never occurs — the whole column is impossible`
+            : stats.missing.some((v) => Number(v) === n)
+              ? 'allowed by its remainder, and still never a bend'
+              : 'occurs as a bend';
+        return `${n} = 24 × ${row} + ${col} · remainder ${col} · ${verdict}`;
+      }
+
+      const readout = document.getElementById('readout');
+      const IDLE = 'hover the grid to name a number';
+      canvas.addEventListener('pointermove', (e) => {
+        readout.textContent = describeAt(e.clientX, e.clientY) ?? IDLE;
+      });
+      canvas.addEventListener('pointerleave', () => { readout.textContent = IDLE; });
 
       select.addEventListener('change', render);
       window.addEventListener('resize', render);
