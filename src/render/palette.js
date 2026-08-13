@@ -130,9 +130,13 @@ export function theme(mode) {
 /**
  * Which color bucket a circle falls in.
  *
- * By curvature is the research-useful mode: circles sharing a curvature share a
- * color, so the arithmetic structure of the packing is visible directly. By depth
- * shows the shape of the recursion instead.
+ * By curvature is the research-useful mode, and it is doing more than it looks: with
+ * `BUCKETS = 24` the bucket *is* the curvature's residue class modulo 24, which is the
+ * congruence class story/05 is about. So circles of bend 3, 27 and 51 share a color
+ * because they share a class, and a classic packing only ever shows 8 of the 24 hues.
+ *
+ * By depth shows the shape of the recursion instead. **Its 24 is a coincidence** —
+ * there it means "how many hues exist", nothing about generations.
  *
  * @param {bigint} curvature
  * @param {number} depth
@@ -141,6 +145,12 @@ export function theme(mode) {
  */
 export function bucket(curvature, depth, mode) {
   if (mode === 'depth') return depth % BUCKETS;
-  const b = curvature < 0n ? -curvature : curvature;
-  return Number(b % BigInt(BUCKETS));
+  // Not `Math.abs`. A bounding circle has negative bend, and its class is the true
+  // residue: −1 ≡ 23 (mod 24), which is a class the classic packing already uses, so
+  // the bounding circle belongs with the 23s. Folding by magnitude instead put it in
+  // class 1 — a 9th hue for a packing with 8 classes, standing for nothing. The double
+  // remainder is because JavaScript's % keeps the sign of the dividend: -1n % 24n
+  // is -1n, which is not an index.
+  const m = BigInt(BUCKETS);
+  return Number(((curvature % m) + m) % m);
 }
