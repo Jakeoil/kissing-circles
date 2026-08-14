@@ -730,9 +730,10 @@ export function placeQuadruple(curvatures) {
   // since it is exactly what the outward move keeps reaching, a designer lands on it.
   const known = Object.values(ROOTS).find((r) =>
     key(r.quad.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0))) === key(root));
-  const placed = known
+  const direct = known
     ? { ok: /** @type {const} */ (true), quad: known.quad }
     : rootFromCurvatures(root.map(Number));
+  const placed = direct.ok ? direct : searchForPlacement(root);
   if (!placed.ok) return { ok: false, reason: `its root ${root.join(', ')} could not be placed` };
   if (steps === 0) return { ok: true, quad: placed.quad, root, steps };
 
@@ -849,4 +850,71 @@ function gcdOf(v) {
     while (x) { [g, x] = [x, g % x]; }
   }
   return g < 0n ? -g : g;
+}
+
+/**
+ * Place a quadruple by finding it, when constructing it head-on does not work.
+ *
+ * `rootFromCurvatures` builds by putting one circle at the origin and the next on the
+ * real axis, which fixes the frame — and then needs a rational square root for the
+ * remaining two. The configuration really is rational (chapter 3), but not always *in
+ * that frame*, and no reordering of the four rotates you into the right one. It fails
+ * on 17 of the first 96 roots, all with `|a| ≥ 11`.
+ *
+ * So: stop constructing and start walking. From the classic packing, apply both moves
+ * this project knows — the Vieta jump inward and the reflection outward (§8.6) — until
+ * a quadruple with the wanted bends turns up. Both are exact, so whatever is found is
+ * an exact placement. In practice the missing roots are one to four steps away and the
+ * search takes milliseconds.
+ *
+ * @param {bigint[]} want sorted ascending
+ * @returns {{ok: true, quad: Circle[]} | {ok: false, reason: string}}
+ */
+function searchForPlacement(want) {
+  const key = (q) => q.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(',');
+  const target = want.join(',');
+
+  // Best-first, not breadth-first. Some roots — `(−34, 39, 266, 267)` and its family,
+  // shaped `(−n, n+5, m, m+1)` — sit deep down a narrow path, and a breadth-first walk
+  // exhausts any sane ceiling long before reaching them. Ordering the frontier by how
+  // near a quadruple's bends already are to the target follows that path instead.
+  const distance = (q) => {
+    const got = q.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    let d = 0n;
+    for (let i = 0; i < 4; i++) {
+      const gap = got[i] - want[i];
+      d += gap < 0n ? -gap : gap;
+    }
+    return d;
+  };
+
+  let frontier = [ROOTS.apollonian.quad];
+  const seen = new Set([key(ROOTS.apollonian.quad)]);
+  const CEILING = 120000;   // bounded: a runaway would hang whatever called it
+  const WIDTH = 900;        // how much of each frontier to keep, best first
+
+  for (let round = 0; round < 60 && seen.size < CEILING; round++) {
+    /** @type {Circle[][]} */
+    const next = [];
+    for (const quad of frontier) {
+      for (let i = 0; i < 4; i++) {
+        const others = quad.filter((_, j) => j !== i);
+        for (const out of [
+          quad.map((c, j) => (j === i ? quad[i].spawn(others[0], others[1], others[2]) : c)),
+          reflectQuad(quad, i),
+        ]) {
+          if (!validateQuad(out).ok) continue;
+          const k = key(out);
+          if (k === target) return { ok: true, quad: out };
+          if (seen.has(k)) continue;
+          seen.add(k);
+          next.push(out);
+        }
+      }
+    }
+    if (next.length === 0) break;
+    next.sort((a, b) => (distance(a) < distance(b) ? -1 : 1));
+    frontier = next.slice(0, WIDTH);
+  }
+  return { ok: false, reason: `no placement found within reach of the classic packing` };
 }

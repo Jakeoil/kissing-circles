@@ -59,12 +59,21 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
 3. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-4. **`rootFromCurvatures` cannot place 17 of the first 96 roots** — `(−11,16,36,37)`,
-   `(−13,18,47,50)`, `(−13,23,30,38)` and so on, all with `|a| ≥ 11`. Found by
-   enumerating and trying to place every one, which `labs/packings.html` now does; it
-   lists them as "cannot be placed" rather than hiding them. This *is* the
-   translation-and-ordering limit the old item guessed at — it just had the wrong
-   example.
+4. ~~`rootFromCurvatures` cannot place 17 of the first 96 roots.~~ **Done.** All 200 of
+   the first roots place, in 4.5 s.
+
+   The direct construction pins one circle at the origin and the next on the real axis,
+   then needs a rational square root for the other two. The configuration is rational —
+   chapter 3 — but not always *in that frame*, and none of the 24 reorderings rotates
+   you into the right one. So `placeQuadruple` stops constructing and starts walking:
+   from the classic packing, applying both moves this project knows — the Vieta jump
+   inward and the reflection outward (§8.6) — until a quadruple with the wanted bends
+   appears. Both are exact, so whatever is found is an exact placement.
+
+   Breadth-first got 199 of 200 and took 8.6 s. `(−34, 39, 266, 267)` and its family,
+   shaped `(−n, n+5, m, m+1)`, sit deep down a narrow path and exhaust any sane ceiling.
+   Ordering the frontier by how near a quadruple's bends already are to the target
+   follows that path: all 200, and faster.
 
 5. ~~`(5, 8, 12, 53)` cannot be placed.~~ **Withdrawn — that example was never a defect.** Jake:
    "why is this even on the list, it looks hokey." Right. Every bend is positive, so no

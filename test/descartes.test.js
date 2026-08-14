@@ -17,6 +17,7 @@ import {
   reflectQuad,
   placeQuadruple,
   rootQuadruples,
+  rootFromCurvatures,
 } from '../src/math/descartes.js';
 import { Circle } from '../src/math/circle.js';
 import { Gaussian } from '../src/math/gaussian.js';
@@ -328,6 +329,43 @@ describe('enumerating the packings', () => {
       const bends = root.quad.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
       assert.ok(listed.has(bends.join(',')),
         `${root.name} is offered but not in the enumeration`);
+    }
+  });
+});
+
+describe('placing roots that cannot be constructed head-on', () => {
+  test('the 17 that rootFromCurvatures refuses all place', () => {
+    // rootFromCurvatures pins one circle at the origin and the next on the real axis,
+    // then needs a rational square root for the other two. The configuration is
+    // rational but not always in that frame, and no reordering rotates you into the
+    // right one. placeQuadruple falls back to walking the orbit instead.
+    const refused = [
+      [-11n, 16n, 36n, 37n], [-13n, 18n, 47n, 50n], [-13n, 23n, 30n, 38n],
+      [-14n, 19n, 54n, 55n], [-14n, 27n, 31n, 34n], [-16n, 21n, 68n, 69n],
+    ];
+    for (const bends of refused) {
+      assert.equal(rootFromCurvatures(bends.map(Number)).ok, false,
+        `${bends} was expected to defeat the direct construction`);
+      const r = placeQuadruple(bends);
+      assert.ok(r.ok, r.ok ? '' : `${bends}: ${r.reason}`);
+      assert.ok(validateQuad(r.quad).ok, `${bends} placed but not a Descartes quadruple`);
+      assert.deepEqual(
+        r.quad.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+        bends,
+        `${bends} placed with the wrong bends`,
+      );
+    }
+  });
+
+  test('every one of the first 96 roots places, exactly', () => {
+    for (const bends of rootQuadruples(96)) {
+      const r = placeQuadruple(bends);
+      assert.ok(r.ok, r.ok ? '' : `${bends}: ${r.reason}`);
+      assert.ok(validateQuad(r.quad).ok, `${bends}`);
+      assert.deepEqual(
+        r.quad.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+        bends,
+      );
     }
   });
 });
