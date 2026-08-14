@@ -328,6 +328,27 @@
       document.getElementById('branch').addEventListener('click', () => { branch = 1 - branch; rebuild(); });
       document.getElementById('mirror').addEventListener('click', () => { mirrored = !mirrored; rebuild(); });
       window.addEventListener('resize', render);
+
+      /**
+       * Open on a quadruple named in the fragment: `#q-3_5_8_8`.
+       *
+       * Same shape the workbench's share links use, so the two agree, and it is what
+       * lets labs/packings.html hand a packing straight over — search there, design
+       * here.
+       */
+      function fromHash() {
+        const m = /^#q(-?\d+(?:_-?\d+){3})$/.exec(location.hash);
+        if (!m) return false;
+        const v = m[1].split('_').map((x) => BigInt(x));
+        if (v.length !== 4) return false;
+        bends = v;
+        // Derive nothing: the four came in together and all four should stand.
+        derived = -1;
+        return true;
+      }
+
+      window.addEventListener('hashchange', () => { if (fromHash()) rebuild(); });
+      fromHash();
       rebuild();
     </script>
   </body>

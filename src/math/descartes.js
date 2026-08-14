@@ -759,3 +759,94 @@ export function placeQuadruple(curvatures) {
   }
   return { ok: false, reason: `reduced to ${root.join(', ')} but could not walk back out` };
 }
+
+/**
+ * The root quadruples, in order — every primitive integral packing, once each.
+ *
+ * Every integral Apollonian packing has exactly one **root quadruple**: the minimal one
+ * under the Apollonian group, reached by Vieta-reducing until no bend can be lowered.
+ * Graham, Lagarias, Mallows, Wilks and Yan characterise them by
+ *
+ *     a ≤ 0,   a ≤ b ≤ c ≤ d,   a + b + c ≥ d
+ *
+ * together with Descartes and `gcd = 1`. Those conditions are decidable, so the
+ * packings can be *enumerated* rather than chosen. The list this replaces offered roots
+ * #1, #2, #4 and #11 — an arbitrary subset picked because they were the ones already
+ * verified, which `plan.md` §7.4 has called out as having no basis since it was written.
+ *
+ * Ordered by `|a|`, then `b`, then `c`, which is the conventional presentation and
+ * begins `(0,0,1,1) (−1,2,2,3) (−2,3,6,7) (−3,4,12,13) (−3,5,8,8) …`. The first is the
+ * strip: `a = 0` is allowed, and it is the degenerate packing between two parallel
+ * lines.
+ *
+ * @param {number} count how many to return
+ * @returns {bigint[][]} each sorted ascending
+ */
+export function rootQuadruples(count) {
+  /** @type {bigint[][]} */
+  const out = [];
+  for (let a = 0n; out.length < count && -a < 400n; a -= 1n) {
+    /** @type {bigint[][]} */
+    const here = [];
+    const A = -a;
+    // The search range is narrow, and worth deriving rather than guessing at — a loose
+    // bound here costs seconds, since every candidate pays an integer square root.
+    //
+    // Write the fourth bend as `d = a+b+c − 2r` with `r² = bc − A(b+c)`; the root takes
+    // the smaller completion. Then `d ≥ c` forces `2r ≤ b − A`, and `r² ≥ 0` forces
+    // `c(b−A) ≥ Ab`. Together those pin c to
+    //
+    //     Ab/(b−A)  ≤  c  ≤  (b−A)/4 + Ab/(b−A)
+    //
+    // a window whose width is only (b−A)/4. And since `c ≥ b`, the window empties once
+    // b grows past about 4A/3, which ends the b loop as well.
+    if (A === 0n) {
+      // The strip, and only the strip: two parallel lines with a circle between them.
+      here.push([0n, 0n, 1n, 1n]);
+    }
+    for (let b = A + 1n; A !== 0n; b += 1n) {
+      const span = b - A;
+      // SLACK because these are integer divisions and both bounds are derived from
+      // exact rationals — truncating either one closes the window on real roots.
+      // Dropping (−3, 5, 8, 8) this way cost an hour, so err wide: the window is only
+      // a few wide regardless, and a couple of extra candidates cost nothing.
+      const SLACK = 2n;
+      const lo = (A * b) / span - SLACK;
+      const hi = span / 4n + (A * b) / span + SLACK;
+      const from = lo > b ? lo : b;
+      if (from > hi) {
+        // Empty for this b. Once c ≥ b outruns the window it does so for good.
+        if (b > 4n * A + 8n) break;
+        continue;
+      }
+      for (let c = from; c <= hi; c += 1n) {
+        const disc = a * b + b * c + c * a;
+        if (disc < 0n || !isPerfectSquare(disc)) continue;
+        const d = a + b + c - 2n * isqrt(disc);
+        if (d < c || a + b + c < d) continue;
+        if (gcdOf([a, b, c, d]) !== 1n) continue;
+        if (!descartesReal(a, b, c, d)) continue;
+        here.push([a, b, c, d]);
+      }
+    }
+    here.sort((x, y) => (x[1] === y[1] ? Number(x[2] - y[2]) : Number(x[1] - y[1])));
+    for (const q of here) {
+      if (out.length >= count) break;
+      out.push(q);
+    }
+  }
+  return out;
+}
+
+/**
+ * @param {bigint[]} v
+ * @returns {bigint}
+ */
+function gcdOf(v) {
+  let g = 0n;
+  for (let x of v) {
+    if (x < 0n) x = -x;
+    while (x) { [g, x] = [x, g % x]; }
+  }
+  return g < 0n ? -g : g;
+}

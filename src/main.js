@@ -4,6 +4,8 @@ import { Packing } from './math/packing.js';
 import {
   ROOTS,
   rootFromCurvatures,
+  rootQuadruples,
+  placeQuadruple,
   fourthCurvature,
   descartesReal,
   primitiveForm,
@@ -144,13 +146,47 @@ let visible = /** @type {number[]} */ ([]);
 /** Last cursor position in screen coordinates, or null when it left the canvas. */
 let cursor = /** @type {{x: number, y: number}|null} */ (null);
 
-for (const [key, root] of Object.entries(ROOTS)) {
+/**
+ * The packings on offer: the root quadruples, enumerated.
+ *
+ * This used to be four hand-picked roots — #1, #2, #4 and #11 — chosen because they
+ * were the ones already verified rather than for any reason, which plan.md §7.4 has
+ * called out for as long as it has existed. Every integral packing has exactly one root
+ * quadruple and the conditions are decidable, so the list can simply *be* the
+ * enumeration.
+ *
+ * Ids: a shipped root keeps its named key, so every link ever emitted still opens what
+ * it opened. Anything new is identified by its curvatures, which the share format
+ * already supports and which cannot go stale.
+ */
+const PACKINGS = rootQuadruples(24).map((bends) => {
+  const named = Object.entries(ROOTS).find(([, r]) =>
+    r.quad.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join() === bends.join());
+  return {
+    id: named ? named[0] : encodeCurvatures(bends),
+    label: `(${bends.join(', ')})`,
+    bends,
+    quad: named ? named[1].quad : null,
+  };
+});
+
+for (const p of PACKINGS) {
   const option = document.createElement('option');
-  option.value = key;
-  option.textContent = root.name;
+  option.value = p.id;
+  option.textContent = p.label;
   rootSelect.append(option);
 }
 rootSelect.value = 'apollonian';
+
+/** Place a listed packing on demand — only the shipped ones are built up front. */
+function packingQuad(id) {
+  const p = PACKINGS.find((x) => x.id === id);
+  if (!p) return null;
+  if (p.quad) return p.quad;
+  const built = placeQuadruple(p.bends);
+  if (built.ok) p.quad = built.quad;
+  return built.ok ? built.quad : null;
+}
 
 /**
  * Start over from a root quadruple.
@@ -454,9 +490,27 @@ function restoreFromURL() {
   const state = decode(location.hash);
   if (state === null) return false;
 
+  // Listed packings first. An enumerated entry is identified by its curvatures, so it
+  // looks like a custom quadruple — and treating it as one loads the right packing but
+  // leaves the dropdown showing nothing, which is worse than either.
+  const listed = ROOTS[state.root]
+    ? ROOTS[state.root].quad
+    : PACKINGS.some((p) => p.id === state.root)
+      ? packingQuad(state.root)
+      : undefined;
+
   const curvatures = decodeCurvatures(state.root);
-  if (curvatures !== null) {
-    const built = rootFromCurvatures(curvatures);
+  if (listed !== undefined) {
+    if (listed === null) {
+      showError(`link could not be opened: (${state.root}) could not be placed`);
+      return false;
+    }
+    rootSelect.value = state.root;
+    load(listed, state.root);
+  } else if (curvatures !== null) {
+    // A quadruple the user built. placeQuadruple, not rootFromCurvatures, so links to
+    // interior quadruples like (5, 8, 12, 53) open rather than being refused.
+    const built = placeQuadruple(curvatures);
     if (!built.ok) {
       showError(`link could not be opened: ${built.reason}`);
       return false;
@@ -464,9 +518,6 @@ function restoreFromURL() {
     customInput.value = curvatures.join(',');
     rootSelect.selectedIndex = -1;
     load(built.quad, state.root);
-  } else if (ROOTS[state.root]) {
-    rootSelect.value = state.root;
-    load(ROOTS[state.root].quad, state.root);
   } else {
     return false;
   }
@@ -677,7 +728,12 @@ function midpoint() {
 rootSelect.addEventListener('change', () => {
   showError('');
   customInput.value = '';
-  load(ROOTS[rootSelect.value].quad, rootSelect.value);
+  const quad = packingQuad(rootSelect.value);
+  if (quad === null) {
+    showError(`(${rootSelect.value}) could not be placed`);
+    return;
+  }
+  load(quad, rootSelect.value);
 });
 
 /**

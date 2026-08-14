@@ -47,11 +47,26 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    from 171.8 MB to 204.2 MB, which is a bad trade on this item; only live frames carry
    it now, and a frame resumed from `_deferred` rebuilds by key on the cold path. Final:
    298 ms at 178.9 MB.
-2. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
+2. ~~The packings list has no basis.~~ **Done.** The dropdown is now
+   `rootQuadruples(24)` — the enumeration itself, in the conventional order, beginning
+   with the strip at `a = 0`. Every integral packing has exactly one root quadruple and
+   the GLMWY conditions are decidable, so the list can *be* the enumeration rather than
+   a sample of it. Shipped roots keep their named ids so every link ever emitted still
+   opens what it opened; new entries are identified by their curvatures, which the share
+   format already carried. Verified against the order in §7.4 by test.
+
+   *Was:* **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
 3. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-4. ~~`(5, 8, 12, 53)` cannot be placed.~~ **Withdrawn — it was never a defect.** Jake:
+4. **`rootFromCurvatures` cannot place 17 of the first 96 roots** — `(−11,16,36,37)`,
+   `(−13,18,47,50)`, `(−13,23,30,38)` and so on, all with `|a| ≥ 11`. Found by
+   enumerating and trying to place every one, which `labs/packings.html` now does; it
+   lists them as "cannot be placed" rather than hiding them. This *is* the
+   translation-and-ordering limit the old item guessed at — it just had the wrong
+   example.
+
+5. ~~`(5, 8, 12, 53)` cannot be placed.~~ **Withdrawn — that example was never a defect.** Jake:
    "why is this even on the list, it looks hokey." Right. Every bend is positive, so no
    circle encloses the others and it is **not a root quadruple** at all; it is an
    interior one, two Vieta steps inside the `(−3, 5, 8, 8)` packing.

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>lab — the packings, with numbers</title>
+    <link rel="icon" href="data:," />
+    <style>
+      /*
+        A lab page (plan.md §7.1). Every integral packing has exactly one root
+        quadruple, and the conditions are decidable, so the packings can be listed
+        rather than chosen. Once listed they can be measured, and once measured they
+        can be searched — which is what a designer in labs/quad.html actually needs:
+        not "is this valid" but "which packing should I be in".
+      */
+      html, body { margin: 0; min-height: 100%; background: #0d1117; color: #c9d1d9;
+                   font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
+      main { max-width: 74rem; margin: 0 auto; padding: 1rem 1.25rem 4rem; }
+      a { color: #7ee2b8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      h1 { font-size: 1.35rem; margin: .6rem 0 .3rem; }
+      p.lede { color: #8b949e; max-width: 46rem; line-height: 1.6; }
+      .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+             margin: 1rem 0 .6rem; }
+      input, select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+                      border-radius: 5px; padding: 4px 8px; font: inherit; }
+      input { font-family: ui-monospace, Menlo, monospace; width: 15rem; }
+      label { color: #8b949e; display: flex; gap: 6px; align-items: center; }
+      table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      th { text-align: right; color: #8b949e; font-weight: 600; padding: .4rem .55rem;
+           border-bottom: 1px solid #30363d; white-space: nowrap; cursor: pointer; }
+      th:first-child, td:first-child { text-align: left; }
+      th.on { color: #f0f6fc; }
+      td { text-align: right; padding: .3rem .55rem; border-bottom: 1px solid #161b22;
+           font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+      tr:hover td { background: #161b22; }
+      td.bends a { color: #f0f6fc; }
+      .tag { color: #8b949e; }
+      .tag.sym { color: #7ee2b8; }
+      #count { color: #8b949e; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="./index.html">← labs</a> · <a href="../index.html">Workbench</a></nav>
+      <h1>The packings, with numbers</h1>
+      <p class="lede">
+        Every primitive integral Apollonian packing has exactly one root quadruple, and
+        Graham–Lagarias–Mallows–Wilks–Yan give conditions that decide which quadruples
+        those are. So the packings can be enumerated, and then measured. Click any root
+        to open it in the <a href="./quad.html">quadruple designer</a>.
+      </p>
+
+      <div class="bar">
+        <input id="q" type="text" placeholder="a bend, or  sym  /  asym" spellcheck="false" />
+        <label>show
+          <select id="howmany">
+            <option value="24">first 24</option>
+            <option value="48">first 48</option>
+            <option value="96">first 96</option>
+          </select>
+        </label>
+        <span id="count"></span>
+      </div>
+
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </main>
+
+    <script type="module">
+      import { rootQuadruples, placeQuadruple } from '../src/math/descartes.js';
+      import { analyze } from '../src/math/analysis.js';
+
+      const rowsBox = document.getElementById('rows');
+      const headBox = document.getElementById('head');
+      const search = document.getElementById('q');
+      const howMany = document.getElementById('howmany');
+      const countBox = document.getElementById('count');
+
+      /**
+       * Bend to measure up to.
+       *
+       * One `analyze` per packing, not two. The first version also ran a second pass to
+       * bend 10,000 for the hole count, which is 124 ms against 21 ms and made the page
+       * hang on load. Everything shown comes from a single pass now, and the hole count
+       * is over this bound rather than 10⁴ — a smaller number, honestly labelled.
+       */
+      const BOUND = 3000n;
+
+      const COLUMNS = [
+        { key: 'label', name: 'root quadruple' },
+        { key: 'a', name: '|a|', title: 'size of the enclosing circle' },
+        { key: 'orient', name: 'orientations', title: '8, or 4 when a repeated bend gives it a mirror' },
+        { key: 'classes', name: 'classes mod 24', title: 'how many of the 24 residues occur' },
+        { key: 'circles', name: 'circles ≤ 3000', title: 'how densely it fills at that bound' },
+        { key: 'distinct', name: 'distinct bends' },
+        { key: 'holes', name: 'holes ≤ 3000', title: 'admissible by residue, and still never a bend' },
+      ];
+      let sortKey = 'a';
+      let ascending = true;
+
+      /** @type {any[]} */
+      let table = [];
+
+      function measure(count) {
+        const out = [];
+        for (const bends of rootQuadruples(count)) {
+          const built = placeQuadruple(bends);
+          const positive = bends.filter((b) => b > 0n).map(String);
+          const repeated = new Set(positive).size < positive.length;
+          const row = {
+            bends,
+            label: '(' + bends.join(', ') + ')',
+            id: 'q' + bends.join('_'),
+            a: Number(bends[0] < 0n ? -bends[0] : bends[0]),
+            orient: repeated ? 4 : 8,
+            repeated,
+            classes: '—', circles: '—', distinct: '—', holes: '—',
+            placed: built.ok,
+          };
+          // The strip is periodic: translating any circle by one unit gives another of
+          // the same bend, so "bends ≤ 3000" is not a finite set and `analyze` cannot
+          // terminate on it. It is listed — it is a genuine root, the a = 0 one — but it
+          // is the one packing here that cannot be counted. Chapter 4 says the same, and
+          // this is the third time in this project that the trap has been walked into.
+          if (bends[0] !== 0n && built.ok) {
+            const stats = analyze(built.quad, BOUND);
+            row.classes = stats.present.length;
+            row.circles = stats.circles;
+            row.distinct = stats.distinct;
+            row.holes = stats.missing.length;
+          }
+          out.push(row);
+        }
+        return out;
+      }
+
+      function matches(r, q) {
+        const t = q.trim().toLowerCase();
+        if (!t) return true;
+        if (t === 'sym') return r.repeated;
+        if (t === 'asym') return !r.repeated;
+        // A bare number matches a bend of that size anywhere in the root — which is the
+        // question a designer actually asks: "which packings have an 8 in them?"
+        if (/^-?\d+$/.test(t)) {
+          const n = BigInt(t);
+          return r.bends.some((b) => b === n || b === -n);
+        }
+        return r.label.includes(t);
+      }
+
+      function render() {
+        headBox.replaceChildren();
+        for (const c of COLUMNS) {
+          const th = document.createElement('th');
+          th.textContent = c.name + (sortKey === c.key ? (ascending ? ' ▲' : ' ▼') : '');
+          if (c.title) th.title = c.title;
+          if (sortKey === c.key) th.className = 'on';
+          th.addEventListener('click', () => {
+            if (sortKey === c.key) ascending = !ascending;
+            else { sortKey = c.key; ascending = true; }
+            render();
+          });
+          headBox.append(th);
+        }
+
+        const shown = table.filter((r) => matches(r, search.value)).sort((x, y) => {
+          const a = x[sortKey], b = y[sortKey];
+          // The strip's unmeasurable columns are em-dashes; keep them at the bottom
+          // rather than letting a string/number comparison decide it arbitrarily.
+          if (a === '—') return 1;
+          if (b === '—') return -1;
+          const cmp = typeof a === 'string' ? a.localeCompare(b) : a - b;
+          return ascending ? cmp : -cmp;
+        });
+
+        rowsBox.replaceChildren();
+        for (const r of shown) {
+          const tr = document.createElement('tr');
+          for (const c of COLUMNS) {
+            const td = document.createElement('td');
+            if (c.key === 'label') {
+              td.className = 'bends';
+              if (r.placed) {
+                const a = document.createElement('a');
+                a.href = './quad.html#' + r.id;
+                a.textContent = r.label;
+                td.append(a);
+              } else {
+                // Listed, not hidden. rootFromCurvatures cannot place these — 17 of the
+                // first 96, all with |a| ≥ 11 — and dropping them would misrepresent the
+                // enumeration as smaller than it is. See plan.md §0.
+                const span = document.createElement('span');
+                span.textContent = r.label;
+                td.append(span);
+                const tag = document.createElement('span');
+                tag.className = 'tag';
+                tag.textContent = '  cannot be placed';
+                td.append(tag);
+              }
+              if (r.repeated) {
+                const tag = document.createElement('span');
+                tag.className = 'tag sym';
+                tag.textContent = '  a repeated bend';
+                td.append(tag);
+              }
+            } else {
+              td.textContent = typeof r[c.key] === 'number' ? r[c.key].toLocaleString() : r[c.key];
+            }
+            tr.append(td);
+          }
+          rowsBox.append(tr);
+        }
+        countBox.textContent = `${shown.length} of ${table.length} packings`;
+      }
+
+      function rebuild() {
+        countBox.textContent = 'measuring…';
+        // Next frame, so the message paints before the work starts.
+        requestAnimationFrame(() => {
+          table = measure(Number(howMany.value));
+          render();
+        });
+      }
+
+      search.addEventListener('input', render);
+      howMany.addEventListener('change', rebuild);
+      rebuild();
+    </script>
+  </body>
+</html>

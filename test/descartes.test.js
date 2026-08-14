@@ -16,6 +16,7 @@ import {
   inversiveProduct2,
   reflectQuad,
   placeQuadruple,
+  rootQuadruples,
 } from '../src/math/descartes.js';
 import { Circle } from '../src/math/circle.js';
 import { Gaussian } from '../src/math/gaussian.js';
@@ -292,5 +293,41 @@ describe('placing quadruples that are not roots', () => {
     const r = placeQuadruple([6, 11, 14, 15]);
     assert.equal(r.ok, false);
     assert.match(r.reason, /not a Descartes quadruple/);
+  });
+});
+
+describe('enumerating the packings', () => {
+  test('it reproduces the known order', () => {
+    // The list in plan.md §7.4, which the workbench's dropdown used to sample
+    // arbitrarily. If this drifts, the packings offered drift with it.
+    const got = rootQuadruples(12).filter((q) => q[0] !== 0n).map((q) => q.join(','));
+    assert.deepEqual(got.slice(0, 11), [
+      '-1,2,2,3', '-2,3,6,7', '-3,4,12,13', '-3,5,8,8', '-4,5,20,21', '-4,8,9,9',
+      '-5,6,30,31', '-5,7,18,18', '-6,7,42,43', '-6,10,15,19', '-6,11,14,15',
+    ]);
+  });
+
+  test('the strip comes first, and every entry is a genuine root', () => {
+    const roots = rootQuadruples(24);
+    assert.deepEqual(roots[0].map(Number), [0, 0, 1, 1], 'the strip is the a = 0 root');
+    for (const q of roots) {
+      assert.ok(descartesReal(q[0], q[1], q[2], q[3]), `${q} fails Descartes`);
+      assert.ok(q[0] <= 0n, `${q} has no enclosing circle`);
+      assert.ok(q[0] + q[1] + q[2] >= q[3], `${q} is not minimal`);
+      for (let i = 1; i < 4; i++) assert.ok(q[i - 1] <= q[i], `${q} is not sorted`);
+      // Reducing a root must leave it alone: that is what being a root means.
+      const r = placeQuadruple(q);
+      assert.ok(r.ok, r.ok ? '' : `${q}: ${r.reason}`);
+      assert.equal(r.steps, 0, `${q} should already be reduced`);
+    }
+  });
+
+  test('the shipped roots all appear in it', () => {
+    const listed = new Set(rootQuadruples(24).map((q) => q.join(',')));
+    for (const root of Object.values(ROOTS)) {
+      const bends = root.quad.map((c) => c.b).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      assert.ok(listed.has(bends.join(',')),
+        `${root.name} is offered but not in the enumeration`);
+    }
   });
 });
