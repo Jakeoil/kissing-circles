@@ -86,6 +86,50 @@
         in the gaps left by the last, exactly as chapter 4's circles did in the plane.
       </p>
 
+      <h2>The mediant <em>is</em> Descartes' theorem</h2>
+
+      <p>
+        That last claim can be made exact, and it is the best thing on this page. Take
+        the real line — a circle of bend 0 — together with the Ford circles of two Farey
+        neighbours, bends <code>q²</code> and <code>s²</code>. Those three are mutually
+        tangent, so chapter 1 applies: there are exactly two circles completing them, and
+        chapter 2 says their bends are
+      </p>
+
+      <div class="aside">
+        <p style="text-align:center; margin:0">
+          <code>q² + s² ± 2√(q²s²) &nbsp;=&nbsp; q² + s² ± 2qs
+          &nbsp;=&nbsp; (q + s)² &nbsp;or&nbsp; (q − s)²</code>
+        </p>
+      </div>
+
+      <p>
+        <b>The two completions are the mediant and its reverse.</b> Not analogous to
+        them — they are them. <code>(q + s)²</code> is the Ford circle of the mediant
+        <code>(p+r)/(q+s)</code>, dropped into the gap; <code>(q − s)²</code> is the one
+        on the other side, the neighbour you came from. Descartes' theorem, applied to a
+        line and two Ford circles, <em>says add the denominators</em>.
+      </p>
+
+      <p>
+        So <code>(0, q², s², (q+s)²)</code> is a Descartes quadruple for every pair of
+        Farey neighbours — <code>(0, 1, 1, 4)</code>, <code>(0, 1, 4, 9)</code>,
+        <code>(0, 4, 9, 25)</code>, <code>(0, 1, 9, 16)</code> — and the square numbers
+        appearing as bends is exactly the <code>1/(2q²)</code> radius the chapter opened
+        with, halved out of the arrangement's convention.
+      </p>
+
+      <div class="aside">
+        <p>
+          These turned up sideways. Reflecting the classic packing's quadruples outward
+          (<a href="../labs/outward.html">the outward lab</a>, <code>plan.md</code> §8.6)
+          produces degenerate configurations with one straight line, and their bends came
+          out 1, 4, 9, 16, 25. Squares, because they are Ford quadruples — the outward
+          move lands on this chapter as well as on new packings. Nobody was looking for
+          that.
+        </p>
+      </div>
+
       <p>
         Do this from <code>0/1</code> and <code>1/1</code> and you generate every
         rational in <code>[0, 1]</code>, each exactly once, in lowest terms and with no
