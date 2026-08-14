@@ -33,10 +33,20 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
 
 ### Open, in the order I would take them
 
-1. **Memory has no ceiling.** Circles accumulate and are never evicted — 600k after a
-   sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
-   `Packing._expand` calls it three times per emit to look up parent indices. Carrying
-   indices on the frame removes those without the ~50 MB a string cache would cost.
+1. **Memory has no ceiling — and the sink is `_deferred`, not the circles.** Measured on
+   a 166,023-circle packing: **332,042 deferred frames**, twice as many as circles.
+   Those are branches a limit turned away, kept so every limit stays reversible
+   (`_admits`), and they dominate the heap. Evicting circles is the harder half and is
+   still open: parents are indices into parallel arrays, so removing one invalidates
+   every reference to it.
+
+   *Done:* the `Circle.key()` cost is gone. `_expand` was rebuilding three key strings
+   and probing the map three times per emit to find parent indices — measured at 16% of
+   generation time. Frames now carry the positions, and generation went 399 ms → 298 ms,
+   **25% faster**. The first attempt gave *every* frame the array and pushed the heap
+   from 171.8 MB to 204.2 MB, which is a bad trade on this item; only live frames carry
+   it now, and a frame resumed from `_deferred` rebuilds by key on the cold path. Final:
+   298 ms at 178.9 MB.
 2. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
 3. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
