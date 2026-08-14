@@ -113,7 +113,16 @@
       let hits = [];
       let hovered = -1;
 
-      const bends = (q) => q.map((c) => Number(c.b)).sort((a, b) => a - b);
+      /**
+       * The bends, ascending, kept as BigInt all the way to the string.
+       *
+       * Not `Number(c.b)`. The reflection is exact and the bends outrun a double
+       * quickly — forty steps outward reaches 7,797,667,437,859,883,883, and converting
+       * that for display silently zeroes its last three digits. The trail is the only
+       * record of where the walk has been, so it has to be the true numbers.
+       * Chapter 3, in the one place it was easiest to forget.
+       */
+      const bends = (q) => q.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
       const label = (q) => '(' + bends(q).join(', ') + ')';
       const isStrip = (q) => q.filter((c) => c.b === 0n).length === 2;
 
