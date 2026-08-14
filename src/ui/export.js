@@ -1,7 +1,9 @@
 // @ts-check
 
 import { theme as themeFor, bucket } from '../render/palette.js';
-import { digitMetrics, numeralSize, NUMERAL_FONT, LABEL_MIN_RADIUS } from '../render/labels.js';
+import {
+  digitMetrics, numeralSize, NUMERAL_FONT, NUMERAL_WEIGHT, LABEL_MIN_RADIUS,
+} from '../render/labels.js';
 
 /**
  * Getting a picture out of the tool and into a paper.
@@ -138,11 +140,37 @@ export function toSVG(packing, view, options, measuringContext) {
     backdrops.join(''),
     groups.join(''),
     labels.length > 0
-      ? `<g font-family='${NUMERAL_FONT.replace(/"/g, "'")}' font-weight="700" ` +
+      ? `<g font-family="${xml(NUMERAL_FONT)}" font-weight="${NUMERAL_WEIGHT}" ` +
         `text-anchor="middle">${labels.join('')}</g>`
       : '',
     '</svg>',
   ].join('\n');
+}
+
+/**
+ * Escape a string for use inside an XML attribute.
+ *
+ * Font stacks quote any family whose name has a space — `"Times New Roman"`,
+ * `"LMRoman10 Oldstyle"` — and the previous version put that straight into a
+ * single-quoted attribute after turning `"` into `'`, which produced
+ *
+ *     font-family=''LMRoman10', Georgia, serif'
+ *
+ * and ended the attribute at the second character. **Every exported SVG naming a
+ * quoted family was malformed** — Times, Georgia (its stack quotes "Liberation Serif"),
+ * EB Garamond, Crimson Pro, STIX and both Latin Moderns. Caladea alone was safe, and
+ * Caladea is the default, which is why this went unnoticed until Jake exported one.
+ *
+ * @param {string} v
+ * @returns {string}
+ */
+export function xml(v) {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 /**
