@@ -1174,8 +1174,18 @@ them.
 Jake's correction: `(−6, 11, 14, 15)` comes out of the 6 in the `(−1, 2, 3, 6)`
 quadruple. That quadruple is present in the classic packing and is not a parent triple.
 Reflecting it through its 6 gives `(−6, 11, 14, 15)` in **one step**. Its other three
-reflections give `(−2, 3, 7, 10)`, `(−3, 5, 8, 12)`, and `(0, 1, 1, 4)` — a strip, and a
-different one from the `(0, 0, 1, 1)` the root quadruple reaches.
+reflections give `(−2, 3, 7, 10)`, `(−3, 5, 8, 12)` and `(0, 1, 1, 4)`.
+
+I first read that last one as a second strip and wrote that there was more than one
+waist. **Wrong — it has one zero bend, not two**, so it is a line with three circles on
+it and not a strip at all. `(0, 0, 1, 1)` is the only degenerate result with two parallel
+lines, the waist is unique, and chapter 3's coordinate frame stands.
+
+What the one-line results are is more interesting than a second waist would have been:
+`(0, 1, 1, 4)`, `(0, 1, 4, 9)`, `(0, 1, 9, 16)`, `(0, 1, 16, 25)` — bends 1, 4, 9, 16,
+25. **Squares.** They are Ford quadruples, a line together with the Ford circles of
+bend `q²` from chapter 8. So the outward move lands on Ford configurations as well as on
+roots, which ties §8.6 to chapter 8.
 
 Seeding instead from *every* Descartes quadruple present in the packing: **all 17 roots
 with `|a| ≤ 8` are reached**, and 22 of the 24 with `|a| ≤ 10`, the stragglers
