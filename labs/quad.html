@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>lab — designing a quadruple</title>
+    <link rel="icon" href="data:," />
+    <style>
+      /*
+        A lab page (plan.md §7.1, §7.3a). The custom field on the workbench is a text
+        box that rejects you after the fact. Everything needed to do better is now
+        known — three bends force the fourth, the configuration is forced up to a
+        mirror, gcd is always 1, mod 24 rules most integers out, and a quadruple's
+        distance from its root is computable exactly. This shows all of it while you
+        nudge, instead of afterwards.
+      */
+      html, body { margin: 0; height: 100%; background: #0d1117; color: #c9d1d9;
+                   font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+      .panel { position: fixed; background: #161b22ee; border: 1px solid #30363d;
+               border-radius: 8px; padding: 10px 12px; backdrop-filter: blur(12px); }
+      #controls { top: 12px; left: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      button, select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+               border-radius: 5px; padding: 2px 9px; font: inherit; cursor: pointer; }
+      button:hover:not(:disabled) { border-color: #8b949e; }
+      button:disabled { opacity: .35; cursor: default; }
+      a { color: #7ee2b8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      .bend { display: flex; align-items: center; gap: 4px;
+              border: 1px solid #30363d; border-radius: 6px; padding: 3px 5px; }
+      .bend b { min-width: 3.6em; text-align: center; font-family: ui-monospace, Menlo, monospace;
+                font-size: 14px; color: #f0f6fc; }
+      .bend.locked { border-color: #7ee2b8; }
+      .bend.locked b { color: #7ee2b8; }
+
+      #facts { top: 62px; left: 12px; width: min(400px, calc(100% - 24px));
+               font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.75; }
+      #facts .row { display: flex; gap: 8px; }
+      #facts .k { color: #8b949e; min-width: 11em; }
+      #facts .yes { color: #7ee2b8; }
+      #facts .no { color: #f0883e; }
+      #hud { bottom: 12px; left: 12px; right: 12px; color: #8b949e;
+             font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+      #offers { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+      #offers button { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <div id="controls" class="panel">
+      <a href="./index.html">← labs</a>
+      <span id="fields" style="display:flex; gap:8px"></span>
+      <button id="reset" type="button">reset</button>
+      <button id="branch" type="button" title="three bends force the fourth to two values">other completion</button>
+      <button id="mirror" type="button" title="the other handedness">mirror</button>
+    </div>
+
+    <div id="facts" class="panel"></div>
+    <div id="hud">…</div>
+
+    <script type="module">
+      import {
+        ROOTS, rootFromCurvatures, fourthCurvature, descartesReal, validateQuad,
+      } from '../src/math/descartes.js';
+      import { Circle } from '../src/math/circle.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { theme as themeFor } from '../src/render/palette.js';
+      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+
+      const canvas = document.getElementById('view');
+      const ctx = canvas.getContext('2d');
+      const factsBox = document.getElementById('facts');
+      const fieldsBox = document.getElementById('fields');
+      const hud = document.getElementById('hud');
+      const view = new Viewport(1, 1);
+      const palette = themeFor('dark');
+
+      /** The four bends being designed. The fourth is derived unless the user pins it. */
+      let bends = [-1n, 2n, 2n, 3n];
+      /** Which of the four is currently derived from the other three, or -1 for none. */
+      let derived = 3;
+      let quad = null;
+      /**
+       * The last quadruple that could be drawn.
+       *
+       * Nudging a bend usually lands somewhere invalid — most integers do not complete
+       * three others — and blanking the canvas at that moment takes away the one thing
+       * that makes the constraint legible. The last good picture stays, greyed, so you
+       * can see what you are moving away from.
+       */
+      let lastGood = null;
+      let hovered = -1;
+      let mirrored = false;
+      /** Which of the two completions the derived bend takes: 0 is the larger. */
+      let branch = 0;
+
+      const gcd = (a, b) => { a = a < 0n ? -a : a; b = b < 0n ? -b : b;
+        while (b) { [a, b] = [b, a % b]; } return a; };
+      const gcd4 = (v) => v.reduce((a, b) => gcd(a, b));
+      const mod24 = (b) => Number(((b % 24n) + 24n) % 24n);
+
+      /**
+       * How far a quadruple is from its root, exactly.
+       *
+       * Repeatedly replace the largest bend by its Vieta partner while that lowers it.
+       * The move is the inverse of the one that generates the packing, so the number of
+       * steps is the quadruple's distance from the root it belongs to. Intrinsic to the
+       * four numbers — no packing has to be built to find it.
+       *
+       * Note this is Vieta steps from the root, which is not always what `Packing`
+       * records as a circle's birth depth: the two differ by one in about a quarter of
+       * cases, because the generator's depth belongs to the newest *circle* and this
+       * belongs to the *quadruple*.
+       */
+      function toRoot(v) {
+        let b = [...v].sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+        let steps = 0;
+        for (let guard = 0; guard < 400; guard++) {
+          const s = b[0] + b[1] + b[2] + b[3];
+          const alt = 2n * (s - b[3]) - b[3];
+          if (alt >= b[3]) break;
+          b[3] = alt;
+          b.sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+          steps++;
+        }
+        return { root: b, steps };
+      }
+
+      /** GLMWY: a ≤ 0, a ≤ b ≤ c ≤ d, a + b + c ≥ d. */
+      function isRoot(v) {
+        const b = [...v].sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+        return b[0] <= 0n && b[0] + b[1] + b[2] >= b[3];
+      }
+
+      function rebuild() {
+        // Keep the derived bend honest: recompute it from the other three.
+        if (derived >= 0) {
+          const others = bends.filter((_, i) => i !== derived);
+          const pair = fourthCurvature(others[0], others[1], others[2]);
+          // Three bends force the fourth *to two values*, and which one you take is a
+          // real choice rather than a detail — it is chapter 2's whole subject. So the
+          // branch is held explicitly and switchable, not guessed at. Picking the
+          // nearer value instead makes nudging sticky: raise a 2 to a 3 in
+          // (−1, 2, 2, 3) and the nearest completion drops back to 2, so the multiset
+          // never changes and the control appears dead.
+          if (pair !== null) bends[derived] = pair[branch];
+        }
+        const built = rootFromCurvatures(bends.map(Number));
+        quad = built && built.ok ? built.quad : null;
+        if (quad && mirrored) quad = quad.map((c) => new Circle(c.bbar, c.b, c.bz.conj()));
+        if (quad) lastGood = quad;
+        render();
+      }
+
+      function fields() {
+        fieldsBox.replaceChildren();
+        bends.forEach((b, i) => {
+          const wrap = document.createElement('span');
+          wrap.className = 'bend' + (i === derived ? ' locked' : '');
+          wrap.title = i === derived ? 'derived from the other three' : 'click the value to derive this one instead';
+          const minus = document.createElement('button');
+          minus.textContent = '−';
+          const val = document.createElement('b');
+          val.textContent = String(b);
+          const plus = document.createElement('button');
+          plus.textContent = '+';
+          minus.disabled = plus.disabled = i === derived;
+          minus.addEventListener('click', () => { bends[i] -= 1n; rebuild(); });
+          plus.addEventListener('click', () => { bends[i] += 1n; rebuild(); });
+          val.style.cursor = 'pointer';
+          val.addEventListener('click', () => { derived = i; rebuild(); });
+          wrap.append(minus, val, plus);
+          fieldsBox.append(wrap);
+        });
+      }
+
+      function row(k, v, cls) {
+        const d = document.createElement('div');
+        d.className = 'row';
+        const a = document.createElement('span'); a.className = 'k'; a.textContent = k;
+        const b = document.createElement('span'); if (cls) b.className = cls; b.textContent = v;
+        d.append(a, b);
+        return d;
+      }
+
+      function render() {
+        fields();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(canvas.clientWidth * dpr);
+        canvas.height = Math.round(canvas.clientHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(canvas.clientWidth, canvas.clientHeight);
+        ctx.fillStyle = palette.background;
+        ctx.fillRect(0, 0, view.width, view.height);
+
+        const sorted = [...bends].sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+        const ok = descartesReal(bends[0], bends[1], bends[2], bends[3]);
+        const g = gcd4(bends);
+        const { root, steps } = toRoot(bends);
+
+        factsBox.replaceChildren();
+        factsBox.append(row('bends', '(' + sorted.join(', ') + ')'));
+        factsBox.append(row("Descartes' theorem", ok ? 'holds' : 'fails', ok ? 'yes' : 'no'));
+        factsBox.append(row('common factor', g === 1n ? 'none — primitive' : String(g) + ' — imprimitive',
+          g === 1n ? 'yes' : 'no'));
+        factsBox.append(row('bends mod 24', sorted.map(mod24).join(', ')));
+        if (ok) {
+          factsBox.append(row('root quadruple', isRoot(bends) ? 'yes, this is minimal' : '(' + root.join(', ') + ')',
+            isRoot(bends) ? 'yes' : ''));
+          factsBox.append(row('Vieta steps to root', String(steps) + (steps === 0 ? '  — it is the root' : ''),
+            'yes'));
+        }
+        if (derived >= 0) {
+          const others = bends.filter((_, i) => i !== derived);
+          const pair = fourthCurvature(others[0], others[1], others[2]);
+          if (pair !== null) {
+            factsBox.append(row('the two completions',
+              pair.map((v, k) => (k === branch ? '[' + v + ']' : String(v))).join('   and   ')));
+          }
+        }
+        factsBox.append(row('placement', quad ? 'found, exact' : 'rootFromCurvatures could not place it',
+          quad ? 'yes' : 'no'));
+
+        if (!ok) {
+          // Three bends force the fourth. Offer both completions rather than refusing.
+          const others = bends.filter((_, i) => i !== (derived >= 0 ? derived : 3));
+          const pair = fourthCurvature(others[0], others[1], others[2]);
+          const offers = document.createElement('div');
+          offers.id = 'offers';
+          if (pair === null) {
+            offers.append(Object.assign(document.createElement('span'),
+              { textContent: 'no integer completes those three', className: 'k' }));
+          } else {
+            for (const p of pair) {
+              const btn = document.createElement('button');
+              btn.textContent = 'use ' + p;
+              btn.addEventListener('click', () => {
+                bends[derived >= 0 ? derived : 3] = p; rebuild();
+              });
+              offers.append(btn);
+            }
+          }
+          factsBox.append(offers);
+        }
+
+        const showing = quad ?? lastGood;
+        if (!quad) {
+          hud.textContent = (ok
+            ? 'a valid quadruple, but rootFromCurvatures cannot place it — plan.md §0'
+            : 'not a Descartes quadruple — pick one of the completions offered')
+            + (lastGood ? '   ·   the last drawable quadruple is shown greyed' : '');
+          if (!lastGood) return;
+        }
+
+        // Frame and draw. When the current bends are not drawable this is the last set
+        // that was, greyed — the picture never disappears mid-nudge.
+        const faded = quad === null;
+        const bounding = showing.find((c) => c.b < 0n);
+        if (bounding) {
+          const f = bounding.toFloat(); const r = Math.abs(f.r) * 1.08;
+          view.fit({ minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r }, 0.06);
+        } else {
+          const fs = showing.filter((c) => c.b !== 0n).map((c) => c.toFloat());
+          const rr = Math.max(...fs.map((f) => Math.abs(f.r)));
+          const cx = fs.reduce((s, f) => s + f.x, 0) / fs.length;
+          const cy = fs.reduce((s, f) => s + f.y, 0) / fs.length;
+          view.fit({ minX: cx - 3 * rr, minY: cy - 3 * rr, maxX: cx + 3 * rr, maxY: cy + 3 * rr }, 0.06);
+        }
+
+        const metrics = digitMetrics(ctx);
+        hits = [];
+        if (faded) ctx.globalAlpha = 0.28;
+        [...showing].sort((a, b) => Number(a.b - b.b)).forEach((c) => {
+          const i = showing.indexOf(c);
+          const f = c.toFloat();
+          if (!Number.isFinite(f.r)) return;
+          const p = view.worldToScreen(f.x, f.y);
+          const sr = Math.abs(f.r) * view.scale;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, sr, 0, Math.PI * 2);
+          ctx.fillStyle = c.b < 0n
+            ? palette.interiors[mod24(-c.b)]
+            : palette.fills[mod24(c.b)];
+          ctx.fill();
+          if (i === hovered) { ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 3; ctx.stroke(); }
+          else if (c.b < 0n) { ctx.strokeStyle = palette.rim; ctx.lineWidth = 1; ctx.stroke(); }
+          drawNumeral(ctx, view, c, String(c.b), palette.labels[mod24(c.b < 0n ? -c.b : c.b)], metrics);
+          hits.push({ i, x: p.x, y: p.y, r: sr });
+        });
+        ctx.globalAlpha = 1;
+        if (faded) { hits = []; return; }
+
+        if (hovered >= 0 && showing[hovered]) {
+          const c = showing[hovered];
+          // Exact position: the centre is bz/b, a ratio of Gaussian integers.
+          hud.textContent = `bend ${c.b}   ·   co-bend ${c.bbar}   ·   b·z = ${c.bz}`
+            + `   ·   centre exactly (${c.bz.re}/${c.b}, ${c.bz.im}/${c.b})`
+            + `   ·   radius 1/${c.b < 0n ? -c.b : c.b}`;
+        } else {
+          hud.textContent = 'hover a circle for its exact bend and centre'
+            + (mirrored ? '   ·   showing the mirror image' : '');
+        }
+      }
+
+      let hits = [];
+      canvas.addEventListener('pointermove', (e) => {
+        const r = canvas.getBoundingClientRect();
+        const sx = e.clientX - r.left, sy = e.clientY - r.top;
+        let best = -1, bestR = Infinity;
+        for (const h of hits) {
+          const d = Math.hypot(sx - h.x, sy - h.y);
+          if (d <= h.r && h.r < bestR) { best = h.i; bestR = h.r; }
+        }
+        if (best !== hovered) { hovered = best; render(); }
+      });
+      canvas.addEventListener('pointerleave', () => { if (hovered !== -1) { hovered = -1; render(); } });
+      document.getElementById('reset').addEventListener('click', () => {
+        bends = [-1n, 2n, 2n, 3n]; derived = 3; mirrored = false; rebuild();
+      });
+      document.getElementById('branch').addEventListener('click', () => { branch = 1 - branch; rebuild(); });
+      document.getElementById('mirror').addEventListener('click', () => { mirrored = !mirrored; rebuild(); });
+      window.addEventListener('resize', render);
+      rebuild();
+    </script>
+  </body>
+</html>
