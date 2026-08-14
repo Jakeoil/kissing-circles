@@ -38,6 +38,10 @@
         white-space: nowrap;
       }
       .status.open { color: var(--accent); border-color: var(--accent); }
+      /* A lab is finished when its question is answered, not when it stops being
+         interesting — so the states are: still asking, answered, graduated into the
+         story, or withdrawn because the question was wrong. */
+      ul.labs .pending .t { color: var(--dim); }
     </style>
   </head>
   <body>
@@ -65,57 +69,66 @@
       <ul class="labs">
         <li>
           <a href="./packings.html">
-            <span class="t">The packings, with numbers <span class="status open">open</span></span>
-            <span class="q">Every integral packing has exactly one root quadruple and the
-            conditions are decidable, so they can be enumerated — and then measured, and
-            then searched. Which packings have an 8 in them? Which have a repeated bend?
-            Which are riddled with holes? Click a root to open it in the designer.</span>
+            <span class="t">The packings, with numbers <span class="status">answered</span></span>
+            <span class="q"><b>Which packings are there, and what are they like?</b>
+            Every integral packing has exactly one root quadruple and the conditions are
+            decidable, so they enumerate — and can then be measured and searched. Which
+            have an 8 in them, which have a repeated bend, which are riddled with holes.
+            <i>It found that 17 of the first 96 roots could not be placed at all, which
+            is now fixed.</i></span>
           </a>
         </li>
         <li>
           <a href="./quad.html">
-            <span class="t">Designing a quadruple <span class="status open">open</span></span>
-            <span class="q">The workbench's custom field is a text box that rejects you
-            after the fact. Everything needed to do better is known now — three bends
-            force the fourth, the configuration is forced up to a mirror, gcd is always
-            1, mod 24 rules most integers out, and a quadruple's distance from its root
-            is computable exactly. Nudge four bends and watch all of it.</span>
+            <span class="t">Designing a quadruple <span class="status">a tool</span></span>
+            <span class="q"><b>What is a designer actually working inside?</b> Nudge four
+            bends and watch every constraint at once: whether Descartes holds, both
+            completions, the common factor, the residues mod 24, which root it belongs to
+            and how many Vieta steps away it is. Hover for a circle's exact bend and
+            centre. Less a question than the answer to one — the workbench's custom field
+            rejected you after the fact, and this shows you the rules as you move.</span>
           </a>
         </li>
         <li>
           <a href="./outward.html">
             <span class="t">Turning a packing inside out <span class="status open">open</span></span>
-            <span class="q">The Vieta recursion only ever goes inward. Reflect a whole
-            quadruple in one of its own circles and you go the other way — through the
-            strip and out the far side. Jake's construction. It is not the Vieta jump,
-            it is an involution, and it is exact; the open question is where the orbit
-            leads and whether it is the dual Apollonian group.</span>
+            <span class="q"><b>The Vieta recursion only goes inward. What is on the other
+            side?</b> Reflect a quadruple in one of its own circles and you go outward,
+            through the strip and beyond — Jake's construction. It is an involution, it
+            is not the Vieta jump, it is exact, and the Schmidt arrangement is closed
+            under it. <i>Still open: whether this is the dual Apollonian group, which
+            needs the paper rather than a script.</i></span>
           </a>
         </li>
         <li>
           <a href="./schmidt.html">
-            <span class="t">Schmidt subdivision <span class="status open">open</span></span>
-            <span class="q">What does one generation of the subdivision look like, and
-            do the two region types behave differently as it deepens? Drawing every
-            region's circumscribed circle at once turned out to superimpose boundaries
-            and circumscribed circles — two different things — so this now draws the
-            partition instead.</span>
+            <span class="t">Schmidt subdivision <span class="status">answered</span></span>
+            <span class="q"><b>What does one generation of the subdivision look like?</b>
+            Drawing every region's circumscribed circle at once turned out to superimpose
+            boundaries with circumscribed circles — two different things — and was
+            unreadable. Drawing the partition instead is legible, and that finding
+            became chapter 6.</span>
           </a>
         </li>
         <li>
           <span class="pending">
-            <span class="t">Where the gasket sits</span>
-            <span class="q">The arrangement contains (−2, 4, 4, 6) — the classic packing
-            doubled. Does every circle of that packing appear, and how deep must the
-            arrangement go to find them? Blocked on pruning the region walk rather than
-            only its output.</span>
+            <span class="t">Where the gasket sits <span class="status">graduated</span></span>
+            <span class="q">Does every circle of the doubled packing appear in the
+            arrangement, and how deep must it go? Answered: all 69 with bend ≤ 100 are
+            there, and the ones that go missing are where the arrangement has not
+            reached rather than circles it lacks. It is
+            <a href="../story/07-the-arrangement.html">chapter 7</a> now.</span>
           </span>
         </li>
         <li>
           <span class="pending">
-            <span class="t">Exact against floating point</span>
-            <span class="q">The same packing computed both ways, zoomed until the float
-            version's tangencies visibly come apart. Intended for chapter 3.</span>
+            <span class="t">Exact against floating point <span class="status">withdrawn</span></span>
+            <span class="q">The plan was a packing computed both ways, zoomed until the
+            float version's tangencies visibly came apart. <b>They do not.</b> The
+            recursion is addition and subtraction, so doubles reproduce the integers
+            exactly for 33 steps and then fail at 2⁵³ — silently, still returning whole
+            numbers. There is no picture to draw, and the real finding is in
+            <a href="../story/03-whole-numbers.html">chapter 3</a> instead.</span>
           </span>
         </li>
       </ul>

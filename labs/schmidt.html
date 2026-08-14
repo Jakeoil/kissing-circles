@@ -73,6 +73,7 @@
       <label><input type="checkbox" id="numbers" /> curvatures</label>
       <label><input type="checkbox" id="lowest" /> lowest terms (÷2)</label>
       <button id="note-toggle" type="button">what is this?</button>
+      <span id="exports" style="display:flex; gap:6px"></span>
     </div>
 
     <div id="note" class="panel" hidden>
@@ -117,6 +118,7 @@
       import { drawNumeral, digitMetrics } from '../src/render/labels.js';
       import { REAL_LINE } from '../src/math/schmidt.js';
       import { draw as drawCircles } from '../src/render/renderer.js';
+      import { addExportButtons } from './exports.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -367,6 +369,18 @@
         else return;
         e.preventDefault();
       });
+      // SVG only when the arrangement is drawn as circles. The partition is filled
+      // regions bounded by arcs, which toSVG has no way to represent — better to say so
+      // than to emit something that is not the picture.
+      addExportButtons({
+        into: document.getElementById('exports'),
+        canvas,
+        name: 'schmidt',
+        svg: () => (viewMode.value === 'circles' && circles
+          ? { packing: circles, view, options: { colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke' } }
+          : null),
+      });
+
       window.addEventListener('resize', resize);
 
       function frame() {

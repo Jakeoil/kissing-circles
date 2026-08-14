@@ -53,6 +53,7 @@
       <button id="reset" type="button">reset</button>
       <label><input type="checkbox" id="fill" checked /> show the packing inside</label>
       <button id="note-toggle" type="button">what is this?</button>
+      <span id="exports" style="display:flex; gap:6px"></span>
     </div>
 
     <div id="trail" class="panel"></div>
@@ -91,6 +92,7 @@
       import { draw } from '../src/render/renderer.js';
       import { theme as themeFor } from '../src/render/palette.js';
       import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+      import { addExportButtons } from './exports.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -311,6 +313,28 @@
       document.getElementById('note-toggle').addEventListener('click', () => {
         note.hidden = !note.hidden;
       });
+      addExportButtons({
+        into: document.getElementById('exports'),
+        canvas,
+        name: 'outward',
+        // The quadruple as a packing-shaped object: toSVG only ever reads these fields.
+        svg: () => {
+          const quad = chain[chain.length - 1];
+          const f = quad.map((c) => c.toFloat());
+          return {
+            packing: {
+              circles: quad, count: 4,
+              x: Float64Array.from(f.map((v) => v.x)),
+              y: Float64Array.from(f.map((v) => v.y)),
+              r: Float64Array.from(f.map((v) => v.r)),
+              depth: Int32Array.from([0, 0, 0, 0]),
+            },
+            view,
+            options: { colorMode: 'curvature', theme: 'dark', labels: true },
+          };
+        },
+      });
+
       window.addEventListener('resize', resize);
       resize();
     </script>

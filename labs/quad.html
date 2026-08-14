@@ -55,6 +55,7 @@
       <button id="reset" type="button">reset</button>
       <button id="branch" type="button" title="three bends force the fourth to two values">other completion</button>
       <button id="mirror" type="button" title="the other handedness">mirror</button>
+      <span id="exports" style="display:flex; gap:6px"></span>
     </div>
 
     <div id="facts" class="panel"></div>
@@ -68,6 +69,7 @@
       import { Viewport } from '../src/render/viewport.js';
       import { theme as themeFor } from '../src/render/palette.js';
       import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+      import { addExportButtons } from './exports.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -327,6 +329,28 @@
       });
       document.getElementById('branch').addEventListener('click', () => { branch = 1 - branch; rebuild(); });
       document.getElementById('mirror').addEventListener('click', () => { mirrored = !mirrored; rebuild(); });
+      addExportButtons({
+        into: document.getElementById('exports'),
+        canvas,
+        name: 'quadruple',
+        svg: () => {
+          const q = quad ?? lastGood;
+          if (!q) return null;
+          const f = q.map((c) => c.toFloat());
+          return {
+            packing: {
+              circles: q, count: 4,
+              x: Float64Array.from(f.map((v) => v.x)),
+              y: Float64Array.from(f.map((v) => v.y)),
+              r: Float64Array.from(f.map((v) => v.r)),
+              depth: Int32Array.from([0, 0, 0, 0]),
+            },
+            view,
+            options: { colorMode: 'curvature', theme: 'dark', labels: true },
+          };
+        },
+      });
+
       window.addEventListener('resize', render);
 
       /**
