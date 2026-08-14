@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>lab — turning a packing inside out</title>
+    <link rel="icon" href="data:," />
+    <style>
+      /*
+        A lab page (plan.md §7.1). The question: the Vieta recursion only ever goes
+        inward. Reflect a whole quadruple in one of its own circles instead and you go
+        the other way — through the strip and out the far side. Where does that lead,
+        and is it the same group?
+      */
+      html, body { margin: 0; height: 100%; background: #0d1117; color: #c9d1d9;
+                   font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+              touch-action: none; cursor: crosshair; }
+      .panel { position: fixed; background: #161b22ee; border: 1px solid #30363d;
+               border-radius: 8px; padding: 10px 12px; backdrop-filter: blur(12px); }
+      #controls { top: 12px; left: 12px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+      label { display: flex; gap: 6px; align-items: center; color: #8b949e; white-space: nowrap; }
+      button, select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+               border-radius: 5px; padding: 2px 9px; font: inherit; cursor: pointer; }
+      button:hover:not(:disabled), select:hover { border-color: #8b949e; }
+      button:disabled { opacity: .4; cursor: default; }
+      #hud { bottom: 12px; left: 12px; right: 12px; color: #8b949e;
+             font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+      #trail { top: 62px; left: 12px; width: min(430px, calc(100% - 24px));
+               font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+               line-height: 1.8; max-height: 62vh; overflow-y: auto; }
+      #trail div { color: #8b949e; }
+      #trail div.now { color: #f0f6fc; font-weight: 600; }
+      #trail div.strip { color: #7ee2b8; }
+      a { color: #7ee2b8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      #note { top: 62px; right: 12px; width: min(400px, calc(100% - 24px)); line-height: 1.5; }
+      #note[hidden] { display: none; }
+      #note h2 { font-size: 13px; margin: 0 0 6px; }
+      #note p { margin: 0 0 8px; color: #8b949e; }
+      #note code { color: #c9d1d9; font-family: ui-monospace, Menlo, monospace; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <div id="controls" class="panel">
+      <a href="./index.html">← labs</a>
+      <label>from
+        <select id="start"></select>
+      </label>
+      <button id="back" type="button">← back</button>
+      <button id="reset" type="button">reset</button>
+      <label><input type="checkbox" id="fill" checked /> show the packing inside</label>
+      <button id="note-toggle" type="button">what is this?</button>
+    </div>
+
+    <div id="trail" class="panel"></div>
+
+    <div id="note" class="panel" hidden>
+      <h2>The experiment</h2>
+      <p><b>Click any circle</b> to turn the quadruple inside out through it. That
+      circle stays where it is and swaps its inside for its outside; the other three
+      land within it.</p>
+      <p>This is <i>not</i> the Vieta jump. Vieta keeps three circles and replaces one,
+      going inward forever. This keeps one and moves three, and goes outward. It is an
+      involution — click the same circle twice and you are back.</p>
+      <p>From <code>(−1, 2, 2, 3)</code>, the three distinct results are the strip
+      <code>(0, 0, 1, 1)</code>, <code>(−2, 3, 6, 7)</code> and
+      <code>(−3, 5, 8, 8)</code>. Note the last is <i>not</i>
+      <code>3 × (−1, 2, 2, 3)</code>, which would be the imprimitive
+      <code>(−3, 6, 6, 9)</code>.</p>
+      <p><b>The strip is the waist.</b> Reflect it through a line and you get another
+      strip; through a circle and you drop back into a bounded packing. Inward is the
+      familiar Apollonian recursion; outward is this.</p>
+      <p>Exact throughout: the reflection is <code>X ↦ X + 2⟨X,C⟩·C</code>, linear in
+      the augmented coordinates, so it never leaves <code>ℤ × ℤ[i]</code>.</p>
+    </div>
+
+    <div id="hud">…</div>
+
+    <script type="module">
+      import { ROOTS, reflectQuad, validateQuad, primitiveForm } from '../src/math/descartes.js';
+      import { Packing } from '../src/math/packing.js';
+      import { Viewport } from '../src/render/viewport.js';
+      import { draw } from '../src/render/renderer.js';
+      import { theme as themeFor } from '../src/render/palette.js';
+      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+
+      const canvas = document.getElementById('view');
+      const ctx = canvas.getContext('2d');
+      const hud = document.getElementById('hud');
+      const trail = document.getElementById('trail');
+      const startSelect = document.getElementById('start');
+      const fillToggle = document.getElementById('fill');
+      const backButton = document.getElementById('back');
+      const note = document.getElementById('note');
+
+      for (const [key, r] of Object.entries(ROOTS)) {
+        const o = document.createElement('option');
+        o.value = key;
+        o.textContent = r.name;
+        startSelect.append(o);
+      }
+      startSelect.value = 'apollonian';
+
+      const view = new Viewport(1, 1);
+      const palette = themeFor('dark');
+
+      /** The chain of quadruples visited, most recent last. */
+      let chain = [ROOTS.apollonian.quad];
+      /** Screen positions of the current quadruple's circles, for hit-testing. */
+      let hits = [];
+      let hovered = -1;
+
+      const bends = (q) => q.map((c) => Number(c.b)).sort((a, b) => a - b);
+      const label = (q) => '(' + bends(q).join(', ') + ')';
+      const isStrip = (q) => q.filter((c) => c.b === 0n).length === 2;
+
+      /** Frame the quadruple: its bounding circle, or a fixed window when it has none. */
+      function frame(quad) {
+        const bounding = quad.find((c) => c.b < 0n);
+        if (bounding) {
+          const f = bounding.toFloat();
+          const r = Math.abs(f.r) * 1.08;
+          return { minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r };
+        }
+        // A strip has no bounding circle. Its orientation is whatever the reflection
+        // left it in — the first one out of (−1, 2, 2, 3) is vertical — so frame a
+        // square window round the finite circles rather than assuming it lies flat.
+        const finite = quad.filter((c) => c.b !== 0n).map((c) => c.toFloat());
+        if (finite.length === 0) return { minX: -2, minY: -2, maxX: 2, maxY: 2 };
+        const cx = finite.reduce((s, f) => s + f.x, 0) / finite.length;
+        const cy = finite.reduce((s, f) => s + f.y, 0) / finite.length;
+        const rr = Math.max(...finite.map((f) => Math.abs(f.r)));
+        const reach = 3.4 * rr;
+        return { minX: cx - reach, minY: cy - reach, maxX: cx + reach, maxY: cy + reach };
+      }
+
+      function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(canvas.clientWidth * dpr);
+        canvas.height = Math.round(canvas.clientHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        view.resize(canvas.clientWidth, canvas.clientHeight);
+        render();
+      }
+
+      function render() {
+        const quad = chain[chain.length - 1];
+        view.fit(frame(quad), 0.06);
+
+        ctx.fillStyle = palette.background;
+        ctx.fillRect(0, 0, view.width, view.height);
+
+        // The packing this quadruple generates, faint, for context: the outward move is
+        // easier to read when you can see what it is turning inside out.
+        if (fillToggle.checked) {
+          const pk = new Packing(quad, {
+            minRadius: view.worldRadius(0.6),
+            bounds: view.visibleBounds(0.2),
+          });
+          pk.grow(Infinity);
+          ctx.save();
+          ctx.globalAlpha = 0.32;
+          draw(ctx, pk, view, { colorMode: 'curvature', theme: 'dark', labels: false });
+          ctx.restore();
+        }
+
+        // The four circles of the quadruple itself, on top and unmissable.
+        hits = [];
+        const metrics = digitMetrics(ctx);
+        quad.forEach((c, i) => {
+          const f = c.toFloat();
+          if (!Number.isFinite(f.r)) {
+            // A line: draw it across the view.
+            const nx = f.x;
+            const ny = f.y;
+            const d = c.lineOffset();
+            const reach = (view.width + view.height) / view.scale;
+            const a = view.worldToScreen(nx * d - ny * reach, ny * d + nx * reach);
+            const b = view.worldToScreen(nx * d + ny * reach, ny * d - nx * reach);
+            // Bright enough to read as one of the four, not as scenery — a line is a
+            // circle of bend 0 here and is just as clickable as the others.
+            ctx.strokeStyle = i === hovered ? '#ffd479' : '#7ee2b8';
+            ctx.lineWidth = i === hovered ? 4 : 2.5;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            hits.push({ i, line: true, nx, ny, d });
+            return;
+          }
+          const p = view.worldToScreen(f.x, f.y);
+          const sr = Math.abs(f.r) * view.scale;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, sr, 0, Math.PI * 2);
+          ctx.strokeStyle = i === hovered ? '#ffd479' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)];
+          ctx.lineWidth = i === hovered ? 3.5 : 2;
+          ctx.stroke();
+          if (i === hovered) { ctx.fillStyle = 'rgba(255, 212, 121, 0.12)'; ctx.fill(); }
+          drawNumeral(ctx, view, c, String(c.b),
+            i === hovered ? '#ffd479' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)], metrics);
+          hits.push({ i, line: false, x: p.x, y: p.y, r: sr });
+        });
+
+        // The trail.
+        trail.replaceChildren();
+        chain.forEach((q, k) => {
+          const div = document.createElement('div');
+          const primitive = primitiveForm(q.map((c) => c.b));
+          div.textContent = `${String(k).padStart(2)}  ${label(q)}`
+            + (isStrip(q) ? '   ← the strip' : '')
+            + (primitive.factor > 1n ? `   imprimitive, ${primitive.factor}×` : '');
+          if (k === chain.length - 1) div.className = 'now';
+          else if (isStrip(q)) div.className = 'strip';
+          trail.append(div);
+        });
+        trail.scrollTop = trail.scrollHeight;
+
+        backButton.disabled = chain.length < 2;
+
+        const v = validateQuad(quad);
+        hud.textContent = [
+          `step ${chain.length - 1}`,
+          label(quad),
+          v.ok ? 'valid Descartes quadruple' : 'INVALID — ' + (v.errors[0] ?? ''),
+          isStrip(quad) ? 'this is a strip: reflect a line for another, a circle to drop back in' : '',
+          'click a circle to turn the quadruple inside out through it',
+        ].filter(Boolean).join('   ·   ');
+      }
+
+      function pick(sx, sy) {
+        // Nearest boundary wins, so a small circle inside a big one is still reachable.
+        let best = -1;
+        let bestD = 14;
+        for (const h of hits) {
+          const d = h.line
+            ? Math.abs((sx - view.tx) / view.scale * h.nx + (sy - view.ty) / view.yScale * h.ny - h.d) * view.scale
+            : Math.abs(Math.hypot(sx - h.x, sy - h.y) - h.r);
+          if (d < bestD) { bestD = d; best = h.i; }
+        }
+        return best;
+      }
+
+      canvas.addEventListener('pointermove', (e) => {
+        const r = canvas.getBoundingClientRect();
+        const next = pick(e.clientX - r.left, e.clientY - r.top);
+        if (next !== hovered) { hovered = next; render(); }
+      });
+      canvas.addEventListener('pointerleave', () => { if (hovered !== -1) { hovered = -1; render(); } });
+      canvas.addEventListener('click', (e) => {
+        const r = canvas.getBoundingClientRect();
+        const i = pick(e.clientX - r.left, e.clientY - r.top);
+        if (i < 0) return;
+        const out = reflectQuad(chain[chain.length - 1], i);
+        if (!validateQuad(out).ok) return;
+        chain.push(out);
+        hovered = -1;
+        render();
+      });
+
+      backButton.addEventListener('click', () => {
+        if (chain.length > 1) chain.pop();
+        render();
+      });
+      document.getElementById('reset').addEventListener('click', () => {
+        chain = [ROOTS[startSelect.value].quad];
+        render();
+      });
+      startSelect.addEventListener('change', () => {
+        chain = [ROOTS[startSelect.value].quad];
+        render();
+      });
+      fillToggle.addEventListener('change', render);
+      document.getElementById('note-toggle').addEventListener('click', () => {
+        note.hidden = !note.hidden;
+      });
+      window.addEventListener('resize', resize);
+      resize();
+    </script>
+  </body>
+</html>

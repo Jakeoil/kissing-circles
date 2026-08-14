@@ -23,7 +23,7 @@ from `render/` or `ui/` and runs under bare Node.
 | Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
 | §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
 | Chapters | **All nine written.** 1 Soddy · 2 the jump · 3 whole numbers · 4 generations · 5 which numbers · 6 two regions · 7 the arrangement · 8 Ford circles · 9 walking to e^i |
-| Labs | `labs/schmidt.html` — the partition, region types, curvature numbers, lowest terms. Generations to 20, windowed (§8.4b) |
+| Labs | `labs/schmidt.html` — the partition, windowed to generation 20 (§8.4b). `labs/outward.html` — turning a quadruple inside out (§8.6) |
 | Tests | 235, `npm test`, no dependencies |
 
 **Verify visually before claiming anything works.** `playwright-core` driving the system
@@ -1111,6 +1111,56 @@ the horizontal midline. At the default view enough survived to look plausible; z
 drew **1 circle of 6,821**. Region drawing was never affected because it goes through
 `view.worldToScreen`, which is why this sat undetected behind chapter 6 and the partition
 view. Fixed in all four places; lines and labels already used `worldToScreen`.
+
+### 8.6 The outward move — Jake's construction
+
+The Vieta recursion only ever goes **inward**: it fills a gap and the circles get
+smaller forever. Jake's proposal (`The Schmidt completion of Apollonian Packing.md`,
+kept locally, not in source control) is the other direction — **reflect the whole
+quadruple in one of its own circles**. Implemented as `reflectQuad` in `descartes.js`
+and verified; every claim in the proposal holds.
+
+From `(−1, 2, 2, 3)` the three distinct results are
+
+    through the −1   →   (0, 0, 1, 1)      the strip
+    through a    2   →   (−2, 3, 6, 7)
+    through the  3   →   (−3, 5, 8, 8)
+
+Both 2s give the same quadruple, so three results and not four. Note `(−3, 5, 8, 8)` and
+**not** `3 × (−1, 2, 2, 3) = (−3, 6, 6, 9)` — the latter is a perfectly valid quadruple
+but an imprimitive one, and the reflection lands on the primitive root instead. That
+distinction is the whole content of the construction.
+
+**It is not the Vieta jump.** Vieta keeps three circles and replaces one, giving
+`(2, 2, 3, 15)`; this keeps one and moves three. It is an involution — reflecting twice
+through the same circle returns exactly — which the tests check on every shipped root.
+
+**And it is exact.** The reflection is linear in the augmented coordinates,
+`X ↦ X + 2⟨X,C⟩·C`, with the inversive product doubled so it stays integral and
+`⟨C,C⟩ = −1` falling out of the `|bz|² − b·b̄ = 1` invariant. No square root, no
+division: the outward move is as exact as the inward one, which is what made a lab worth
+building rather than a sketch.
+
+One implementation detail worth keeping: **the mirror circle must be turned inside out**,
+negating its whole row. Without that you get four valid circles that are not a Descartes
+quadruple, because the enclosing circle would have positive bend.
+
+**The strip is the waist, not the root.** Reflecting it through either line gives another
+strip; through either unit circle it drops back to `(−1, 2, 2, 3)`. Inward is the
+familiar packing; outward is this.
+
+**Open.** Whether this is what Graham, Lagarias, Mallows, Wilks and Yan call the **dual
+Apollonian group** — the Apollonian group acting by Vieta jumps, its dual by inversions
+in the four circles, the two together generating the super-Apollonian group. The shape
+matches, but that is named from the reference rather than read out of it; §9 marks the
+citation as relayed. If it is, then Jake's "Schmidt completion" is the super-Apollonian
+orbit, and the part that is not standard is his *reading* of it — every circle carrying a
+reflected packing inside, rather than the group acting from outside.
+
+**Also open, and cheaper:** breadth-first outward from the classic packing reaches
+`(−3,4,12,13)`, `(−5,7,18,18)`, `(−6,10,15,19)` and `(−4,5,20,21)` within three steps,
+all genuine root quadruples. If the reachable set is the root enumeration, that settles
+the open item about the packings list having no principled basis.
 
 ### 8.5 What this does not answer
 
