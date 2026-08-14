@@ -607,3 +607,79 @@ export const ROOTS = {
     ],
   },
 };
+
+/**
+ * Twice the inversive product of two circles.
+ *
+ *     2⟨X, Y⟩ = X.b̄·Y.b + X.b·Y.b̄ − 2·Re(X.bz · conj(Y.bz))
+ *
+ * Doubled so it stays an integer: the halves cancel and nothing needs dividing. For a
+ * circle with itself it is always −2, since `|bz|² − b·b̄ = 1` is the invariant every
+ * row here satisfies — so ⟨X, X⟩ = −1 and every circle is already normalised for the
+ * reflection below.
+ *
+ * @param {Circle} x
+ * @param {Circle} y
+ * @returns {bigint}
+ */
+export function inversiveProduct2(x, y) {
+  return x.bbar * y.b + x.b * y.bbar
+    - 2n * (x.bz.re * y.bz.re + x.bz.im * y.bz.im);
+}
+
+/**
+ * Reflect one circle in another — geometric inversion, done in integers.
+ *
+ *     X ↦ X − 2⟨X, C⟩/⟨C, C⟩ · C  =  X + 2⟨X, C⟩ · C     since ⟨C, C⟩ = −1
+ *
+ * Linear in the augmented coordinates, so it needs no square root and no division and
+ * keeps everything in `ℤ × ℤ[i]` — the same property that makes the Vieta jump exact.
+ *
+ * @param {Circle} x the circle being reflected
+ * @param {Circle} c the mirror
+ * @returns {Circle}
+ */
+export function reflectIn(x, c) {
+  const k = inversiveProduct2(x, c);
+  return new Circle(x.bbar + k * c.bbar, x.b + k * c.b, x.bz.add(c.bz.scale(k)));
+}
+
+/**
+ * Turn a quadruple inside out through one of its own circles.
+ *
+ * **The outward move**, and Jake's construction: rather than filling a gap, reflect the
+ * whole quadruple in one of its four circles. That circle stays where it is but swaps
+ * its inside for its outside — hence the sign flip — and the other three land within it.
+ *
+ * It is **not** the Vieta jump. Vieta replaces one circle and keeps three;
+ * this keeps one and moves three. From `(−1, 2, 2, 3)`:
+ *
+ *     through the −1  →  (0, 0, 1, 1)     the strip
+ *     through a    2  →  (−2, 3, 6, 7)
+ *     through the  3  →  (−3, 5, 8, 8)
+ *
+ * so the strip is not the root of the recursion but its waist: inward is the familiar
+ * packing, outward is this. Note `(−3, 5, 8, 8)` and not `3 × (−1, 2, 2, 3) =
+ * (−3, 6, 6, 9)` — the latter is a perfectly good quadruple but an imprimitive one, and
+ * the reflection lands on the primitive root instead.
+ *
+ * Reflecting twice through the same circle is the identity, as a reflection should be.
+ *
+ * This appears to be a generator of what Graham, Lagarias, Mallows, Wilks and Yan call
+ * the **dual Apollonian group** — the Apollonian group acts by the Vieta jumps, its dual
+ * by inversions in the four circles, and the two together generate the super-Apollonian
+ * group. *Named from the reference, not read out of it; see plan.md §9.*
+ *
+ * @param {Circle[]} quad a valid Descartes quadruple
+ * @param {number} i which of its circles to turn through
+ * @returns {Circle[]} another valid Descartes quadruple
+ */
+export function reflectQuad(quad, i) {
+  const mirror = quad[i];
+  return quad.map((c, j) => (j === i
+    // The mirror keeps its position and reverses orientation: what was outside it is
+    // now in. Without this the four rows are still valid circles but no longer a
+    // Descartes quadruple, since the enclosing circle would have positive bend.
+    ? new Circle(-c.bbar, -c.b, c.bz.scale(-1n))
+    : reflectIn(c, mirror)));
+}

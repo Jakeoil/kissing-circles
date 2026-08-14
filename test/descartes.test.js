@@ -13,6 +13,8 @@ import {
   lmwErrors,
   columns,
   ROOTS,
+  inversiveProduct2,
+  reflectQuad,
 } from '../src/math/descartes.js';
 import { Circle } from '../src/math/circle.js';
 import { Gaussian } from '../src/math/gaussian.js';
@@ -195,5 +197,58 @@ describe('quadruple validation', () => {
     const result = validateQuad(ROOTS.apollonian.quad.slice(0, 3));
     assert.ok(!result.ok);
     assert.match(result.errors[0], /expected 4/);
+  });
+});
+
+describe('reflecting a quadruple outward', () => {
+  test('every circle is normalised: 2<X,X> = -2', () => {
+    for (const root of Object.values(ROOTS)) {
+      for (const c of root.quad) {
+        assert.equal(inversiveProduct2(c, c), -2n, `${root.name} has an unnormalised row`);
+      }
+    }
+  });
+
+  test('it is an involution', () => {
+    for (const root of Object.values(ROOTS)) {
+      for (let i = 0; i < 4; i++) {
+        const there = reflectQuad(root.quad, i);
+        const back = reflectQuad(there, i);
+        for (let j = 0; j < 4; j++) {
+          assert.ok(back[j].equals(root.quad[j]),
+            `${root.name}: reflecting twice through circle ${i} did not return`);
+        }
+      }
+    }
+  });
+
+  test('it produces valid Descartes quadruples', () => {
+    for (const root of Object.values(ROOTS)) {
+      for (let i = 0; i < 4; i++) {
+        const out = reflectQuad(root.quad, i);
+        const v = validateQuad(out);
+        assert.ok(v.ok, `${root.name} through circle ${i}: ${v.errors?.[0]}`);
+      }
+    }
+  });
+
+  test('the classic packing turns outward into the strip and two known roots', () => {
+    // The three distinct results Jake predicted, and the reason the strip is the waist
+    // of the recursion rather than its root.
+    const bends = (q) => q.map((c) => Number(c.b)).sort((a, b) => a - b).join(',');
+    const got = new Set();
+    for (let i = 0; i < 4; i++) got.add(bends(reflectQuad(ROOTS.apollonian.quad, i)));
+    assert.ok(got.has('0,0,1,1'), 'the -1 circle should open onto the strip');
+    assert.ok(got.has('-2,3,6,7'), 'a 2 circle should open onto (-2, 3, 6, 7)');
+    assert.ok(got.has('-3,5,8,8'), 'the 3 circle should open onto (-3, 5, 8, 8)');
+    assert.equal(got.size, 3, 'the two 2s should give the same quadruple');
+  });
+
+  test('it is not the Vieta jump', () => {
+    const q = ROOTS.apollonian.quad;
+    const vieta = q[0].spawn(q[1], q[2], q[3]);
+    assert.equal(vieta.b, 15n);
+    const out = reflectQuad(q, 3).map((c) => Number(c.b)).sort((a, b) => a - b);
+    assert.deepEqual(out, [-3, 5, 8, 8], 'reflection keeps one circle and moves three');
   });
 });
