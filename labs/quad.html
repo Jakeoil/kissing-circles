@@ -62,7 +62,7 @@
 
     <script type="module">
       import {
-        ROOTS, rootFromCurvatures, fourthCurvature, descartesReal, validateQuad,
+        ROOTS, placeQuadruple, fourthCurvature, descartesReal, validateQuad,
       } from '../src/math/descartes.js';
       import { Circle } from '../src/math/circle.js';
       import { Viewport } from '../src/render/viewport.js';
@@ -91,6 +91,7 @@
        * can see what you are moving away from.
        */
       let lastGood = null;
+      let built = null;
       let hovered = -1;
       let mirrored = false;
       /** Which of the two completions the derived bend takes: 0 is the larger. */
@@ -147,7 +148,11 @@
           // never changes and the control appears dead.
           if (pair !== null) bends[derived] = pair[branch];
         }
-        const built = rootFromCurvatures(bends.map(Number));
+        // placeQuadruple, not rootFromCurvatures: plenty of valid quadruples are not
+        // roots — (5, 8, 12, 53) has four positive bends and sits two Vieta steps inside
+        // the (−3, 5, 8, 8) packing — and a designer nudging bends lands on those
+        // constantly. It reduces to the root, places that, and walks back out.
+        built = placeQuadruple(bends);
         quad = built && built.ok ? built.quad : null;
         if (quad && mirrored) quad = quad.map((c) => new Circle(c.bbar, c.b, c.bz.conj()));
         if (quad) lastGood = quad;
@@ -220,7 +225,8 @@
               pair.map((v, k) => (k === branch ? '[' + v + ']' : String(v))).join('   and   ')));
           }
         }
-        factsBox.append(row('placement', quad ? 'found, exact' : 'rootFromCurvatures could not place it',
+        factsBox.append(row('placement',
+          quad ? 'found, exact' : (built && !built.ok ? built.reason : 'could not place it'),
           quad ? 'yes' : 'no'));
 
         if (!ok) {
@@ -248,7 +254,7 @@
         const showing = quad ?? lastGood;
         if (!quad) {
           hud.textContent = (ok
-            ? 'a valid quadruple, but rootFromCurvatures cannot place it — plan.md §0'
+            ? 'a valid quadruple that could not be placed'
             : 'not a Descartes quadruple — pick one of the completions offered')
             + (lastGood ? '   ·   the last drawable quadruple is shown greyed' : '');
           if (!lastGood) return;

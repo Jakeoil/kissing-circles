@@ -15,6 +15,7 @@ import {
   ROOTS,
   inversiveProduct2,
   reflectQuad,
+  placeQuadruple,
 } from '../src/math/descartes.js';
 import { Circle } from '../src/math/circle.js';
 import { Gaussian } from '../src/math/gaussian.js';
@@ -250,5 +251,46 @@ describe('reflecting a quadruple outward', () => {
     assert.equal(vieta.b, 15n);
     const out = reflectQuad(q, 3).map((c) => Number(c.b)).sort((a, b) => a - b);
     assert.deepEqual(out, [-3, 5, 8, 8], 'reflection keeps one circle and moves three');
+  });
+});
+
+describe('placing quadruples that are not roots', () => {
+  test('(5, 8, 12, 53) places, two Vieta steps inside (-3, 5, 8, 8)', () => {
+    // It was on plan.md's open list as a placement failure. It is not: every bend is
+    // positive, so no circle encloses the others and it is not a root quadruple at all.
+    // rootFromCurvatures declining it was correct; asking it was the mistake.
+    const r = placeQuadruple([5, 8, 12, 53]);
+    assert.ok(r.ok, r.ok ? '' : r.reason);
+    assert.equal(r.steps, 2);
+    assert.deepEqual(r.root.map(Number), [-3, 5, 8, 8]);
+    assert.ok(validateQuad(r.quad).ok);
+    assert.deepEqual(
+      r.quad.map((c) => Number(c.b)).sort((a, b) => a - b),
+      [5, 8, 12, 53],
+    );
+  });
+
+  test('roots place unchanged, at zero steps', () => {
+    for (const root of Object.values(ROOTS)) {
+      const bends = root.quad.map((c) => c.b);
+      const r = placeQuadruple(bends);
+      assert.ok(r.ok, `${root.name}: ${r.ok ? '' : r.reason}`);
+      assert.equal(r.steps, 0, `${root.name} should already be a root`);
+    }
+  });
+
+  test('interior quadruples place at their true depth', () => {
+    for (const [bends, steps] of [[[2, 2, 3, 15], 1], [[2, 3, 6, 23], 2], [[5, 8, 12, 53], 2]]) {
+      const r = placeQuadruple(bends);
+      assert.ok(r.ok, r.ok ? '' : r.reason);
+      assert.equal(r.steps, steps, `(${bends}) should be ${steps} steps in`);
+      assert.ok(validateQuad(r.quad).ok);
+    }
+  });
+
+  test('it refuses what is genuinely not a quadruple', () => {
+    const r = placeQuadruple([6, 11, 14, 15]);
+    assert.equal(r.ok, false);
+    assert.match(r.reason, /not a Descartes quadruple/);
   });
 });

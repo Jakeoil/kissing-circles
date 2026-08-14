@@ -41,9 +41,22 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
 3. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-4. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
-   place. Probably a limit of the translation-and-ordering search, not of the
-   mathematics.
+4. ~~`(5, 8, 12, 53)` cannot be placed.~~ **Withdrawn — it was never a defect.** Jake:
+   "why is this even on the list, it looks hokey." Right. Every bend is positive, so no
+   circle encloses the others and it is **not a root quadruple** at all; it is an
+   interior one, two Vieta steps inside the `(−3, 5, 8, 8)` packing.
+   `rootFromCurvatures` builds roots, so declining it was correct and asking it was the
+   mistake. The item blamed "a limit of the translation-and-ordering search" for a
+   function working as designed.
+
+   The real gap was that no function placed a *non-root* quadruple, which a designer
+   nudging bends hits constantly. `placeQuadruple` now does: reduce to the root, place
+   that, walk back out by Vieta jumps to the recorded depth. Exact throughout, and it
+   consults the shipped roots first because `rootFromCurvatures` cannot build the strip.
+   Its two zero bends are circles like any other here — bend 0, infinite radius, a row
+   with `b = 0`, which is precisely why `Circle` carries `b̄`. The exception is the
+   placement method, not the object: `rootFromCurvatures` chooses rational *centres*,
+   and an infinite radius has no centre to choose.
 
 ### Decisions that are settled, and why
 

@@ -683,3 +683,79 @@ export function reflectQuad(quad, i) {
     ? new Circle(-c.bbar, -c.b, c.bz.scale(-1n))
     : reflectIn(c, mirror)));
 }
+
+/**
+ * Place any valid Descartes quadruple, root or not.
+ *
+ * `rootFromCurvatures` builds *root* quadruples — those with an enclosing circle,
+ * `a ≤ 0`. Plenty of perfectly good quadruples are not roots: `(5, 8, 12, 53)` has
+ * four positive bends, so no circle encloses the others, and it sits two Vieta steps
+ * inside the `(−3, 5, 8, 8)` packing. Asking a root builder for it and calling the
+ * refusal a bug was a mistake in this project's own notes.
+ *
+ * The construction is the obvious one and it is exact: reduce to the root by replacing
+ * the largest bend with its Vieta partner while that lowers it, place *that*, then walk
+ * back out by jumping until the bends match again. Every step is integer arithmetic.
+ *
+ * @param {(number|bigint)[]} curvatures
+ * @returns {{ok: true, quad: Circle[], root: bigint[], steps: number}
+ *   | {ok: false, reason: string}}
+ */
+export function placeQuadruple(curvatures) {
+  const want = curvatures.map((v) => BigInt(v)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const key = (v) => v.join(',');
+  const target = key(want);
+
+  if (!descartesReal(want[0], want[1], want[2], want[3])) {
+    return { ok: false, reason: `${want.join(', ')} is not a Descartes quadruple` };
+  }
+
+  // Reduce to the root, counting steps so the walk back out knows how far to go.
+  let b = [...want];
+  let steps = 0;
+  for (let guard = 0; guard < 500; guard++) {
+    const sum = b[0] + b[1] + b[2] + b[3];
+    const alt = 2n * (sum - b[3]) - b[3];
+    if (alt >= b[3]) break;
+    b = [b[0], b[1], b[2], alt].sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+    steps++;
+  }
+  const root = b;
+
+  // A shipped root first. The strip's two zero bends are circles like any other here —
+  // bend 0, radius infinite, an ordinary row with `b = 0`, which is the whole reason
+  // `Circle` carries `b̄` (see circle.js). The exception is not what they *are* but how
+  // `rootFromCurvatures` works: it places by choosing rational centres, and a circle of
+  // infinite radius has no centre to choose. So the strip is hand-built in ROOTS, and
+  // since it is exactly what the outward move keeps reaching, a designer lands on it.
+  const known = Object.values(ROOTS).find((r) =>
+    key(r.quad.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0))) === key(root));
+  const placed = known
+    ? { ok: /** @type {const} */ (true), quad: known.quad }
+    : rootFromCurvatures(root.map(Number));
+  if (!placed.ok) return { ok: false, reason: `its root ${root.join(', ')} could not be placed` };
+  if (steps === 0) return { ok: true, quad: placed.quad, root, steps };
+
+  // Walk back out. Breadth-first over the four Vieta jumps, to exactly the depth the
+  // reduction took — the target is reachable in that many and no fewer.
+  let frontier = [placed.quad];
+  const seen = new Set([key(placed.quad.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0)))]);
+  for (let depth = 1; depth <= steps; depth++) {
+    /** @type {Circle[][]} */
+    const next = [];
+    for (const quad of frontier) {
+      for (let i = 0; i < 4; i++) {
+        const others = quad.filter((_, j) => j !== i);
+        const jumped = quad[i].spawn(others[0], others[1], others[2]);
+        const out = quad.map((c, j) => (j === i ? jumped : c));
+        const sig = key(out.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0)));
+        if (sig === target) return { ok: true, quad: out, root, steps };
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        next.push(out);
+      }
+    }
+    frontier = next;
+  }
+  return { ok: false, reason: `reduced to ${root.join(', ')} but could not walk back out` };
+}
