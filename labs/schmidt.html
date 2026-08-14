@@ -73,6 +73,9 @@
       </label>
       <label><input type="checkbox" id="numbers" /> curvatures</label>
       <label><input type="checkbox" id="lowest" /> lowest terms (÷2)</label>
+      <label><input type="checkbox" id="gasket" /> gasket overlay
+        <select id="which-gasket"></select>
+      </label>
       <button id="note-toggle" type="button">what is this?</button>
       <span id="exports" style="display:flex; gap:6px"></span>
     </div>
@@ -107,6 +110,33 @@
       <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
       the reason the Apollonian gasket sits inside this arrangement at exactly twice the
       curvature: <code>(0, 0, 1, 1)</code> appears here as <code>(0, 0, 2, 2)</code>.</p>
+      <p><b>Gasket overlay</b> draws that claim instead of asserting it. The strip packing
+      <code>(0, 0, 1, 1)</code> goes over the picture in gold at Schmidt's normalisation,
+      <code>(0, 0, 2, 2)</code>: the lines <code>y = 0</code> and <code>y = 1</code>, and
+      circles of radius ½ at <code>(0, ½)</code> and <code>(1, ½)</code> — which are 𝒥's
+      own children 𝒱₂ and 𝒱₃. Nothing is fitted or centred; it lands on the arrangement's
+      coordinates as it is, and a packing that had to be moved to line up would not be the
+      claim. Every bend in it is even, as <code>ρ(F) ∈ 2ℕ₀</code> requires, and every
+      circle up to bend 100 is one of the arrangement's own — as far as a generation-8
+      sample can confirm. In the region view the gold falls on the boundaries between
+      circular and triangular regions, which is the point: those came out of a
+      subdivision, not out of any Descartes recursion, and they coincide anyway.</p>
+      <p>Four are offered. Two are the same quadruple <code>(0, 0, 1, 1)</code> in two
+      of its permutations — lying down between <code>y = 0</code> and <code>y = 1</code>,
+      and stood up between <code>x = 0</code> and <code>x = 1</code>, where its floor is
+      the semicircle that is also 𝒥*'s. A quadruple has up to eight permutations across
+      the horizontal and vertical, four in each dual, so the same four numbers can sit in
+      the arrangement more than one way.</p>
+      <p>The other two are not searched for but <i>placed</i>, by turning the strip inside
+      out with the reflection from the <a href="./outward.html">inside-out lab</a>:
+      <code>reflectQuad(strip, 2)</code> is the classic <code>(−1, 2, 2, 3)</code>, and
+      reflecting that again gives <code>(−3, 5, 8, 8)</code>. The reflection is exact
+      integer arithmetic, so each lands where it belongs with nothing fitted.</p>
+      <p>An earlier version of this lab said the classic gasket was <i>not</i> contained,
+      on a sample finding 111 of its 1,023 circles. That test placed it inside a unit
+      circle at the origin — where the packings list keeps it, and nowhere near where it
+      lives here. It measured a placement, not a containment. The classic gasket is in the
+      arrangement; it just had to be asked in the right place.</p>
       <p><b>Lowest terms</b> divides that factor out. Since every bend is even, the whole
       arrangement is 2 × a primitive one — the same idea as a fraction reduced. Dividing
       the bends by 2 is exactly scaling the plane by 2, which gives a <i>similar</i>
@@ -134,6 +164,8 @@
       import { REAL_LINE } from '../src/math/schmidt.js';
       import { draw as drawCircles } from '../src/render/renderer.js';
       import { addExportButtons } from './exports.js';
+      import { Circle } from '../src/math/circle.js';
+      import { generate } from '../src/math/packing.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -148,6 +180,122 @@
       const lowestToggle = document.getElementById('lowest');
       const note = document.getElementById('note');
       const noteToggle = document.getElementById('note-toggle');
+      const gasketToggle = document.getElementById('gasket');
+      const whichGasket = document.getElementById('which-gasket');
+
+      /**
+       * Gaskets that can be laid over the arrangement.
+       *
+       * A table rather than a constant, because the interesting question is which
+       * packings sit inside the arrangement and which only look as though they might —
+       * and that is answered one entry at a time. Adding one means giving its quadruple
+       * in Schmidt's normalisation, already positioned; nothing here fits or centres a
+       * packing, because a packing that has to be moved to line up is not the claim.
+       *
+       * `strip` is the claim the Curvatures note makes and could not show. The gasket
+       * (0,0,1,1) appears in the arrangement at twice the curvature, as (0,0,2,2): the
+       * lines y = 0 and y = 1, and circles of radius ½ at (0, ½) and (1, ½), which are
+       * 𝒥's own children 𝒱₂ and 𝒱₃.
+       *
+       * `stripUpright` is the same four numbers stood up, between x = 0 and x = 1, its
+       * floor being the semicircle that is 𝒥*'s. A quadruple has up to eight permutations
+       * across the horizontal and vertical, four in each dual, so the same bends can sit
+       * in the arrangement more than one way, and these two are both in it.
+       *
+       * The rest come from turning a gasket inside out. `reflectQuad(strip, 2)` is the
+       * classic (−1,2,2,3) at (−2,4,4,6), and reflecting that again gives (−3,5,8,8) at
+       * (−6,10,16,16). Since the reflection is exact integer arithmetic and the strip is
+       * in the arrangement, this places each one rather than searching for it.
+       *
+       * Every entry here is checked the same way: generate it, and compare against the
+       * arrangement geometrically — as an unoriented point set, since a circle traversed
+       * the other way is the same circle. All four match on every circle up to bend 100,
+       * which is as far as a generation-8 sample can confirm, and every bend is even as
+       * Schmidt's ρ(F) ∈ 2ℕ₀ requires.
+       *
+       * An earlier version of this file said the classic gasket was *not* contained, on a
+       * sample finding 111 of its 1,023 circles. That test placed it inside a unit circle
+       * at the origin, which is where ROOTS keeps it and nowhere near where it lives here.
+       * It measured a placement, not a containment. Test a gasket where the arrangement
+       * actually puts it, or do not test it.
+       */
+      const GASKETS = {
+        strip: {
+          tag: 'lying down, y = 0 to 1',
+          where: 'the strip between y = 0 and y = 1',
+          quad: [
+            Circle.of(0, 0, 0, -1), // line y = 0
+            Circle.of(2, 0, 0, 1),  // line y = 1
+            Circle.of(0, 2, 0, 1),  // centre (0, ½), radius ½
+            Circle.of(2, 2, 2, 1),  // centre (1, ½), radius ½
+          ],
+        },
+        stripUpright: {
+          tag: 'upright, x = 0 to 1',
+          where: 'the same quadruple stood up, on 𝒥*’s own two sides',
+          quad: [
+            Circle.of(0, 0, -1, 0), // line x = 0
+            Circle.of(2, 0, 1, 0),  // line x = 1
+            Circle.of(0, 2, 1, 0),  // centre (½, 0), radius ½ — 𝒥*'s floor
+            Circle.of(2, 2, 1, 2),  // centre (½, 1), radius ½
+          ],
+        },
+        classic: {
+          tag: 'the classic gasket',
+          where: 'reflectQuad(strip, 2) — where the classic one actually lives',
+          quad: [
+            Circle.of(0, 4, 0, 1),   // centre (0, ¼),  radius ¼
+            Circle.of(2, 4, 0, 3),   // centre (0, ¾),  radius ¼
+            Circle.of(0, -2, 0, -1), // the enclosing circle, centre (0, ½), radius ½
+            Circle.of(2, 6, 2, 3),   // centre (⅓, ½),  radius ⅙
+          ],
+        },
+        r3588: {
+          tag: 'one turn further out',
+          where: 'reflectQuad(classic, 3)',
+          quad: [
+            Circle.of(4, 16, 4, 7),
+            Circle.of(6, 16, 4, 9),
+            Circle.of(4, 10, 4, 5),
+            Circle.of(-2, -6, -2, -3),
+          ],
+        },
+      };
+
+      /** A gasket's bends, ascending. */
+      function gasketBends(g) {
+        return g.quad.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+      }
+
+      /**
+       * How a gasket is named, which the lowest-terms toggle decides.
+       *
+       * Every bend in the arrangement is even, so each of these has two names for the
+       * same picture: the quadruple as drawn, and the primitive one it is twice. The
+       * strip is (0,0,2,2) here and (0,0,1,1) in any other account of Apollonian
+       * packings; the classic gasket is (−2,4,4,6) here and (−1,2,2,3) everywhere else.
+       * Rather than pick one and confuse whoever came from the other, the toggle that
+       * already halves the region numerals halves these too.
+       */
+      function gasketLabel(g) {
+        const bends = gasketBends(g);
+        const shown = lowestToggle.checked ? bends.map((b) => b / 2n) : bends;
+        // The tag is not decoration. A quadruple has up to eight permutations across the
+        // horizontal and vertical, four in each dual, so two entries here genuinely are
+        // the same four numbers placed differently — the strip lying down and the same
+        // strip stood up. Naming them by bends alone would list "(0, 0, 2, 2)" twice.
+        return '(' + shown.join(', ') + ')  ' + g.tag;
+      }
+
+      function refreshGasketNames() {
+        const keep = whichGasket.value;
+        whichGasket.replaceChildren();
+        for (const [id, g] of Object.entries(GASKETS)) {
+          whichGasket.append(new Option(gasketLabel(g), id));
+        }
+        whichGasket.value = keep || Object.keys(GASKETS)[0];
+      }
+      refreshGasketNames();
 
       const MIN_GEN = 0;
       // Was 6, which is where an unpruned walk ran out of patience and then out of
@@ -211,6 +359,7 @@
 
       let regions = [];
       let circles = null;
+      let gasket = null;
       let built = 0;
       let dirty = true;
 
@@ -233,6 +382,23 @@
             minRadius: minSize / 2,
           });
           regions = [];
+        }
+        // The overlay is generated against the same window, but bounded by curvature and
+        // depth as well. The strip is periodic — translating any circle by one unit gives
+        // another of the same bend — so a `bounds` limit alone does not make it finite:
+        // the strip's own bounding box is unbounded, so nothing prunes, and the walk runs
+        // until it exhausts the heap. Ask me how I know.
+        gasket = null;
+        if (gasketToggle.checked) {
+          const g = GASKETS[whichGasket.value];
+          if (g) {
+            gasket = generate(g.quad, {
+              bounds,
+              maxCurvature: 4000n,
+              maxDepth: 40,
+              minRadius: minSize / 2,
+            });
+          }
         }
         built = Math.round(performance.now() - t0);
         dirty = true;
@@ -278,6 +444,48 @@
         viewChanged();
       }
 
+      // Stroked, never filled, and drawn last. The point of the overlay is that these
+      // circles are already on the screen underneath — filling would hide the thing it
+      // is meant to prove, which is that each one coincides with a region that was drawn
+      // from Schmidt's subdivision and not from any Descartes recursion.
+      const GASKET_INK = '#f2c14e';
+
+      function drawGasket() {
+        if (gasket === null) return 0;
+        ctx.save();
+        ctx.strokeStyle = GASKET_INK;
+        ctx.lineWidth = 2;
+        let drawn = 0;
+        for (let i = 0; i < gasket.count; i++) {
+          const c = gasket.circles[i];
+          if (c.isLine()) {
+            // Two of the strip's four are lines, and they are the reason it is a strip.
+            const f = c.toFloat();
+            const d = c.lineOffset();
+            const reach = (view.width + view.height) * 4 / view.scale;
+            const a = view.worldToScreen(f.x * d - f.y * reach, f.y * d + f.x * reach);
+            const b = view.worldToScreen(f.x * d + f.y * reach, f.y * d - f.x * reach);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            drawn++;
+            continue;
+          }
+          const s = view.worldToScreen(gasket.x[i], gasket.y[i]);
+          const r = Math.abs(gasket.r[i]) * view.scale;
+          if (r < 0.75) continue;
+          if (s.x + r < 0 || s.x - r > view.width) continue;
+          if (s.y + r < 0 || s.y - r > view.height) continue;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+          drawn++;
+        }
+        ctx.restore();
+        return drawn;
+      }
+
       function paint() {
         const t0 = performance.now();
         ctx.save();
@@ -289,12 +497,14 @@
           const stats = drawCircles(ctx, circles, view, {
             colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
           });
+          const over = drawGasket();
           hud.textContent = [
             'circles — every generation superimposed, boundaries and circumscribed circles together',
             `${circles.count.toLocaleString()} circles`,
             `drawn ${stats.drawn.toLocaleString()}`,
+            gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])}: ${over.toLocaleString()} over the top` : '',
             `built ${built} ms`,
-          ].join('   ');
+          ].filter(Boolean).join('   ');
           return;
         }
 
@@ -343,6 +553,7 @@
           }
         }
 
+        const over = drawGasket();
         const circular = wanted.filter((r) => r.type === 'J').length;
         hud.textContent = [
           `regions — the partition of ${viewMode.value === 'dual' ? '𝒥*' : '𝒥'} at generation ${generation}`,
@@ -355,6 +566,7 @@
           // eventually stops changing the picture: the walk has reached the resolution
           // floor, and everything deeper is smaller than a few pixels.
           `nothing below ${RESOLUTION} px`,
+          gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])}: ${over.toLocaleString()} over the top` : '',
           `built ${built} ms`,
           `drew ${Math.round(performance.now() - t0)} ms`,
           numbersToggle.checked
@@ -377,9 +589,15 @@
       // at the same scale each time, which is the only way the comparison means anything.
       // `home()` still knows a frame per mode, for the 0 key.
       viewMode.addEventListener('change', build);
-      for (const el of [filter, colorMode, numbersToggle, lowestToggle]) {
+      for (const el of [filter, colorMode, numbersToggle]) {
         el.addEventListener('change', () => { dirty = true; });
       }
+      // Lowest terms renames the gaskets as well as the region numerals: same picture,
+      // the primitive quadruple rather than the doubled one the arrangement carries.
+      lowestToggle.addEventListener('change', () => { refreshGasketNames(); dirty = true; });
+      // These two rebuild rather than just repaint: the overlay is generated against the
+      // current window, so there is nothing to draw until it has been.
+      for (const el of [gasketToggle, whichGasket]) el.addEventListener('change', build);
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
 
       let dragging = false;
