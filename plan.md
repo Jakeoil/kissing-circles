@@ -1161,13 +1161,28 @@ seeds from `𝒥`, the *upper* half plane, so it never builds below the real lin
 arrangement is symmetric under conjugation, and testing each circle against its
 reflection too takes the miss count to zero and holds it there.
 
-**Settled, negatively: the outward orbit does not reach every root quadruple.** Of the
-17 roots with `|a| ≤ 8`, fourteen are reached — all by depth 7 — and three are not:
-`(−4, 8, 9, 9)`, `(−6, 11, 14, 15)`, `(−8, 12, 25, 25)`. Explored to depth 9 and 14,768
-distinct signatures without finding them, so they look genuinely unreachable rather than
-merely deep. **The reachable set is a proper subset, so this does not give the packings
-list its basis** — and note `(−6, 11, 14, 15)` is one of the four the workbench ships and
-is not reachable from the classic packing. Why those three is unexplained.
+**Settled: the outward move does reach every root quadruple** — after I got it wrong
+once, which is worth recording because the mistake is easy to repeat.
+
+I first reported three roots as unreachable: `(−4, 8, 9, 9)`, `(−6, 11, 14, 15)`,
+`(−8, 12, 25, 25)`, having explored to depth 9 and 14,768 signatures without finding
+them. **That was an artefact of the seed.** I walked outward from the *root quadruple*
+alone, but a packing contains many Descartes quadruples, and most of them never appear as
+a parent triple in the Vieta recursion — so a search built on `parentsOf` cannot see
+them.
+
+Jake's correction: `(−6, 11, 14, 15)` comes out of the 6 in the `(−1, 2, 3, 6)`
+quadruple. That quadruple is present in the classic packing and is not a parent triple.
+Reflecting it through its 6 gives `(−6, 11, 14, 15)` in **one step**. Its other three
+reflections give `(−2, 3, 7, 10)`, `(−3, 5, 8, 12)`, and `(0, 1, 1, 4)` — a strip, and a
+different one from the `(0, 0, 1, 1)` the root quadruple reaches.
+
+Seeding instead from *every* Descartes quadruple present in the packing: **all 17 roots
+with `|a| ≤ 8` are reached**, and 22 of the 24 with `|a| ≤ 10`, the stragglers
+`(−7, 8, 56, 57)` and `(−8, 9, 72, 73)` arriving at depths 6 and 7. So the reachable set
+is not a proper subset, and **the packings list may have its basis after all** — though
+"reaches everything" is a weaker basis than "reaches exactly these", and what would make
+it a real principle is knowing the orbit structure rather than the coverage.
 
 **Still open.** Whether this is what Graham, Lagarias, Mallows, Wilks and Yan call the
 **dual Apollonian group** — the Apollonian group acting by Vieta jumps, its dual by
