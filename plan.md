@@ -1149,18 +1149,40 @@ quadruple, because the enclosing circle would have positive bend.
 strip; through either unit circle it drops back to `(−1, 2, 2, 3)`. Inward is the
 familiar packing; outward is this.
 
-**Open.** Whether this is what Graham, Lagarias, Mallows, Wilks and Yan call the **dual
-Apollonian group** — the Apollonian group acting by Vieta jumps, its dual by inversions
-in the four circles, the two together generating the super-Apollonian group. The shape
-matches, but that is named from the reference rather than read out of it; §9 marks the
-citation as relayed. If it is, then Jake's "Schmidt completion" is the super-Apollonian
-orbit, and the part that is not standard is his *reading* of it — every circle carrying a
-reflected packing inside, rather than the group acting from outside.
+**Settled: the arrangement is closed under the outward move.** Starting from the
+`(−2, 4, 4, 6)` quadruple that chapter 7 locates inside the Schmidt arrangement and
+reflecting outward four levels — 161 quadruples, 644 circles — **every circle produced is
+already in the arrangement.** Not one exception. So the orbit of a packing under the
+outward move stays inside the arrangement, which is exactly Jake's "Schmidt completion".
 
-**Also open, and cheaper:** breadth-first outward from the classic packing reaches
-`(−3,4,12,13)`, `(−5,7,18,18)`, `(−6,10,15,19)` and `(−4,5,20,21)` within three steps,
-all genuine root quadruples. If the reachable set is the root enumeration, that settles
-the open item about the packings list having no principled basis.
+Getting there needed one correction. Fifteen circles first came back missing, all of
+them at negative *y* with small bends. That is `arrangement()`, not the mathematics: it
+seeds from `𝒥`, the *upper* half plane, so it never builds below the real line. The true
+arrangement is symmetric under conjugation, and testing each circle against its
+reflection too takes the miss count to zero and holds it there.
+
+**Settled, negatively: the outward orbit does not reach every root quadruple.** Of the
+17 roots with `|a| ≤ 8`, fourteen are reached — all by depth 7 — and three are not:
+`(−4, 8, 9, 9)`, `(−6, 11, 14, 15)`, `(−8, 12, 25, 25)`. Explored to depth 9 and 14,768
+distinct signatures without finding them, so they look genuinely unreachable rather than
+merely deep. **The reachable set is a proper subset, so this does not give the packings
+list its basis** — and note `(−6, 11, 14, 15)` is one of the four the workbench ships and
+is not reachable from the classic packing. Why those three is unexplained.
+
+**Still open.** Whether this is what Graham, Lagarias, Mallows, Wilks and Yan call the
+**dual Apollonian group** — the Apollonian group acting by Vieta jumps, its dual by
+inversions in the four circles, the two together generating the super-Apollonian group.
+The shape matches, but that is named from the reference rather than read out of it; §9
+marks the citation as relayed. If it is, the part that is not standard is Jake's
+*reading* of it — every circle carrying a reflected packing inside, rather than the group
+acting from outside.
+
+**And a lab finding worth keeping.** The move is an involution, so clicking the same
+circle twice returns you. At the strip, whose two lines look alike, that reads as the
+picture flipping up and down instead of marching along: reflecting through the lower line
+moves it down, the upper line up, and repeating one of them just undoes it. Alternating
+gives the parallel stack (y = 3, 5, 7, 9). The lab now draws the circle you arrived
+through dashed, because the undo move was otherwise indistinguishable from an advance.
 
 ### 8.5 What this does not answer
 

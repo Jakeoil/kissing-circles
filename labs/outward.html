@@ -64,7 +64,12 @@
       land within it.</p>
       <p>This is <i>not</i> the Vieta jump. Vieta keeps three circles and replaces one,
       going inward forever. This keeps one and moves three, and goes outward. It is an
-      involution — click the same circle twice and you are back.</p>
+      <b>involution</b> — click the same circle twice and you are back, which is why the
+      circle you arrived through is drawn dashed.</p>
+      <p>That matters most at the strip, whose two lines look alike. Reflecting through
+      the lower line moves it down, the upper line moves it up; click the same one twice
+      and it flips back and forth. <b>Alternate them</b> and the parallel stack develops
+      as you would expect.</p>
       <p>From <code>(−1, 2, 2, 3)</code>, the three distinct results are the strip
       <code>(0, 0, 1, 1)</code>, <code>(−2, 3, 6, 7)</code> and
       <code>(−3, 5, 8, 8)</code>. Note the last is <i>not</i>
@@ -112,6 +117,16 @@
       /** Screen positions of the current quadruple's circles, for hit-testing. */
       let hits = [];
       let hovered = -1;
+      /**
+       * Which circle we arrived through, or -1 at the start.
+       *
+       * The move is an involution, so clicking this one goes straight back where you
+       * came from. Without a mark the undo looks exactly like an advance — which is
+       * what makes the strip appear to flip up and down instead of marching along,
+       * since its two lines are indistinguishable by eye. `reflectQuad` leaves the
+       * mirror at the index it was given, so the arrival circle is simply that index.
+       */
+      let arrivedThrough = -1;
 
       /**
        * The bends, ascending, kept as BigInt all the way to the string.
@@ -191,12 +206,14 @@
             const b = view.worldToScreen(nx * d + ny * reach, ny * d - nx * reach);
             // Bright enough to read as one of the four, not as scenery — a line is a
             // circle of bend 0 here and is just as clickable as the others.
-            ctx.strokeStyle = i === hovered ? '#ffd479' : '#7ee2b8';
+            ctx.strokeStyle = i === hovered ? '#ffd479' : (i === arrivedThrough ? '#8b949e' : '#7ee2b8');
             ctx.lineWidth = i === hovered ? 4 : 2.5;
+            if (i === arrivedThrough) ctx.setLineDash([7, 6]);
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
             ctx.stroke();
+            ctx.setLineDash([]);
             hits.push({ i, line: true, nx, ny, d });
             return;
           }
@@ -204,9 +221,13 @@
           const sr = Math.abs(f.r) * view.scale;
           ctx.beginPath();
           ctx.arc(p.x, p.y, sr, 0, Math.PI * 2);
-          ctx.strokeStyle = i === hovered ? '#ffd479' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)];
+          const came = i === arrivedThrough;
+          ctx.strokeStyle = i === hovered ? '#ffd479'
+            : came ? '#8b949e' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)];
           ctx.lineWidth = i === hovered ? 3.5 : 2;
+          if (came) ctx.setLineDash([7, 6]);
           ctx.stroke();
+          ctx.setLineDash([]);
           if (i === hovered) { ctx.fillStyle = 'rgba(255, 212, 121, 0.12)'; ctx.fill(); }
           drawNumeral(ctx, view, c, String(c.b),
             i === hovered ? '#ffd479' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)], metrics);
@@ -234,7 +255,8 @@
           `step ${chain.length - 1}`,
           label(quad),
           v.ok ? 'valid Descartes quadruple' : 'INVALID — ' + (v.errors[0] ?? ''),
-          isStrip(quad) ? 'this is a strip: reflect a line for another, a circle to drop back in' : '',
+          isStrip(quad) ? 'a strip: the two lines move it up or down, either circle drops back in' : '',
+          arrivedThrough >= 0 ? 'the dashed circle is the one you came through — it goes back' : '',
           'click a circle to turn the quadruple inside out through it',
         ].filter(Boolean).join('   ·   ');
       }
@@ -265,20 +287,24 @@
         const out = reflectQuad(chain[chain.length - 1], i);
         if (!validateQuad(out).ok) return;
         chain.push(out);
+        arrivedThrough = i;
         hovered = -1;
         render();
       });
 
       backButton.addEventListener('click', () => {
         if (chain.length > 1) chain.pop();
+        arrivedThrough = -1;
         render();
       });
       document.getElementById('reset').addEventListener('click', () => {
         chain = [ROOTS[startSelect.value].quad];
+        arrivedThrough = -1;
         render();
       });
       startSelect.addEventListener('change', () => {
         chain = [ROOTS[startSelect.value].quad];
+        arrivedThrough = -1;
         render();
       });
       fillToggle.addEventListener('change', render);
