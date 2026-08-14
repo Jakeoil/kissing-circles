@@ -37,15 +37,11 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    sustained deep zoom. Related: `Circle.key()` is ~19% of generation time because
    `Packing._expand` calls it three times per emit to look up parent indices. Carrying
    indices on the frame removes those without the ~50 MB a string cache would cost.
-2. **`arrangement()` is the slow path** — 12 s at generation 14 against 0.4 s for the
-   partition, because it prunes position on the circumscribed disc (median 22× the
-   region) rather than the box. Chapter 7's figure stops at generation 8 for this
-   reason. Sound, but the weakest of the three bounds in §8.4b.
-3. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
+2. **The packings list has no basis** (§7.4). It offers root quadruples #1, #2, #4, #11
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
-4. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
+3. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-5. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
+4. **`(5, 8, 12, 53)`** is a valid primitive quadruple `rootFromCurvatures` cannot
    place. Probably a limit of the translation-and-ordering search, not of the
    mathematics.
 
@@ -1208,6 +1204,33 @@ picture flipping up and down instead of marching along: reflecting through the l
 moves it down, the upper line up, and repeating one of them just undoes it. Alternating
 gives the parallel stack (y = 3, 5, 7, 9). The lab now draws the circle you arrived
 through dashed, because the undo move was otherwise indistinguishable from an advance.
+
+### 8.4c `arrangement()` is not the slow path — I measured it wrong
+
+§0 carried an open item saying `arrangement()` was slow because it prunes position on
+the circumscribed disc rather than the box, quoting "12 s at generation 14 against 0.4 s
+for the partition". **That comparison was invalid and the item is withdrawn.**
+
+The two figures came from different runs: the 0.4 s was a 0.4-wide window at `minSize`
+0.01, the 12 s a much wider window at much finer resolution. Measured like for like —
+same window, same size floor, generation 10 — `regionsAt` takes **12.5 s for 770,610
+regions** and `arrangement` **23 s**. Comparable, and neither is anomalous.
+
+I built the tighter bound anyway before checking: the region box widened by a measured
+margin, intersected with the disc. Over 313,624 ancestor/descendant pairs, 90.3% of a
+descendant's drawn circle never leaves its ancestor's box, 8.4% escape by under one
+box-width, and the worst case is 19.5 — at an immediate child, not growing with depth.
+So the bound is real. **It is also completely inert:** identical circle counts and times
+at margins of 1, 2, 4, 8 and 24, on a zoomed window as well as a wide one.
+
+The reason is obvious in hindsight. The arrangement is periodic with period 1, so over
+any window of ordinary size essentially every region being expanded genuinely overlaps
+it. There is nothing for a position test to cut. The cost is the content: the unit
+square at `minRadius` 0.002 *contains* 61,054 circles.
+
+Reverted rather than shipped, since dead code with a long comment is worse than none.
+Where it does begin to hurt, for the record: **generation 7** — 22 ms, 60, 216, then
+1.1 s at 7, 4.2 s at 8, 9.8 s at 9, with the frontier peaking near 75,000 regions at 8.
 
 ### 8.5 What this does not answer
 

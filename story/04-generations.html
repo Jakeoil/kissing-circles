@@ -81,6 +81,57 @@
         thousand million circles, and no screen has that many pixels.
       </p>
 
+      <h2>How many are actually different</h2>
+
+      <p>
+        Each new circle arrives with a quadruple: itself and the three it was dropped
+        between. Count how many of those are genuinely <em>different</em> — same four
+        bends, same shape, so reflections and rotations count once — and a second formula
+        appears beside the first.
+      </p>
+
+      <div class="aside">
+        <table style="width:100%; border-collapse:collapse; font-family:ui-monospace,Menlo,monospace; font-size:.82rem">
+          <tr style="color:var(--dim); text-align:right">
+            <th style="text-align:left; font-weight:600; padding:.2rem .6rem">round</th>
+            <th style="font-weight:600; padding:.2rem .6rem">new circles</th>
+            <th style="font-weight:600; padding:.2rem .6rem">distinct quadruples</th>
+            <th style="font-weight:600; padding:.2rem .6rem">ratio</th>
+          </tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">1</td><td>4</td><td>3</td><td>1.33</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">2</td><td>12</td><td>7</td><td>1.71</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">3</td><td>36</td><td>19</td><td>1.89</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">4</td><td>108</td><td>55</td><td>1.96</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">5</td><td>324</td><td>163</td><td>1.99</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">6</td><td>972</td><td>487</td><td>2.00</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">7</td><td>2,916</td><td>1,459</td><td>2.00</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">8</td><td>8,748</td><td>4,375</td><td>2.00</td></tr>
+          <tr style="text-align:right"><td style="text-align:left; padding:.15rem .6rem">9</td><td>26,244</td><td>13,123</td><td>2.00</td></tr>
+        </table>
+      </div>
+
+      <p>
+        The right-hand column is <code>3, 7, 19, 55, 163, 487, …</code>, which is
+        <code>a(n) = 3·a(n−1) − 2</code>, and in closed form
+      </p>
+
+      <div class="aside">
+        <p style="text-align:center; margin:0"><code>2·3ⁿ⁻¹ + 1</code> distinct quadruples in round <i>n</i></p>
+      </div>
+
+      <p>
+        Verified against the generator through round 9, where it predicts 13,123 and gets
+        13,123. Set beside <code>4·3ⁿ⁻¹</code> circles and the ratio goes 1.33, 1.71,
+        1.89, 1.96 … <b>and settles on exactly 2</b>. In the limit every quadruple shape
+        in the packing occurs precisely twice per round — the <code>+1</code> is the one
+        that does not, and it is why the early rounds fall short.
+      </p>
+
+      <p>
+        So the picture is repeating itself far more than it looks. Round 9 puts down
+        26,244 circles, and there are only 13,123 different things among them.
+      </p>
+
       <h2>What the rounds are not</h2>
 
       <p>
