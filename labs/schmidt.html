@@ -53,7 +53,8 @@
       </label>
       <label>draw
         <select id="view-mode">
-          <option value="regions">regions — the partition</option>
+          <option value="regions">regions — the partition of 𝒥</option>
+          <option value="dual">regions — the partition of 𝒥*</option>
           <option value="circles">circles — the arrangement</option>
         </select>
       </label>
@@ -78,9 +79,23 @@
 
     <div id="note" class="panel" hidden>
       <h2>The experiment</h2>
-      <p><b>Regions</b> draws the partition at one generation. Every point of the plane
-      belongs to exactly one region, so this is a single coherent picture, and stepping
-      the generation shows the subdivision happening.</p>
+      <p><b>Regions of 𝒥</b> draws the partition at one generation. Every point of the
+      half plane belongs to exactly one region, so this is a single coherent picture, and
+      stepping the generation shows the subdivision happening.</p>
+      <p><b>Regions of 𝒥*</b> is the same construction started from Schmidt's other seed:
+      not the half plane but the curvilinear triangle over <code>[0,1]</code>, bounded by
+      <code>x = 0</code>, <code>x = 1</code> and the semicircle between them. A chain is
+      <i>regular</i> when it starts at 𝒥 and <i>dually regular</i> when it starts at 𝒥*,
+      and the algorithm needs both, so the lab should show both.</p>
+      <p>Same generators, same rules — only the region they act on differs. Neither is a
+      sub-picture of the other, because the rules swap the types: a circular region makes
+      four triangles and a triangular one makes a circle, so after one step each partition
+      contains both. The counts are the same shape with a different constant,
+      <code>(3·5ⁿ − 1)/2</code> against <code>(3·5ⁿ + 1)/4</code> — 1, 7, 37, 187, 937
+      against 1, 4, 19, 94, 469 — and the two are locked together exactly: at every
+      generation 𝒥 has as many <i>circular</i> regions as 𝒥* has <i>triangular</i> ones,
+      and four times as many triangular regions as 𝒥* has circular ones. Checked to
+      generation 6.</p>
       <p><b>Circles</b> draws each region's <i>circumscribed</i> circle instead, for
       every generation at once — the Schmidt arrangement as it is usually published.
       Know what that superimposes: for a circular region the circumscribed circle
@@ -205,8 +220,10 @@
         const bounds = view.visibleBounds(0.25);
         const minSize = view.worldRadius(RESOLUTION);
         const t0 = performance.now();
-        if (viewMode.value === 'regions') {
-          regions = regionsAt(generation, { bounds, minSize, maxRegions: MAX_REGIONS });
+        if (seedOf(viewMode.value) !== null) {
+          regions = regionsAt(generation, {
+            bounds, minSize, maxRegions: MAX_REGIONS, from: seedOf(viewMode.value),
+          });
           circles = null;
         } else {
           circles = arrangement({
@@ -231,8 +248,25 @@
         rebuildTimer = setTimeout(build, 140);
       }
 
+      /**
+       * Which seed a draw mode partitions, or null when it is not a region mode.
+       * `J` is Schmidt's upper half plane, `T` his triangle 𝒥* over [0,1].
+       */
+      function seedOf(mode) {
+        if (mode === 'regions') return 'J';
+        if (mode === 'dual') return 'T';
+        return null;
+      }
+
+      // Where the 0 key goes, per mode — not where a mode switch goes; the modes share
+      // whatever view you are on. 𝒥* is the triangle over [0,1] and nothing outside it
+      // belongs to the picture, so it gets a tighter frame than 𝒥's. Both are unbounded
+      // upward — 𝒥* has its third vertex at infinity, where its two vertical sides meet —
+      // so neither frame shows the whole region; both show where the subdivision goes.
       function home() {
-        return { minX: -0.6, minY: -0.18, maxX: 1.6, maxY: 1.35 };
+        return viewMode.value === 'dual'
+          ? { minX: -0.1, minY: -0.06, maxX: 1.1, maxY: 1.3 }
+          : { minX: -0.6, minY: -0.18, maxX: 1.6, maxY: 1.35 };
       }
 
       function resize() {
@@ -311,11 +345,11 @@
 
         const circular = wanted.filter((r) => r.type === 'J').length;
         hud.textContent = [
-          `regions — the partition at generation ${generation}`,
+          `regions — the partition of ${viewMode.value === 'dual' ? '𝒥*' : '𝒥'} at generation ${generation}`,
           // The formula counts the whole partition; the walk builds only the part the
           // window can show. They agree until pruning starts, and the gap after that is
           // the point of the pruning rather than a discrepancy.
-          `${regions.length.toLocaleString()} of ${regionCount(generation).toLocaleString()} regions`,
+          `${regions.length.toLocaleString()} of ${regionCount(generation, seedOf(viewMode.value)).toLocaleString()} regions`,
           `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
           // Worth saying out loud, because it explains why stepping the generation
           // eventually stops changing the picture: the walk has reached the resolution
@@ -338,6 +372,10 @@
 
       genUp.addEventListener('click', () => step(1));
       genDown.addEventListener('click', () => step(-1));
+      // Rebuild, but do not refit. The three modes share one view on purpose: zoom into
+      // a spot and flip between them, and you are looking at the same piece of the plane
+      // at the same scale each time, which is the only way the comparison means anything.
+      // `home()` still knows a frame per mode, for the 0 key.
       viewMode.addEventListener('change', build);
       for (const el of [filter, colorMode, numbersToggle, lowestToggle]) {
         el.addEventListener('change', () => { dirty = true; });

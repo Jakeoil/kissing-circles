@@ -277,6 +277,116 @@ describe('pruning the traversal', () => {
 
   test('maxRegions stops rather than exhausting the heap', () => {
     const held = regionsAt(12, { maxRegions: 1000 });
-    assert.ok(held.length <= 1000, `returned ${held.length} regions`);
+    // The valve overshoots by one generation, on purpose: it has to return a state that
+    // is a partition, and the only two are the generation it started from and the one it
+    // just finished. It returns the finished one, so the bound is the branching factor —
+    // at most 7 children per region — times the limit, not the limit itself. This test
+    // asserted `<= 1000` and passed only because the valve was returning the *previous*
+    // frontier alongside the current generation's leaves, which double-covered.
+    assert.ok(held.length <= 7 * 1000, `returned ${held.length} regions`);
+    assert.ok(held.length < regionCount(12) / 1000, 'stopped well short of generation 12');
   });
+});
+
+describe('the dual partition, from 𝒥*', () => {
+  // Schmidt's other seed: the curvilinear triangle over [0,1] rather than the upper
+  // half plane. A regular chain starts at 𝒥, a dually regular one at 𝒥*, and the
+  // subdivision rules are the same — so the only thing that can go wrong is seeding.
+  test('𝒥* is a triangle, and its three sides are mutually tangent', () => {
+    const s = seed('T');
+    assert.equal(s.type, 'T');
+    assert.equal(s.name, '𝒥*');
+    const g = geometry(s);
+    assert.equal(g.sides.length, 3);
+    // The real line is a constraint but not a side: it picks the component above the
+    // semicircle rather than below it.
+    assert.equal(g.constraints.length, 4);
+  });
+
+  test('counts follow (3·5ⁿ + 1)/4', () => {
+    const want = [1, 4, 19, 94, 469, 2344];
+    for (const [n, count] of want.entries()) {
+      assert.equal(regionCount(n, 'T'), count, `formula at n=${n}`);
+      assert.equal(regionsAt(n, { from: 'T' }).length, count, `walk at n=${n}`);
+    }
+  });
+
+  test('neither partition is a sub-picture of the other', () => {
+    // The rules swap the types — a circle makes four triangles, a triangle makes a
+    // circle — so after one step each partition contains both kinds.
+    for (const from of ['J', 'T']) {
+      const types = new Set(regionsAt(2, { from }).map((r) => r.type));
+      assert.deepEqual([...types].sort(), ['J', 'T'], `from ${from}`);
+    }
+  });
+
+  test('the two are locked together at every generation', () => {
+    // 𝒥 has as many circular regions as 𝒥* has triangular ones, and four times as many
+    // triangular regions as 𝒥* has circular ones. Both hold exactly, not approximately.
+    for (let n = 0; n <= 5; n++) {
+      const plain = regionsAt(n, {});
+      const dual = regionsAt(n, { from: 'T' });
+      const count = (rs, t) => rs.filter((r) => r.type === t).length;
+      assert.equal(count(plain, 'J'), count(dual, 'T'), `circular/triangular at n=${n}`);
+      assert.equal(count(plain, 'T'), 4 * count(dual, 'J'), `triangular/circular at n=${n}`);
+    }
+  });
+
+  test('seed defaults to 𝒥, and so does regionsAt', () => {
+    assert.equal(seed().type, 'J');
+    assert.equal(regionsAt(3, {}).length, regionCount(3));
+  });
+});
+
+describe('bailing out still returns a partition', () => {
+  // The maxRegions valve returned `leaves.concat(regions)`, but `leaves` had already had
+  // the current generation's new leaves pushed into it — so each below-resolution child
+  // came back alongside the parent it was cut from. Not a hole: a double cover, and the
+  // parent is drawn over its own children, which is why fine detail stopped appearing
+  // past the generation where the valve first trips.
+  const isInside = (p, b) => {
+    const f = b.toFloat();
+    if (b.isLine()) return p.x * f.x + p.y * f.y < b.lineOffset();
+    return Math.hypot(p.x - f.x, p.y - f.y) < Math.abs(f.r);
+  };
+  const contains = (p, r) => {
+    const g = geometry(r);
+    if (g === null) return false;
+    return g.constraints.every((c) => isInside(p, c) === isInside(g.interior, c));
+  };
+
+  /** Deterministic points strictly inside the seed region. */
+  function sample(from, count) {
+    const points = [];
+    let s = 20260814;
+    const rnd = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    while (points.length < count) {
+      const x = rnd();
+      const y = rnd() * 1.3;
+      if (from === 'T') {
+        // above the semicircle, between the two vertical sides
+        if (y > Math.sqrt(Math.max(0, x - x * x)) + 2e-3 && x > 2e-3 && x < 1 - 2e-3) {
+          points.push({ x, y });
+        }
+      } else if (y > 2e-3) {
+        points.push({ x: x * 1.4 - 0.2, y });
+      }
+    }
+    return points;
+  }
+
+  for (const from of /** @type {('J'|'T')[]} */ (['J', 'T'])) {
+    const name = from === 'T' ? '𝒥*' : '𝒥';
+
+    test(`${name} covers exactly once when maxRegions trips`, () => {
+      const bounds = { minX: -0.4, minY: -0.4, maxX: 1.4, maxY: 1.64 };
+      // Small enough that the valve trips well before the requested generation.
+      const regions = regionsAt(8, { from, bounds, minSize: 8 / 600, maxRegions: 600 });
+      assert.ok(regions.length > 600, `expected an overshoot, got ${regions.length}`);
+      for (const p of sample(from, 120)) {
+        const hits = regions.filter((r) => contains(p, r)).length;
+        assert.equal(hits, 1, `(${p.x.toFixed(3)}, ${p.y.toFixed(3)}) covered ${hits} times`);
+      }
+    });
+  }
 });

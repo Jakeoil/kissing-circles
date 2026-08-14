@@ -95,11 +95,25 @@ const LABELS = {
 };
 
 /**
- * The seed region: the upper half plane, undivided.
+ * A seed region, undivided.
+ *
+ * Schmidt has two, and the algorithm needs both: `𝒥` is the upper half plane, where a
+ * *regular* chain starts, and `𝒥*` is the curvilinear triangle over `[0,1]`, where a
+ * *dually regular* chain starts. Same generators, same subdivision rules — only the
+ * region they are applied to differs, and because the rules take each type to the other
+ * (`J` makes four triangles, `T` makes one circle) neither partition is a sub-picture
+ * of the other after the first step.
+ *
+ * Both are unbounded: `𝒥` is a half plane, and `𝒥*` has its third vertex at infinity,
+ * the two vertical sides meeting there.
+ *
+ * @param {'J'|'T'} [type] `J` for `𝒥`, `T` for `𝒥*`
  * @returns {Region}
  */
-export function seed() {
-  return { m: IDENTITY, type: 'J', name: '𝒥' };
+export function seed(type = 'J') {
+  return type === 'T'
+    ? { m: IDENTITY, type: 'T', name: '𝒥*' }
+    : { m: IDENTITY, type: 'J', name: '𝒥' };
 }
 
 /**
@@ -497,13 +511,14 @@ function reaches(region, bounds, position) {
  *
  * @param {number} n
  * @param {{bounds?: {minX: number, minY: number, maxX: number, maxY: number}|null,
- *   minSize?: number, maxRegions?: number}} [limits]
+ *   minSize?: number, maxRegions?: number, from?: 'J'|'T'}} [limits]
  * @returns {Region[]}
  */
 export function regionsAt(n, limits = {}) {
   const bounds = limits.bounds ?? null;
   const minSize = limits.minSize ?? 0;
   const maxRegions = limits.maxRegions ?? 200000;
+  const from = limits.from ?? 'J';
 
   // Regions that stopped early because they hit the resolution floor. They are still
   // part of the partition — dropping them punches holes in a picture whose entire point
@@ -513,7 +528,7 @@ export function regionsAt(n, limits = {}) {
   /** @type {Region[]} */
   const leaves = [];
 
-  let regions = [seed()];
+  let regions = [seed(from)];
   for (let g = 0; g < n; g++) {
     /** @type {Region[]} */
     const next = [];
@@ -527,7 +542,14 @@ export function regionsAt(n, limits = {}) {
     // Both halves count: the leaves are returned too, and they are the larger half by
     // the time a walk gets deep. Stopping here still returns a complete partition —
     // the frontier plus the leaves covers the window either way — just a coarser one.
-    if (leaves.length + next.length > maxRegions) return leaves.concat(regions);
+    //
+    // `next`, not `regions`. Bailing out has to return a state that is a partition, and
+    // there are two of those: the one this generation started from, and the one it just
+    // finished building. `leaves` has already had this generation's new leaves pushed
+    // into it, so pairing it with `regions` mixes the two — every below-resolution child
+    // comes back alongside the parent it was cut from, and the parent is drawn over it.
+    // That is what "the fine detail stops appearing past generation 7" was.
+    if (leaves.length + next.length > maxRegions) return leaves.concat(next);
     regions = next;
   }
   return leaves.concat(regions);
@@ -727,14 +749,20 @@ export function arrangement(limits = {}) {
 }
 
 /**
- * How many regions there are *at* generation n, in closed form: (3·5ⁿ − 1)/2.
+ * How many regions there are *at* generation n, in closed form.
+ *
+ * Both seeds branch by 5 and differ only in the constant:
+ *
+ *     𝒥    (3·5ⁿ − 1)/2     1, 7, 37, 187, 937, 4687
+ *     𝒥*   (3·5ⁿ + 1)/4     1, 4, 19, 94, 469, 2344
  *
  * A check on the traversal, and the analogue of the gasket's 4·3ⁿ⁻¹ circles per
  * generation. Note the gasket branches by 3 and this by 5.
  *
  * @param {number} n
+ * @param {'J'|'T'} [from] which seed
  * @returns {number}
  */
-export function regionCount(n) {
-  return (3 * 5 ** n - 1) / 2;
+export function regionCount(n, from = 'J') {
+  return from === 'T' ? (3 * 5 ** n + 1) / 4 : (3 * 5 ** n - 1) / 2;
 }
