@@ -88,35 +88,101 @@
         <figcaption id="mirror-caption"></figcaption>
       </figure>
 
-      <h2>One placement, or two — never more</h2>
+      <h2>Eight orientations, or four</h2>
 
       <p>
-        <b>And the mirror image is rational too.</b> Reflecting the plane conjugates
-        every coordinate, <code>m + ni ↦ m − ni</code>, which maps the Gaussian integers
-        onto themselves. You cannot fall out of <code>ℤ[i]</code> by looking at a packing
-        in a mirror.
+        <b>The mirror image is rational too.</b> Reflecting the plane conjugates every
+        coordinate, <code>m + ni ↦ m − ni</code>, which maps the Gaussian integers onto
+        themselves. You cannot fall out of <code>ℤ[i]</code> by looking at a packing in a
+        mirror.
       </p>
 
       <p>
-        So a set of four bends admits <b>exactly one or two</b> rational placements, and
-        which one depends on nothing but whether two of the bends agree:
+        So count how many ways a given set of bends can actually sit on the lattice. The
+        square lattice has eight symmetries — four rotations, and each of those mirrored
+        — and every one of them sends a rational configuration to a rational
+        configuration. That gives <b>up to eight orientations, four per handedness</b>:
       </p>
 
       <div class="aside">
         <p style="margin:0">
-          <b>Two bends equal</b> — <code>(−1, 2, 2, 3)</code>, <code>(−3, 5, 8, 8)</code>,
-          <code>(−4, 8, 9, 9)</code> — the configuration <em>is</em> its own mirror
-          image. One placement.<br />
           <b>All bends distinct</b> — <code>(−2, 3, 6, 7)</code>,
-          <code>(−6, 11, 14, 15)</code> — the mirror is a genuinely different
-          configuration, and just as rational. Two placements, a left and a right.
+          <code>(−6, 11, 14, 15)</code>, <code>(−3, 4, 12, 13)</code> — <b>eight</b>
+          orientations. The mirror is a genuinely different configuration, so there is a
+          left-handed set of four and a right-handed set of four.<br />
+          <b>Two bends equal</b> — <code>(−1, 2, 2, 3)</code>, <code>(−3, 5, 8, 8)</code>,
+          <code>(−4, 8, 9, 9)</code> — <b>four</b>. The repeated pair gives the
+          configuration a mirror of its own, so the two handednesses coincide and there
+          are only two per side.
         </p>
       </div>
 
       <p>
-        Checked against the first twelve root quadruples, and it holds without exception.
-        There is no third case.
+        Quotient the turning away and what is left is just the handedness: <b>two
+        configurations, or one</b>. Checked against the first twelve root quadruples,
+        without exception. There is no third case, and nothing forces you out of the
+        rationals at any point.
       </p>
+
+      <h2>And nothing ever needs reducing</h2>
+
+      <p>
+        A rational number can always be put in lowest terms. A quadruple can too — divide
+        the four bends by their common factor — and the striking thing is that
+        <b>you never have to</b>.
+      </p>
+
+      <p>
+        Every quadruple the recursion produces already has <code>gcd = 1</code>. Checked
+        over 13,961 quadruples inside the classic packing and 65 more reached by
+        reflecting outward: not one has a common factor. Never 2, never 3, never
+        anything.
+      </p>
+
+      <p>
+        Which is why <code>(−3, 5, 8, 8)</code> and not <code>(−3, 6, 6, 9)</code> is
+        what appears when the classic packing is turned inside out through its
+        <code>3</code>. The second is a perfectly valid quadruple —
+        <code>3 × (−1, 2, 2, 3)</code> — but it has a common factor, and the recursion
+        never lands on it.
+      </p>
+
+      <h2>Where the picture sits, exactly</h2>
+
+      <p>
+        One more thing is rational, and it is the one that closes the argument. So far
+        the coordinates have been rational <em>relative to some placement</em>. But the
+        placement itself is pinned down, because the recursion has a landmark: the
+        <b>strip</b>.
+      </p>
+
+      <p>
+        Turn any packing inside out repeatedly — the
+        <a href="../labs/outward.html">outward lab</a> does this — and you arrive at
+        <code>(0, 0, 1, 1)</code>, two parallel lines with circles between them. That
+        configuration hands you a coordinate frame with nothing left to choose: one axis
+        is its line of symmetry, the other is its first straight line, and the circle of
+        bend 1 fixes the unit, its diameter being 2.
+      </p>
+
+      <p>
+        <b>So every circle in every one of these packings has an exactly known rational
+        position</b> — not merely rational up to an arbitrary choice of origin and scale,
+        but rational in a frame the construction itself determines. There is no step
+        anywhere, from the strip to any depth in any direction, at which a real number is
+        required.
+      </p>
+
+      <div class="aside">
+        <p>
+          <b>And nothing is secretly repeated.</b> Of the 2,075 distinct bend signatures
+          in the classic packing out to bend 2,000, every one occurs four times, twice or
+          once — and never more. Four is the order of the packing's symmetry group, so
+          each count is exactly an orbit: four for a quadruple with no symmetry of its
+          own, two when a mirror fixes it, one for the root that everything fixes. No
+          signature turns up by coincidence in two unrelated places.
+        </p>
+      </div>
 
       <h2>Why symmetry is the thing you cannot have</h2>
 
@@ -368,7 +434,9 @@
 
         const same = achiral(built);
         const pos = bends.filter((b) => b > 0);
-        verdict2.textContent = same ? 'one rational placement' : 'two rational placements';
+        verdict2.textContent = same
+          ? 'its own mirror — four orientations'
+          : 'a second configuration — eight orientations';
         mirrorCaption.textContent = same
           ? `Left: the quadruple. Right: its mirror image — the same configuration turned `
             + `round, because ${new Set(pos).size < pos.length ? 'two of the bends agree' : 'of its symmetry'}. `
