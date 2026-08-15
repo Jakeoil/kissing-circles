@@ -18,6 +18,7 @@ import {
   placeQuadruple,
   rootQuadruples,
   rootFromCurvatures,
+  permutations,
 } from '../src/math/descartes.js';
 import { Circle } from '../src/math/circle.js';
 import { Gaussian } from '../src/math/gaussian.js';
@@ -367,5 +368,75 @@ describe('placing roots that cannot be constructed head-on', () => {
         bends,
       );
     }
+  });
+});
+
+describe('the eight permutations', () => {
+  // Turning by a unit and mirroring in the real axis generate the symmetries of the
+  // square. Every image is a Descartes quadruple with the same four bends -- only the
+  // placement changes -- and each of the three primitives keeps the invariant
+  // |bz|^2 - b*bbar = 1 exactly, which isValid() checks.
+  const strip = [
+    Circle.of(0, 0, 0, -1), // line y = 0
+    Circle.of(2, 0, 0, 1),  // line y = 1
+    Circle.of(0, 2, 0, 1),  // centre (0, 1/2), radius 1/2
+    Circle.of(2, 2, 2, 1),  // centre (1, 1/2), radius 1/2
+  ];
+
+  test('there are eight, all valid, all with the same bends', () => {
+    const perms = permutations(strip);
+    assert.equal(perms.length, 8);
+    const bends = strip.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0)).join(',');
+    for (const [i, p] of perms.entries()) {
+      assert.ok(validateQuad(p).ok, `permutation ${i} is not a Descartes quadruple`);
+      for (const c of p) assert.ok(c.isValid(), `permutation ${i} broke the invariant`);
+      const got = p.map((c) => c.b).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0)).join(',');
+      assert.equal(got, bends, `permutation ${i} changed the bends`);
+    }
+  });
+
+  test('the first is the quadruple itself', () => {
+    const first = permutations(strip)[0];
+    for (const [i, c] of first.entries()) assert.ok(c.equals(strip[i]));
+  });
+
+  test('turning four times is the identity', () => {
+    const i = new Gaussian(0n, 1n);
+    for (const c of strip) assert.ok(c.rotate(i).rotate(i).rotate(i).rotate(i).equals(c));
+  });
+
+  test('mirroring twice is the identity', () => {
+    for (const c of strip) assert.ok(c.conjugate().conjugate().equals(c));
+  });
+
+  test('translating there and back is the identity', () => {
+    const t = new Gaussian(3n, -2n);
+    for (const c of strip) {
+      const there = c.translate(t);
+      assert.ok(there.isValid(), 'translation broke the invariant');
+      assert.ok(there.translate(new Gaussian(-3n, 2n)).equals(c));
+    }
+  });
+
+  test('translating the real line by i gives the line y = 1', () => {
+    // b stays 0 and bbar carries the offset, which is the case worth pinning: a line has
+    // no centre to move, so the whole translation lands in the co-curvature.
+    const line = Circle.of(0, 0, 0, -1);
+    const up = line.translate(new Gaussian(0n, 1n));
+    assert.equal(up.b, 0n);
+    assert.equal(up.bbar, -2n);
+    assert.ok(up.isValid());
+  });
+
+  test('the strip turned 90° is the strip stood up', () => {
+    // The upright strip -- sides x = 0 and x = 1, floor the semicircle on the real axis
+    // that is also 𝒥*'s -- is the 90° image translated by one, not a separate packing.
+    const upright = [
+      Circle.of(0, 0, -1, 0), Circle.of(2, 0, 1, 0),
+      Circle.of(0, 2, 1, 0), Circle.of(2, 2, 1, 2),
+    ];
+    const turned = permutations(strip)[1].map((c) => c.translate(new Gaussian(1n, 0n)));
+    const key = (q) => q.map((c) => c.key()).sort().join('|');
+    assert.equal(key(turned), key(upright));
   });
 });

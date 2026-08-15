@@ -75,6 +75,7 @@
       <label><input type="checkbox" id="lowest" /> lowest terms (÷2)</label>
       <label><input type="checkbox" id="gasket" /> gasket overlay
         <select id="which-gasket"></select>
+        <select id="which-permutation"></select>
       </label>
       <button id="note-toggle" type="button">what is this?</button>
       <span id="exports" style="display:flex; gap:6px"></span>
@@ -121,14 +122,24 @@
       sample can confirm. In the region view the gold falls on the boundaries between
       circular and triangular regions, which is the point: those came out of a
       subdivision, not out of any Descartes recursion, and they coincide anyway.</p>
-      <p>Four are offered. Two are the same quadruple <code>(0, 0, 1, 1)</code> in two
-      of its permutations — lying down between <code>y = 0</code> and <code>y = 1</code>,
-      and stood up between <code>x = 0</code> and <code>x = 1</code>, where its floor is
-      the semicircle that is also 𝒥*'s. A quadruple has up to eight permutations across
-      the horizontal and vertical, four in each dual, so the same four numbers can sit in
-      the arrangement more than one way.</p>
-      <p>The other two are not searched for but <i>placed</i>, by turning the strip inside
-      out with the reflection from the <a href="./outward.html">inside-out lab</a>:
+      <p>Three gaskets, each with its eight permutations. Turning by a unit and mirroring
+      in the real axis generate the symmetries of the square, and every image is a
+      Descartes quadruple with the same four bends — only the placement changes. The
+      strip's 90° image is the strip stood up between <code>x = 0</code> and
+      <code>x = 1</code>, its floor the semicircle that is also 𝒥*'s; that is not a second
+      packing but the same one turned, which the tests pin down.</p>
+      <p>All eight are in the arrangement, for all three — checked against the arrangement
+      <i>together with its mirror in the real axis</i>, every circle up to bend 60. The
+      mirror is the honest part. <b>Circles</b> builds only the 𝒥 subtree, which covers the
+      upper half plane, and five of the eight permutations leave it: turn the strip 90° and
+      the gold runs off the bottom of the partition into empty space. Those circles are
+      missing from what this page constructs, not from Schmidt's arrangement.</p>
+      <p>The permutations turn about the origin, so an image is translated back by a
+      Gaussian integer to bring it into view. That is not a fudge — <code>z ↦ z + 1</code>
+      and <code>z ↦ z + i</code> carry the arrangement to itself just as the turns do.</p>
+      <p>The gaskets themselves are not searched for but <i>placed</i>, by turning the
+      strip inside out with the reflection from the <a href="./outward.html">inside-out
+      lab</a>:
       <code>reflectQuad(strip, 2)</code> is the classic <code>(−1, 2, 2, 3)</code>, and
       reflecting that again gives <code>(−3, 5, 8, 8)</code>. The reflection is exact
       integer arithmetic, so each lands where it belongs with nothing fitted.</p>
@@ -165,7 +176,9 @@
       import { draw as drawCircles } from '../src/render/renderer.js';
       import { addExportButtons } from './exports.js';
       import { Circle } from '../src/math/circle.js';
+      import { Gaussian } from '../src/math/gaussian.js';
       import { generate } from '../src/math/packing.js';
+      import { permutations } from '../src/math/descartes.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -182,6 +195,7 @@
       const noteToggle = document.getElementById('note-toggle');
       const gasketToggle = document.getElementById('gasket');
       const whichGasket = document.getElementById('which-gasket');
+      const whichPermutation = document.getElementById('which-permutation');
 
       /**
        * Gaskets that can be laid over the arrangement.
@@ -221,23 +235,13 @@
        */
       const GASKETS = {
         strip: {
-          tag: 'lying down, y = 0 to 1',
+          tag: 'the strip',
           where: 'the strip between y = 0 and y = 1',
           quad: [
             Circle.of(0, 0, 0, -1), // line y = 0
             Circle.of(2, 0, 0, 1),  // line y = 1
             Circle.of(0, 2, 0, 1),  // centre (0, ½), radius ½
             Circle.of(2, 2, 2, 1),  // centre (1, ½), radius ½
-          ],
-        },
-        stripUpright: {
-          tag: 'upright, x = 0 to 1',
-          where: 'the same quadruple stood up, on 𝒥*’s own two sides',
-          quad: [
-            Circle.of(0, 0, -1, 0), // line x = 0
-            Circle.of(2, 0, 1, 0),  // line x = 1
-            Circle.of(0, 2, 1, 0),  // centre (½, 0), radius ½ — 𝒥*'s floor
-            Circle.of(2, 2, 1, 2),  // centre (½, 1), radius ½
           ],
         },
         classic: {
@@ -261,6 +265,53 @@
           ],
         },
       };
+
+      /**
+       * The eight permutations, in the order `permutations()` returns them.
+       *
+       * All eight are placements of the same four bends, and all eight are in the
+       * arrangement: checked for each gasket below against the arrangement together with
+       * its mirror in the real axis, every circle up to bend 60. The mirror is needed
+       * because `arrangement()` builds only the 𝒥 subtree, which covers the upper half
+       * plane — five of the eight leave it, and they are absent from what we construct
+       * rather than from Schmidt's arrangement.
+       */
+      const PERMUTATIONS = ['0°', '90°', '180°', '270°', 'flip', 'flip 90°', 'flip 180°', 'flip 270°'];
+      for (const [i, name] of PERMUTATIONS.entries()) {
+        whichPermutation.append(new Option(name, String(i)));
+      }
+
+      /** The mean of a quadruple's finite centres — enough to say where it sits. */
+      function anchorOf(quad) {
+        let sx = 0, sy = 0, n = 0;
+        for (const c of quad) {
+          if (c.isLine()) continue;
+          const f = c.toFloat();
+          sx += f.x; sy += f.y; n++;
+        }
+        return n === 0 ? { x: 0, y: 0 } : { x: sx / n, y: sy / n };
+      }
+
+      /**
+       * A gasket under one of its permutations, brought back into view.
+       *
+       * The permutations turn about the origin, so the 90° image of the strip lands at
+       * x ∈ [−1, 0] rather than where it started. Translating it back by a Gaussian
+       * integer is not cheating: z ↦ z + 1 and z ↦ z + i are both in PSL₂(ℤ[i]) and so
+       * carry the arrangement to itself, exactly as the turns do. Without this the
+       * control would mostly move the picture off screen, and the interesting thing —
+       * that the same four numbers sit in the arrangement eight ways — would be invisible.
+       */
+      function placedGasket(g, k) {
+        const image = permutations(g.quad)[k];
+        const from = anchorOf(g.quad);
+        const to = anchorOf(image);
+        const t = new Gaussian(
+          BigInt(Math.round(from.x - to.x)),
+          BigInt(Math.round(from.y - to.y)),
+        );
+        return image.map((c) => c.translate(t));
+      }
 
       /** A gasket's bends, ascending. */
       function gasketBends(g) {
@@ -392,7 +443,7 @@
         if (gasketToggle.checked) {
           const g = GASKETS[whichGasket.value];
           if (g) {
-            gasket = generate(g.quad, {
+            gasket = generate(placedGasket(g, Number(whichPermutation.value)), {
               bounds,
               maxCurvature: 4000n,
               maxDepth: 40,
@@ -502,7 +553,7 @@
             'circles — every generation superimposed, boundaries and circumscribed circles together',
             `${circles.count.toLocaleString()} circles`,
             `drawn ${stats.drawn.toLocaleString()}`,
-            gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])}: ${over.toLocaleString()} over the top` : '',
+            gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])} ${PERMUTATIONS[Number(whichPermutation.value)]}: ${over.toLocaleString()} over the top` : '',
             `built ${built} ms`,
           ].filter(Boolean).join('   ');
           return;
@@ -566,7 +617,7 @@
           // eventually stops changing the picture: the walk has reached the resolution
           // floor, and everything deeper is smaller than a few pixels.
           `nothing below ${RESOLUTION} px`,
-          gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])}: ${over.toLocaleString()} over the top` : '',
+          gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])} ${PERMUTATIONS[Number(whichPermutation.value)]}: ${over.toLocaleString()} over the top` : '',
           `built ${built} ms`,
           `drew ${Math.round(performance.now() - t0)} ms`,
           numbersToggle.checked
@@ -597,7 +648,9 @@
       lowestToggle.addEventListener('change', () => { refreshGasketNames(); dirty = true; });
       // These two rebuild rather than just repaint: the overlay is generated against the
       // current window, so there is nothing to draw until it has been.
-      for (const el of [gasketToggle, whichGasket]) el.addEventListener('change', build);
+      for (const el of [gasketToggle, whichGasket, whichPermutation]) {
+        el.addEventListener('change', build);
+      }
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
 
       let dragging = false;

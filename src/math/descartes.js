@@ -685,6 +685,39 @@ export function reflectQuad(quad, i) {
 }
 
 /**
+ * The eight permutations of a quadruple: the symmetries of the square, applied to it.
+ *
+ * Turning by a unit and mirroring in the real axis generate a group of order eight —
+ * four rotations, and the same four again with a flip. Every one sends a Descartes
+ * quadruple to a Descartes quadruple, because tangency and bends survive rotation and
+ * reflection untouched; only where the circles sit changes.
+ *
+ * **Up to eight.** The count is eight only when the quadruple has no symmetry of its
+ * own. When it does, images coincide and the orbit is shorter — the strip `(0,0,1,1)`
+ * has a repeated pair and lands on four distinct placements, not eight. Callers that
+ * care about distinctness should dedupe; this returns the orbit as generated, in a fixed
+ * order, so index 0 is always the quadruple that came in.
+ *
+ * Note these are *placements*, not new packings. All eight have the same four bends.
+ *
+ * @param {Circle[]} quad
+ * @returns {Circle[][]} eight quadruples, `[rotations…, mirrored rotations…]`
+ */
+export function permutations(quad) {
+  const units = [
+    new Gaussian(1n, 0n), new Gaussian(0n, 1n),
+    new Gaussian(-1n, 0n), new Gaussian(0n, -1n),
+  ];
+  const out = [];
+  for (const mirrored of [false, true]) {
+    for (const u of units) {
+      out.push(quad.map((c) => (mirrored ? c.conjugate() : c).rotate(u)));
+    }
+  }
+  return out;
+}
+
+/**
  * Place any valid Descartes quadruple, root or not.
  *
  * `rootFromCurvatures` builds *root* quadruples — those with an enclosing circle,

@@ -170,6 +170,53 @@ export class Circle {
     return new Circle(this.bbar * n, this.b * n, this.bz.scale(n));
   }
 
+  /**
+   * Move by a Gaussian integer.
+   *
+   * The bend does not change and `bz = b·z` becomes `b(z + t) = bz + b·t`. What `b̄` has
+   * to become is then forced, because `|bz|² − b·b̄ = 1` must survive:
+   *
+   *     b̄' = b̄ + 2·Re(bz · conj t) + b·|t|²
+   *
+   * Every term is an integer, so a translated circle is still exact. It works for lines
+   * as it stands — with `b = 0` the last term drops and `b̄` carries the offset, which is
+   * why translating the real line by `i` gives `b̄ = 2`, the line `y = 1`.
+   *
+   * @param {Gaussian} t
+   * @returns {Circle}
+   */
+  translate(t) {
+    const cross = this.bz.mul(t.conj());
+    const norm = t.re * t.re + t.im * t.im;
+    return new Circle(
+      this.bbar + 2n * cross.re + this.b * norm,
+      this.b,
+      this.bz.add(t.scale(this.b)),
+    );
+  }
+
+  /**
+   * Turn about the origin by a unit — `1`, `i`, `−1` or `−i`.
+   *
+   * Only `bz` moves. A rotation does not change a circle's size or how it sits relative
+   * to inversion, so `b` and `b̄` are both untouched, and `|bz·u| = |bz|` keeps the
+   * invariant with no correction at all.
+   *
+   * @param {Gaussian} u a unit
+   * @returns {Circle}
+   */
+  rotate(u) {
+    return new Circle(this.bbar, this.b, this.bz.mul(u));
+  }
+
+  /**
+   * Mirror in the real axis. Same reasoning as `rotate`: `|conj bz| = |bz|`.
+   * @returns {Circle}
+   */
+  conjugate() {
+    return new Circle(this.bbar, this.b, this.bz.conj());
+  }
+
   /** @param {Circle} c @returns {boolean} */
   equals(c) {
     return this.b === c.b && this.bbar === c.bbar && this.bz.equals(c.bz);
