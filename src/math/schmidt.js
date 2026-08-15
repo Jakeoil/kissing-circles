@@ -80,6 +80,10 @@ export const JSTAR_INTERIOR = { x: 0.5, y: 0.9 };
  * @property {import('./mobius.js').Mobius} m
  * @property {'J'|'T'} type circular or triangular
  * @property {string} name Schmidt's label, e.g. `𝒱₂` or `C*`
+ * @property {boolean} [mirrored] whether this region lives in the lower half plane, as
+ *   the reflection of `m`'s image in the real axis. The mirror is anti-holomorphic, so
+ *   it cannot be folded into `m`: conjugating the matrix entrywise gives `m̄`, and
+ *   `m̄(𝒥)` is `conj(m(𝒥̄))`, which is the wrong region. It has to be applied after.
  * @property {Region} [anchor] the nearest circular ancestor, or the region itself when
  *   it is circular. A circular region's four triangular children fill the space its
  *   three circular children leave over, and those triangles subdivide into more
@@ -108,12 +112,12 @@ const LABELS = {
  * the two vertical sides meeting there.
  *
  * @param {'J'|'T'} [type] `J` for `𝒥`, `T` for `𝒥*`
+ * @param {boolean} [mirrored] seed the lower half plane instead
  * @returns {Region}
  */
-export function seed(type = 'J') {
-  return type === 'T'
-    ? { m: IDENTITY, type: 'T', name: '𝒥*' }
-    : { m: IDENTITY, type: 'J', name: '𝒥' };
+export function seed(type = 'J', mirrored = false) {
+  const name = (type === 'T' ? '𝒥*' : '𝒥') + (mirrored ? '\u0304' : '');
+  return { m: IDENTITY, type: type === 'T' ? 'T' : 'J', name, mirrored };
 }
 
 /**
@@ -136,10 +140,27 @@ export function subdivide(region) {
       m: region.m.mul(GENERATORS[name]),
       type,
       name: LABELS[region.type][name],
+      mirrored: region.mirrored === true,
     };
     child.anchor = type === 'J' ? child : inherited;
     return child;
   });
+}
+
+/**
+ * A region's circumscribed circle — Schmidt's `m(R)`, mirrored if the region is.
+ *
+ * Every caller that wants the circle a region draws should come through here rather than
+ * reaching for `region.m.applyTo(REAL_LINE)`, because that is only half the answer once
+ * the lower half plane is in play.
+ *
+ * @param {Region} region
+ * @returns {Circle|null}
+ */
+export function regionCircle(region) {
+  const circle = region.m.applyTo(REAL_LINE);
+  if (circle === null) return null;
+  return region.mirrored === true ? circle.conjugate() : circle;
 }
 
 /**
@@ -164,7 +185,7 @@ export function subdivide(region) {
  * @returns {{x: number, y: number, r: number}|null}
  */
 export function regionDisc(region) {
-  const circle = region.m.applyTo(REAL_LINE);
+  const circle = regionCircle(region);
   if (circle === null || circle.isLine()) return null;
 
   const g = geometry(region);
@@ -511,7 +532,7 @@ function reaches(region, bounds, position) {
  *
  * @param {number} n
  * @param {{bounds?: {minX: number, minY: number, maxX: number, maxY: number}|null,
- *   minSize?: number, maxRegions?: number, from?: 'J'|'T'}} [limits]
+ *   minSize?: number, maxRegions?: number, from?: 'J'|'T', mirror?: boolean}} [limits]
  * @returns {Region[]}
  */
 export function regionsAt(n, limits = {}) {
@@ -519,6 +540,9 @@ export function regionsAt(n, limits = {}) {
   const minSize = limits.minSize ?? 0;
   const maxRegions = limits.maxRegions ?? 200000;
   const from = limits.from ?? 'J';
+  // Both halves, when asked. The seeds meet along the real line and overlap nowhere, so
+  // the two partitions together partition the plane rather than double-covering it.
+  const mirror = limits.mirror === true;
 
   // Regions that stopped early because they hit the resolution floor. They are still
   // part of the partition — dropping them punches holes in a picture whose entire point
@@ -528,7 +552,7 @@ export function regionsAt(n, limits = {}) {
   /** @type {Region[]} */
   const leaves = [];
 
-  let regions = [seed(from)];
+  let regions = mirror ? [seed(from), seed(from, true)] : [seed(from)];
   for (let g = 0; g < n; g++) {
     /** @type {Region[]} */
     const next = [];
@@ -613,6 +637,17 @@ function computeGeometry(region) {
   const interior = region.m.applyToPoint(inside.x, inside.y);
   if (interior === null) return null;
 
+  // The mirror goes on last, after the matrix has done its work. Reflecting a circle in
+  // the real axis is `conj` on its `bz`; reflecting a point is negating its `y`.
+  if (region.mirrored === true) {
+    const flipped = constraints.map((c) => c.conjugate());
+    return {
+      sides: flipped.slice(0, sideCount),
+      constraints: flipped,
+      interior: { x: interior.x, y: -interior.y },
+    };
+  }
+
   return { sides: constraints.slice(0, sideCount), constraints, interior };
 }
 
@@ -635,6 +670,7 @@ const SUBDIVISION = {
  * @property {bigint|null} [maxCurvature]
  * @property {number} [minRadius] world units
  * @property {{minX: number, minY: number, maxX: number, maxY: number}|null} [bounds]
+ * @property {boolean} [mirror] build the lower half plane as well
  */
 
 /**
@@ -657,6 +693,7 @@ export function arrangement(limits = {}) {
   const maxCurvature = limits.maxCurvature ?? null;
   const minRadius = limits.minRadius ?? 0;
   const bounds = limits.bounds ?? null;
+  const mirror = limits.mirror === true;
 
   /** @type {Circle[]} */
   const circles = [];
@@ -710,23 +747,28 @@ export function arrangement(limits = {}) {
 
   emit(REAL_LINE, 0);
 
-  /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T', name: string}[]} */
+  // Both halves when asked. The walk itself does not change: a mirrored region's circle
+  // is the conjugate of the plain one, and its subtree is the conjugate of that subtree,
+  // so the second half costs one extra seed and one `conjugate()` per emitted circle
+  // rather than a second traversal.
+  /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T', name: string, mirrored?: boolean}[]} */
   let regions = [{ m: IDENTITY, type: 'J', name: '𝒥' }];
+  if (mirror) regions.push({ m: IDENTITY, type: 'J', name: '𝒥\u0304', mirrored: true });
 
   for (let generation = 1; generation <= maxGeneration; generation++) {
-    /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T'}[]} */
+    /** @type {{m: import('./mobius.js').Mobius, type: 'J'|'T', name: string, mirrored?: boolean}[]} */
     const next = [];
     for (const region of regions) {
       for (const [name, type] of SUBDIVISION[region.type]) {
         const m = region.m.mul(GENERATORS[name]);
-        const circle = m.applyTo(REAL_LINE);
+        const child = { m, type, name, mirrored: region.mirrored === true };
+        const circle = regionCircle(child);
         if (circle === null) continue;
         emit(circle, generation);
 
         // Prune the walk, not just what it records. A region's subtree lies inside
         // the region, so a region that cannot reach the limits has nothing below it
         // that can either.
-        const child = { m, type, name };
         if (canReach(child, bounds, minRadius > 0 ? minRadius * 2 : 0, 'disc')) {
           next.push(child);
         }
@@ -759,10 +801,14 @@ export function arrangement(limits = {}) {
  * A check on the traversal, and the analogue of the gasket's 4·3ⁿ⁻¹ circles per
  * generation. Note the gasket branches by 3 and this by 5.
  *
+ * Mirroring simply doubles it: the lower half plane is a second, disjoint copy.
+ *
  * @param {number} n
  * @param {'J'|'T'} [from] which seed
+ * @param {boolean} [mirror] count both halves
  * @returns {number}
  */
-export function regionCount(n, from = 'J') {
-  return from === 'T' ? (3 * 5 ** n + 1) / 4 : (3 * 5 ** n - 1) / 2;
+export function regionCount(n, from = 'J', mirror = false) {
+  const one = from === 'T' ? (3 * 5 ** n + 1) / 4 : (3 * 5 ** n - 1) / 2;
+  return mirror ? 2 * one : one;
 }

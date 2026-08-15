@@ -71,6 +71,7 @@
           <option value="cycle">per family (circle + its triangles)</option>
         </select>
       </label>
+      <label><input type="checkbox" id="halves" /> both halves</label>
       <label><input type="checkbox" id="numbers" /> curvatures</label>
       <label><input type="checkbox" id="lowest" /> lowest terms (÷2)</label>
       <label><input type="checkbox" id="gasket" /> gasket overlay
@@ -128,12 +129,20 @@
       strip's 90° image is the strip stood up between <code>x = 0</code> and
       <code>x = 1</code>, its floor the semicircle that is also 𝒥*'s; that is not a second
       packing but the same one turned, which the tests pin down.</p>
-      <p>All eight are in the arrangement, for all three — checked against the arrangement
-      <i>together with its mirror in the real axis</i>, every circle up to bend 60. The
-      mirror is the honest part. <b>Circles</b> builds only the 𝒥 subtree, which covers the
-      upper half plane, and five of the eight permutations leave it: turn the strip 90° and
-      the gold runs off the bottom of the partition into empty space. Those circles are
-      missing from what this page constructs, not from Schmidt's arrangement.</p>
+      <p><b>Both halves</b> is what makes them land. Everything here starts at 𝒥, the upper
+      half plane, and subdivision only ever cuts a region into pieces of itself — so nothing
+      outside the seed can ever appear, and the walk had no way to reach <code>y &lt; 0</code>
+      at all. Not a bound and not a prune: the starting region. Five of the eight
+      permutations leave the upper half plane, so without this they ran off the bottom of
+      the picture into empty space.</p>
+      <p>The lower half is 𝒥 mirrored in the real axis, and the mirror cannot be folded
+      into the matrix — it is anti-holomorphic. Conjugating <code>m</code> entrywise gives
+      <code>m̄</code>, and <code>m̄(𝒥)</code> is <code>conj(m(𝒥̄))</code>, the wrong region.
+      So it is a flag carried alongside the matrix and applied after it, which costs one
+      extra seed and one conjugation per circle rather than a second traversal. The two
+      halves meet along the real line and overlap nowhere, so together they partition the
+      plane, and the region count simply doubles. With it on, all eight permutations of all
+      three gaskets are in the arrangement, checked to bend 60.</p>
       <p>The permutations turn about the origin, so an image is translated back by a
       Gaussian integer to bring it into view. That is not a fudge — <code>z ↦ z + 1</code>
       and <code>z ↦ z + i</code> carry the arrangement to itself just as the turns do.</p>
@@ -168,7 +177,7 @@
     <div id="hud">…</div>
 
     <script type="module">
-      import { regionsAt, geometry, regionCount, arrangement } from '../src/math/schmidt.js';
+      import { regionsAt, geometry, regionCount, arrangement, regionCircle } from '../src/math/schmidt.js';
       import { Viewport } from '../src/render/viewport.js';
       import { fillRegion, outlineRegion } from '../src/render/regions.js';
       import { drawNumeral, digitMetrics } from '../src/render/labels.js';
@@ -189,6 +198,7 @@
       const viewMode = document.getElementById('view-mode');
       const filter = document.getElementById('filter');
       const colorMode = document.getElementById('color');
+      const halvesToggle = document.getElementById('halves');
       const numbersToggle = document.getElementById('numbers');
       const lowestToggle = document.getElementById('lowest');
       const note = document.getElementById('note');
@@ -389,7 +399,7 @@
       const familyHues = new Map();
       function familyColor(region) {
         const anchor = region.anchor ?? region;
-        const circle = anchor.m.applyTo(REAL_LINE);
+        const circle = regionCircle(anchor);
         if (circle === null) return 'hsl(0 0% 40%)';
         const key = circle.key();
         let hue = familyHues.get(key);
@@ -423,6 +433,7 @@
         if (seedOf(viewMode.value) !== null) {
           regions = regionsAt(generation, {
             bounds, minSize, maxRegions: MAX_REGIONS, from: seedOf(viewMode.value),
+            mirror: halvesToggle.checked,
           });
           circles = null;
         } else {
@@ -431,6 +442,7 @@
             maxCurvature: 4000n,
             bounds,
             minRadius: minSize / 2,
+            mirror: halvesToggle.checked,
           });
           regions = [];
         }
@@ -481,6 +493,13 @@
       // upward — 𝒥* has its third vertex at infinity, where its two vertical sides meet —
       // so neither frame shows the whole region; both show where the subdivision goes.
       function home() {
+        // With both halves built the picture is symmetric about the real axis, so the
+        // frame has to be too, or half of what was just constructed sits off screen.
+        if (halvesToggle.checked) {
+          return viewMode.value === 'dual'
+            ? { minX: -0.1, minY: -1.3, maxX: 1.1, maxY: 1.3 }
+            : { minX: -0.6, minY: -1.35, maxX: 1.6, maxY: 1.35 };
+        }
         return viewMode.value === 'dual'
           ? { minX: -0.1, minY: -0.06, maxX: 1.1, maxY: 1.3 }
           : { minX: -0.6, minY: -0.18, maxX: 1.6, maxY: 1.35 };
@@ -593,7 +612,7 @@
           const metrics = digitMetrics(ctx);
           for (const region of wanted) {
             if (region.type !== 'J') continue;
-            const circle = region.m.applyTo(REAL_LINE);
+            const circle = regionCircle(region);
             if (circle === null) continue;
             // Lowest terms changes the number, not the picture. The rescaled circle
             // is a genuinely different circle — twice the radius, twice as far from
@@ -611,7 +630,7 @@
           // The formula counts the whole partition; the walk builds only the part the
           // window can show. They agree until pruning starts, and the gap after that is
           // the point of the pruning rather than a discrepancy.
-          `${regions.length.toLocaleString()} of ${regionCount(generation, seedOf(viewMode.value)).toLocaleString()} regions`,
+          `${regions.length.toLocaleString()} of ${regionCount(generation, seedOf(viewMode.value), halvesToggle.checked).toLocaleString()} regions`,
           `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
           // Worth saying out loud, because it explains why stepping the generation
           // eventually stops changing the picture: the walk has reached the resolution
@@ -648,7 +667,7 @@
       lowestToggle.addEventListener('change', () => { refreshGasketNames(); dirty = true; });
       // These two rebuild rather than just repaint: the overlay is generated against the
       // current window, so there is nothing to draw until it has been.
-      for (const el of [gasketToggle, whichGasket, whichPermutation]) {
+      for (const el of [gasketToggle, whichGasket, whichPermutation, halvesToggle]) {
         el.addEventListener('change', build);
       }
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });

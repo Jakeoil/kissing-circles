@@ -12,6 +12,7 @@ import {
   canReach,
   regionsAt,
   geometry,
+  regionCircle,
 } from '../src/math/schmidt.js';
 import { GENERATORS } from '../src/math/mobius.js';
 
@@ -389,4 +390,83 @@ describe('bailing out still returns a partition', () => {
       }
     });
   }
+});
+
+describe('the lower half plane', () => {
+  // arrangement() and regionsAt() both start at 𝒥, the upper half plane, and subdivision
+  // only ever cuts a region into pieces of itself — so nothing outside the seed can ever
+  // appear, and the walk had no way to reach y < 0 at all. The mirror is anti-holomorphic
+  // and cannot be folded into the matrix: conjugating m entrywise gives m̄, and m̄(𝒥) is
+  // conj(m(𝒥̄)), the wrong region. Hence a flag applied after the matrix.
+  const isInside = (p, b) => {
+    const f = b.toFloat();
+    if (b.isLine()) return p.x * f.x + p.y * f.y < b.lineOffset();
+    return Math.hypot(p.x - f.x, p.y - f.y) < Math.abs(f.r);
+  };
+  const contains = (p, r) => {
+    const g = geometry(r);
+    if (g === null) return false;
+    return g.constraints.every((c) => isInside(p, c) === isInside(g.interior, c));
+  };
+
+  test('without the mirror nothing is generated below the real axis', () => {
+    const a = arrangement({ maxGeneration: 5, maxCurvature: 400n });
+    let below = 0;
+    for (let i = 0; i < a.count; i++) {
+      const c = a.circles[i];
+      if (c.isLine()) continue;
+      const f = c.toFloat();
+      if (f.y + Math.abs(f.r) <= 1e-9) below++;
+    }
+    assert.equal(below, 0, 'the 𝒥 subtree should stay in the upper half plane');
+  });
+
+  test('with the mirror it reaches both', () => {
+    const a = arrangement({ maxGeneration: 5, maxCurvature: 400n, mirror: true });
+    let below = 0, above = 0;
+    for (let i = 0; i < a.count; i++) {
+      const c = a.circles[i];
+      if (c.isLine()) continue;
+      const f = c.toFloat(); const r = Math.abs(f.r);
+      if (f.y + r <= 1e-9) below++;
+      else if (f.y - r >= -1e-9) above++;
+    }
+    assert.ok(below > 0, 'nothing below the axis');
+    // Mirror symmetry: as many wholly below as wholly above.
+    assert.equal(below, above);
+  });
+
+  test('mirroring doubles the region count and still partitions', () => {
+    for (let n = 1; n <= 3; n++) {
+      const regions = regionsAt(n, { mirror: true });
+      assert.equal(regions.length, regionCount(n, 'J', true));
+      assert.equal(regionCount(n, 'J', true), 2 * regionCount(n, 'J'));
+    }
+    // Points either side of the axis, each in exactly one region.
+    const regions = regionsAt(3, { mirror: true });
+    let s = 20260814;
+    const rnd = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    let checked = 0;
+    while (checked < 80) {
+      const p = { x: rnd() * 3 - 1, y: rnd() * 3 - 1.5 };
+      if (Math.abs(p.y) < 2e-3) continue;
+      const hits = regions.filter((r) => contains(p, r)).length;
+      assert.equal(hits, 1, `(${p.x.toFixed(3)}, ${p.y.toFixed(3)}) covered ${hits} times`);
+      checked++;
+    }
+  });
+
+  test('a mirrored region draws the conjugate circle', () => {
+    const plain = seed('J');
+    const flipped = seed('J', true);
+    assert.equal(flipped.mirrored, true);
+    for (const [i, child] of subdivide(plain).entries()) {
+      const mirroredChild = subdivide(flipped)[i];
+      assert.equal(mirroredChild.mirrored, true, 'the flag must survive subdivision');
+      const a = regionCircle(child);
+      const b = regionCircle(mirroredChild);
+      assert.ok(a !== null && b !== null);
+      assert.ok(b.equals(a.conjugate()), `child ${i} is not the mirror`);
+    }
+  });
 });
