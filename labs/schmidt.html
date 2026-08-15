@@ -157,11 +157,13 @@
       circle at the origin — where the packings list keeps it, and nowhere near where it
       lives here. It measured a placement, not a containment. The classic gasket is in the
       arrangement; it just had to be asked in the right place.</p>
-      <p><b>Lowest terms</b> divides that factor out. Since every bend is even, the whole
-      arrangement is 2 × a primitive one — the same idea as a fraction reduced. Dividing
-      the bends by 2 is exactly scaling the plane by 2, which gives a <i>similar</i>
-      figure: same shape, twice the size, and therefore identical once the view refits.
-      So only the numbers move, and they land on the workbench's own convention.</p>
+      <p><b>Lowest terms</b> divides that factor out — the <i>homothety</i> that takes an
+      integral packing to a <b>primitive</b> one, whose quadruples have curvatures with
+      gcd 1 (Graham, Lagarias, Mallows, Wilks and Yan). Every bend here is even and 2
+      occurs, so the arrangement is imprimitive with factor exactly 2: the whole thing is
+      2 × a primitive one. Dividing the bends by 2 is exactly scaling the plane by 2, which
+      gives a <i>similar</i> figure — same shape, twice the size, identical once the view
+      refits. So only the numbers move, and they land on the workbench's own convention.</p>
       <p><b>Per family</b> colours each region with the circle it was cut out of. A
       circular region splits into three circles and four triangles; those triangles
       split into more triangles, so every triangle belongs to some circle however far
@@ -187,7 +189,7 @@
       import { Circle } from '../src/math/circle.js';
       import { Gaussian } from '../src/math/gaussian.js';
       import { generate } from '../src/math/packing.js';
-      import { permutations } from '../src/math/descartes.js';
+      import { permutations, primitiveForm } from '../src/math/descartes.js';
 
       const canvas = document.getElementById('view');
       const ctx = canvas.getContext('2d');
@@ -331,16 +333,23 @@
       /**
        * How a gasket is named, which the lowest-terms toggle decides.
        *
-       * Every bend in the arrangement is even, so each of these has two names for the
-       * same picture: the quadruple as drawn, and the primitive one it is twice. The
-       * strip is (0,0,2,2) here and (0,0,1,1) in any other account of Apollonian
-       * packings; the classic gasket is (−2,4,4,6) here and (−1,2,2,3) everywhere else.
-       * Rather than pick one and confuse whoever came from the other, the toggle that
-       * already halves the region numerals halves these too.
+       * Each of these has two names for the same picture. GLMWY: scaling an integral
+       * packing by an appropriate *homothety* gives a **primitive** one, whose Descartes
+       * quadruples have curvatures with gcd 1. Every bend in the arrangement is even and
+       * 2 occurs, so the arrangement is imprimitive with factor exactly 2, and each gasket
+       * in it is twice a primitive packing: the strip is (0,0,2,2) here and (0,0,1,1) in
+       * any other account, the classic gasket (−2,4,4,6) here and (−1,2,2,3) everywhere
+       * else. Rather than pick one and confuse whoever arrived by the other, the toggle
+       * that already halves the region numerals renames these too.
+       *
+       * Via `primitiveForm` rather than dividing by two. All three entries happen to have
+       * factor 2, so today it is the same arithmetic — but the factor is a property of the
+       * quadruple, not of this file, and a gasket added later with gcd 1 would come out
+       * with half-integer bends if this kept guessing.
        */
       function gasketLabel(g) {
         const bends = gasketBends(g);
-        const shown = lowestToggle.checked ? bends.map((b) => b / 2n) : bends;
+        const shown = lowestToggle.checked ? primitiveForm(bends).curvatures : bends;
         // The tag is not decoration. A quadruple has up to eight permutations across the
         // horizontal and vertical, four in each dual, so two entries here genuinely are
         // the same four numbers placed differently — the strip lying down and the same

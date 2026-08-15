@@ -21,10 +21,10 @@ from `render/` or `ui/` and runs under bare Node.
 | | State |
 |---|---|
 | Phases 0–7 | Done — math core, generator, renderer, research interaction, arithmetic tooling, deployment |
-| §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates |
+| §8 steps 1–2 | Done — `mobius.js`, `schmidt.js`; the arrangement generates and validates, over both half planes (§8.7) |
 | Chapters | **All nine written.** 1 Soddy · 2 the jump · 3 whole numbers · 4 generations · 5 which numbers · 6 two regions · 7 the arrangement · 8 Ford circles · 9 walking to e^i |
-| Labs | `labs/schmidt.html` — the partition, windowed to generation 20 (§8.4b). `labs/outward.html` — turning a quadruple inside out (§8.6) |
-| Tests | 235, `npm test`, no dependencies |
+| Labs | `labs/schmidt.html` — both partitions, the arrangement, and gaskets laid over it (§8.7). `labs/outward.html` — turning a quadruple inside out (§8.6). `labs/quad.html` — the designer. `labs/packings.html` — the enumeration, measured |
+| Tests | 269, `npm test`, no dependencies |
 
 **Verify visually before claiming anything works.** `playwright-core` driving the system
 Chrome, installed in the session scratchpad, never in the repo. Several real defects
@@ -59,21 +59,12 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
    arbitrarily; `rootFromCurvatures` builds all of the first twelve.
 3. **The custom field, pinned** (§7.3a) — four bends with steppers, manipulated rather
    than typed.
-4. ~~`rootFromCurvatures` cannot place 17 of the first 96 roots.~~ **Done.** All 200 of
-   the first roots place, in 4.5 s.
-
-   The direct construction pins one circle at the origin and the next on the real axis,
-   then needs a rational square root for the other two. The configuration is rational —
-   chapter 3 — but not always *in that frame*, and none of the 24 reorderings rotates
-   you into the right one. So `placeQuadruple` stops constructing and starts walking:
-   from the classic packing, applying both moves this project knows — the Vieta jump
-   inward and the reflection outward (§8.6) — until a quadruple with the wanted bends
-   appears. Both are exact, so whatever is found is an exact placement.
-
-   Breadth-first got 199 of 200 and took 8.6 s. `(−34, 39, 266, 267)` and its family,
-   shaped `(−n, n+5, m, m+1)`, sit deep down a narrow path and exhaust any sane ceiling.
-   Ordering the frontier by how near a quadruple's bends already are to the target
-   follows that path: all 200, and faster.
+4. **`rootFromCurvatures` cannot place 17 of the first 96 roots** — `(−11,16,36,37)`,
+   `(−13,18,47,50)`, `(−13,23,30,38)` and so on, all with `|a| ≥ 11`. Found by
+   enumerating and trying to place every one, which `labs/packings.html` now does; it
+   lists them as "cannot be placed" rather than hiding them. This *is* the
+   translation-and-ordering limit the old item guessed at — it just had the wrong
+   example.
 
 5. ~~`(5, 8, 12, 53)` cannot be placed.~~ **Withdrawn — that example was never a defect.** Jake:
    "why is this even on the list, it looks hokey." Right. Every bend is positive, so no
@@ -101,6 +92,21 @@ on the page, so a stale cache cannot be mistaken for a change that did not work.
   reason chapter 6 exists.
 - **The legacy guarantee** (§7.2): the default view does not change, and every URL
   already emitted keeps rendering the same picture.
+- **Imprimitive, by a factor of exactly 2.** GLMWY: scaling an integral packing by an
+  appropriate *homothety* gives a **primitive** one, whose Descartes quadruples have
+  curvatures with gcd 1. Every bend in the Schmidt arrangement is even and 2 occurs, so
+  the arrangement is 2 × a primitive one, and every gasket inside it is twice a primitive
+  packing. That is what the lab's lowest-terms toggle divides out, via `primitiveForm`
+  rather than by halving — all three gaskets happen to have factor 2, but the factor is a
+  property of the quadruple, not of the file.
+- **A gasket is tested where the arrangement puts it, or not at all** (§8.7). Testing a
+  packing at whatever placement `ROOTS` happens to keep it in measures the placement, not
+  the containment — which is how this file came to record the classic gasket as *not*
+  inside the arrangement when it is.
+- **Report the build stamp before asking to push** (Jake, 2026-08-14). `npm run stamp`,
+  then the timestamp, then the question. He checks the live page himself rather than
+  having me verify it, so the stamp is his only handle on whether what he is looking at
+  includes the change.
 - **The address bar is never written.** A share link is produced on request.
 - **Chapter 9 is a demonstration, not a precision test** (Jake, 2026-08-13). Six terms
   of Schmidt's closed form is the confirmation; more digits would not make it more of
@@ -1155,6 +1161,29 @@ drew **1 circle of 6,821**. Region drawing was never affected because it goes th
 `view.worldToScreen`, which is why this sat undetected behind chapter 6 and the partition
 view. Fixed in all four places; lines and labels already used `worldToScreen`.
 
+#### The bail-out was not a partition
+
+Found while chasing a report that regions were missing from the `𝒥*` view. The maths was
+fine — the partition covers `𝒥*` exactly — and so was the pruning, which never drops a
+region visible in the window. The fault was in the `maxRegions` valve:
+
+```js
+if (leaves.length + next.length > maxRegions) return leaves.concat(regions);
+```
+
+By then `leaves` has had this generation's new leaves pushed into it, but `regions` is
+still the generation they were cut *from*, so the bail returned a mix of two states: every
+below-resolution child came back alongside its own parent. Not a hole — a **double cover**,
+the coarse parent painted over its own children, which is indistinguishable from fine
+detail failing to draw. It returns `next` now, the state it just finished building. The
+existing test had encoded the bug, asserting `≤ maxRegions` and passing only because the
+valve handed back the previous, smaller frontier; it states the real contract now, an
+overshoot bounded by the branching factor.
+
+This did **not** touch `arrangement()`, which has no valve — the circles view was never
+wrong. The `𝒥` region view trips at generation 7 as well, but that is both walks growing
+by 5× and not one mechanism; see §8.4c, which is about something else.
+
 ### 8.6 The outward move — Jake's construction
 
 The Vieta recursion only ever goes **inward**: it fills a gap and the circles get
@@ -1279,6 +1308,80 @@ Reverted rather than shipped, since dead code with a long comment is worse than 
 Where it does begin to hurt, for the record: **generation 7** — 22 ms, 60, 216, then
 1.1 s at 7, 4.2 s at 8, 9.8 s at 9, with the frontier peaking near 75,000 regions at 8.
 
+### 8.7 The other partition, the permutations, and the half plane nobody noticed
+
+Three things that came out of one question of Jake's — why the `𝒥*` view showed only the
+middle stripe — and they chain.
+
+**`𝒥*` was buildable all along.** `JSTAR_BOUNDARY`, `JSTAR_INTERIOR` and the `T`
+subdivision rules had been in `schmidt.js` since the rebuild; only `seed()` was hardwired
+to the half plane. A chain is *regular* from `𝒥` and *dually regular* from `𝒥*`, and the
+algorithm needs both. Counts are the same shape with a different constant:
+
+| | | |
+|---|---|---|
+| `𝒥` | `(3·5ⁿ − 1)/2` | 1, 7, 37, 187, 937, 4687 |
+| `𝒥*` | `(3·5ⁿ + 1)/4` | 1, 4, 19, 94, 469, 2344 |
+
+and the two are locked together exactly — at every generation `𝒥` has as many *circular*
+regions as `𝒥*` has *triangular*, and four times as many triangular as `𝒥*` has circular.
+Checked against the subdivision to generation 6. Neither partition is a sub-picture of
+the other, which it looks like it should be since `𝒥*` sits geometrically inside `𝒥`: the
+rules swap the types, so after one step each contains both, and `𝒥`'s partition restricted
+to `𝒥*` never matches `𝒥*`'s own at any generation. At generation 1 both cut `𝒥*` into
+four pieces — *different* four.
+
+**The two seeds are bounded by different families of curve.** `𝒥*`'s three sides are all
+geodesics — two vertical lines and a semicircle centred *on* `ℝ`. `𝒥`'s seven children are
+bounded by eight horocycles (tangent to `ℝ`) and seven horizontal lines, and no geodesics
+at all. A circle centred on the axis has half of itself below it, which is why the
+arrangement view is full of half circles and why the disc under `𝒥*`'s floor is missing
+from the `𝒥*` picture: that semicircle *is* the floor, and everything inside it — the
+geodesics `0–½`, `½–1`, `0–⅓`, `⅔–1` — is below the region.
+
+**Permutations.** `Circle.rotate`, `Circle.conjugate` and `Circle.translate` went in, and
+`permutations(quad)` returns the D4 orbit. Only `translate` needed derivation: `bz →
+bz + b·t` is forced, and then `|bz|² − b·b̄ = 1` gives `b̄' = b̄ + 2·Re(bz·conj t) + b·|t|²`,
+integer throughout, and correct for lines as it stands — with `b = 0` the last term drops
+and `b̄` carries the offset. Eight is an upper bound; a quadruple with a symmetry of its
+own has a shorter orbit, though all three gaskets here give eight distinct placements. The
+upright strip is *not* a separate packing: it is the 90° image translated by one, which is
+now a test.
+
+**And then the permutations walked off the edge of the arrangement.** Five of the eight
+leave the upper half plane, and nothing was there. The cause was one line — everything
+seeded at `𝒥`, and subdivision only cuts a region into pieces of itself, so `y < 0` was
+unreachable *by construction*. Not a bound, not a prune, the starting region. Measured
+before touching anything: 95,383 circles wholly above the axis, 337 crossing, **0 wholly
+below**, horizontal lines at `y = 0,1,2,3,4` and no `y = −1` — though `y = −1` is a
+perfectly good Bianchi circle, being `ℝ` under `z ↦ z − i`.
+
+Worth stating because it is the natural wrong guess: this is **not** `𝒥` versus `𝒥*`.
+`𝒥*` is the ideal triangle `(0, 1, ∞)`, inside `𝒥`. Both seeds live upstairs, and adding
+the dual partition extended the reach not at all.
+
+The mirror cannot be folded into the matrix, because it is anti-holomorphic: conjugating
+`m` entrywise gives `m̄`, and `m̄(𝒥) = conj(m(𝒥̄))`, the wrong region. So it is a `mirrored`
+flag carried alongside the matrix and applied after it — one extra seed and one
+`conjugate()` per circle rather than a second traversal — and `regionCircle()` is now the
+single place that knows a mirrored region draws the conjugate circle.
+
+**Gaskets over the arrangement.** The Curvatures note had always claimed the gasket sits
+inside at twice the curvature with no way to see it. Three gaskets are now drawn stroked
+over the top, and they are *placed* rather than searched for: the strip is in the
+arrangement, so `reflectQuad` — the outward move of §8.6 — lands the next one exactly.
+`reflectQuad(strip, 2)` is the classic `(−1,2,2,3)`; reflecting again gives `(−3,5,8,8)`.
+A tangency search over the arrangement's own circles also finds them (63 quadruples, every
+bend even as `ρ(F) ∈ 2ℕ₀` requires), but reflection beats searching.
+
+**Retracted here, because this file was the thing that was wrong.** An earlier note said
+the classic gasket was *not* contained, on a sample finding 111 of its 1,023 circles. That
+test placed it inside a unit circle at the origin, where `ROOTS` keeps it and nowhere near
+where it lives. It measured a placement. Same mistake in miniature on `(−2,3,6,7)`, called
+not-contained on a single missing circle of radius 0.012 at the window edge; withdrawn,
+not claimed either way. With both halves built, all eight permutations of both bounded
+gaskets land fully, checked to bend 60 with no post-hoc conjugation of the comparison set.
+
 ### 8.5 What this does not answer
 
 - ~~Whether the arrangement is *legible*.~~ **Answered by `labs/schmidt.html`, and the
@@ -1291,7 +1394,13 @@ Where it does begin to hurt, for the record: **generation 7** — 22 ms, 60, 216
 - Whether curvature-mod-24 coloring means anything in the arrangement. The analysis
   panel assumes a single gasket; it may need a different question entirely.
 - Memory. The arrangement grows faster than a gasket, and circles are still never
-  evicted. The budget deferred after Phase 6 stops being optional here.
+  evicted. The budget deferred after Phase 6 stops being optional here — and `mirror`
+  (§8.7) doubles it, which is why the lab's toggle is off by default.
+- **Whether the strip's permutations are fully contained.** The two bounded gaskets verify
+  8 of 8; the strip sits at 144–156 of 158, and every miss is a small circle near the
+  window edge where a generation-7 sample thins out. The strip is unbounded, so it reaches
+  those edges in a way the others do not. Not claimed either way — deciding it needs a
+  containment argument rather than a bigger sample.
 
 ---
 
