@@ -77,6 +77,8 @@ let scratchDepthBuckets = new Uint8Array(1024);
  * @property {number} [maxDepth] hide circles deeper than this; 0 for no limit
  * @property {number} [highlight] index of a circle to outline, or -1
  * @property {'fill'|'stroke'} [style] how circles are drawn
+ * @property {string|null} [background] colour to clear with; `null` to draw over what is
+ *   already on the canvas. Defaults to the theme's background.
  */
 
 /**
@@ -103,9 +105,17 @@ export function draw(ctx, packing, view, options = {}) {
   // unsigned. Region drawing was never affected: it goes through view.worldToScreen.
   const yScale = view.yScale;
 
+  // Pass `background: null` to draw onto whatever is already there. The default is the
+  // theme's own colour, so every existing caller is unaffected; the arrangement needs the
+  // opt-out because it is drawn *over* a partition rather than instead of one, and an
+  // opaque fill would erase the picture it is meant to be compared against.
+  const background = options.background === undefined ? palette.background : options.background;
+
   ctx.save();
-  ctx.fillStyle = palette.background;
-  ctx.fillRect(0, 0, width, height);
+  if (background !== null) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   const xs = packing.x;
   const ys = packing.y;

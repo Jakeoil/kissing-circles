@@ -52,18 +52,9 @@
         <button id="gen-up" type="button" title="]">+</button>
       </label>
       <label>draw
-        <select id="view-mode">
-          <option value="regions">regions — the partition of 𝒥</option>
-          <option value="dual">regions — the partition of 𝒥*</option>
-          <option value="circles">circles — the arrangement</option>
-        </select>
-      </label>
-      <label>show
-        <select id="filter">
-          <option value="both">both types</option>
-          <option value="J">circular only</option>
-          <option value="T">triangular only</option>
-        </select>
+        <label><input type="checkbox" id="show-j" checked /> 𝒥</label>
+        <label><input type="checkbox" id="show-jstar" /> 𝒥*</label>
+        <label><input type="checkbox" id="show-arrangement" /> arrangement</label>
       </label>
       <label>color
         <select id="color">
@@ -101,13 +92,15 @@
       generation 𝒥 has as many <i>circular</i> regions as 𝒥* has <i>triangular</i> ones,
       and four times as many triangular regions as 𝒥* has circular ones. Checked to
       generation 6.</p>
-      <p><b>Circles</b> draws each region's <i>circumscribed</i> circle instead, for
-      every generation at once — the Schmidt arrangement as it is usually published.
-      Know what that superimposes: for a circular region the circumscribed circle
-      <i>is</i> its boundary; for a triangular region it passes through the three
-      vertices and is not one of its sides. Two different kinds of thing in one picture.
-      Worth seeing, but it is not the partition, and the two should not be read
-      together.</p>
+      <p><b>Arrangement</b> draws each region's <i>circumscribed</i> circle, for every
+      generation at once — the Schmidt arrangement as it is usually published. Know what
+      that superimposes: for a circular region the circumscribed circle <i>is</i> its
+      boundary; for a triangular region it passes through the three vertices and is not
+      one of its sides. Two different kinds of thing in one picture. Worth seeing, but it
+      is not the partition.</p>
+      <p>It is an independent layer, not a third mode, so it can go over either partition
+      or stand alone — which is the useful way to see that it is not the partition, rather
+      than being told. 𝒥 and 𝒥* exclude each other; neither is also allowed.</p>
       <p><b>Curvatures</b> numbers the circular regions with their bend — Schmidt's
       <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
       the reason the Apollonian gasket sits inside this arrangement at exactly twice the
@@ -197,8 +190,9 @@
       const genOut = document.getElementById('genv');
       const genUp = document.getElementById('gen-up');
       const genDown = document.getElementById('gen-down');
-      const viewMode = document.getElementById('view-mode');
-      const filter = document.getElementById('filter');
+      const showJ = document.getElementById('show-j');
+      const showJStar = document.getElementById('show-jstar');
+      const showArrangement = document.getElementById('show-arrangement');
       const colorMode = document.getElementById('color');
       const halvesToggle = document.getElementById('halves');
       const numbersToggle = document.getElementById('numbers');
@@ -439,22 +433,20 @@
         const bounds = view.visibleBounds(0.25);
         const minSize = view.worldRadius(RESOLUTION);
         const t0 = performance.now();
-        if (seedOf(viewMode.value) !== null) {
-          regions = regionsAt(generation, {
-            bounds, minSize, maxRegions: MAX_REGIONS, from: seedOf(viewMode.value),
-            mirror: halvesToggle.checked,
-          });
-          circles = null;
-        } else {
-          circles = arrangement({
-            maxGeneration: generation,
-            maxCurvature: 4000n,
-            bounds,
-            minRadius: minSize / 2,
-            mirror: halvesToggle.checked,
-          });
-          regions = [];
-        }
+        // The two layers are independent now, so both can be built in one pass — or
+        // neither, which is a legitimate state and costs nothing.
+        const seed = partitionSeed();
+        regions = seed === null ? [] : regionsAt(generation, {
+          bounds, minSize, maxRegions: MAX_REGIONS, from: seed,
+          mirror: halvesToggle.checked,
+        });
+        circles = !showArrangement.checked ? null : arrangement({
+          maxGeneration: generation,
+          maxCurvature: 4000n,
+          bounds,
+          minRadius: minSize / 2,
+          mirror: halvesToggle.checked,
+        });
         // The overlay is generated against the same window, but bounded by curvature and
         // depth as well. The strip is periodic — translating any circle by one unit gives
         // another of the same bend — so a `bounds` limit alone does not make it finite:
@@ -487,13 +479,25 @@
       }
 
       /**
-       * Which seed a draw mode partitions, or null when it is not a region mode.
-       * `J` is Schmidt's upper half plane, `T` his triangle 𝒥* over [0,1].
+       * Which partition is showing, or null for neither.
+       *
+       * 𝒥 and 𝒥* are exclusive but not required: three states, not two. A radio pair
+       * cannot express "neither", and a three-option select cannot express "arrangement
+       * as well" — the arrangement is an independent layer now, not a third mode. So
+       * they are checkboxes that turn each other off, which is the behaviour a radio
+       * group would have if radios could be unchecked.
        */
-      function seedOf(mode) {
-        if (mode === 'regions') return 'J';
-        if (mode === 'dual') return 'T';
+      function partitionSeed() {
+        if (showJ.checked) return 'J';
+        if (showJStar.checked) return 'T';
         return null;
+      }
+
+      for (const [self, other] of [[showJ, showJStar], [showJStar, showJ]]) {
+        self.addEventListener('change', () => {
+          if (self.checked) other.checked = false;
+          build();
+        });
       }
 
       // Where the 0 key goes, per mode — not where a mode switch goes; the modes share
@@ -505,11 +509,11 @@
         // With both halves built the picture is symmetric about the real axis, so the
         // frame has to be too, or half of what was just constructed sits off screen.
         if (halvesToggle.checked) {
-          return viewMode.value === 'dual'
+          return partitionSeed() === 'T'
             ? { minX: -0.1, minY: -1.3, maxX: 1.1, maxY: 1.3 }
             : { minX: -0.6, minY: -1.35, maxX: 1.6, maxY: 1.35 };
         }
-        return viewMode.value === 'dual'
+        return partitionSeed() === 'T'
           ? { minX: -0.1, minY: -0.06, maxX: 1.1, maxY: 1.3 }
           : { minX: -0.6, minY: -0.18, maxX: 1.6, maxY: 1.35 };
       }
@@ -572,75 +576,88 @@
         ctx.fillRect(0, 0, view.width, view.height);
         ctx.restore();
 
-        if (viewMode.value === 'circles') {
-          const stats = drawCircles(ctx, circles, view, {
-            colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
-          });
-          const over = drawGasket();
-          hud.textContent = [
-            'circles — every generation superimposed, boundaries and circumscribed circles together',
-            `${circles.count.toLocaleString()} circles`,
-            `drawn ${stats.drawn.toLocaleString()}`,
-            gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])} ${PERMUTATIONS[Number(whichPermutation.value)]}: ${over.toLocaleString()} over the top` : '',
-            `built ${built} ms`,
-          ].filter(Boolean).join('   ');
-          return;
-        }
+        // Three layers, bottom to top: the partition, the arrangement over it, then the
+        // gasket over both. Each is optional and none of them is a "mode" any more.
+        const seed = partitionSeed();
 
-        const wanted = regions.filter(
-          (r) => filter.value === 'both' || r.type === filter.value,
-        );
+        // Every region, both types. There was a filter here for circular-only and
+        // triangular-only; it answered its question long ago — the two families behave
+        // differently, which is chapter 6 — and since then it has only ever punched holes
+        // in a picture whose whole point is that it covers the plane.
+        const wanted = regions;
 
         let drawn = 0;
-        wanted.forEach((region, i) => {
-          const g = geometry(region);
-          if (g === null) return;
-          const fill =
-            colorMode.value === 'type'
-              ? region.type === 'J' ? CIRCULAR : TRIANGULAR
-              : familyColor(region);
-          fillRegion(ctx, view, g, fill);
-          drawn++;
-        });
+        let numbered = 0;
+        let circular = 0;
 
-        // Outlines afterwards, so a later fill cannot bury a shared edge. Skipped when
-        // there are too many to see individually anyway.
-        if (wanted.length <= 1000) {
+        if (seed !== null) {
           for (const region of wanted) {
             const g = geometry(region);
-            if (g !== null) outlineRegion(ctx, view, g, INK, 1);
+            if (g === null) continue;
+            const fill =
+              colorMode.value === 'type'
+                ? region.type === 'J' ? CIRCULAR : TRIANGULAR
+                : familyColor(region);
+            fillRegion(ctx, view, g, fill);
+            drawn++;
+            if (region.type === 'J') circular++;
+          }
+
+          // Outlines afterwards, so a later fill cannot bury a shared edge. Skipped when
+          // there are too many to see individually anyway.
+          if (wanted.length <= 1000) {
+            for (const region of wanted) {
+              const g = geometry(region);
+              if (g !== null) outlineRegion(ctx, view, g, INK, 1);
+            }
+          }
+
+          // Only the circular regions get a number. A circular region *is* a disc, so
+          // its bend goes in its centre by exactly the rules the workbench uses. A
+          // triangular region has no centre to speak of, and a number floating in a
+          // cusp says nothing.
+          if (numbersToggle.checked) {
+            const metrics = digitMetrics(ctx);
+            for (const region of wanted) {
+              if (region.type !== 'J') continue;
+              const circle = regionCircle(region);
+              if (circle === null) continue;
+              // Lowest terms changes the number, not the picture. The rescaled circle
+              // is a genuinely different circle — twice the radius, twice as far from
+              // the origin — so it supplies the bend and nothing else. Placement still
+              // comes from the circle actually on screen.
+              const shown = lowestToggle.checked ? circle.rescale(2n) ?? circle : circle;
+              if (drawNumeral(ctx, view, circle, String(shown.b), INK, metrics)) numbered++;
+            }
           }
         }
 
-        // Only the circular regions get a number. A circular region *is* a disc, so
-        // its bend goes in its centre by exactly the rules the workbench uses. A
-        // triangular region has no centre to speak of, and a number floating in a
-        // cusp says nothing.
-        let numbered = 0;
-        if (numbersToggle.checked) {
-          const metrics = digitMetrics(ctx);
-          for (const region of wanted) {
-            if (region.type !== 'J') continue;
-            const circle = regionCircle(region);
-            if (circle === null) continue;
-            // Lowest terms changes the number, not the picture. The rescaled circle
-            // is a genuinely different circle — twice the radius, twice as far from
-            // the origin — so it supplies the bend and nothing else. Placement still
-            // comes from the circle actually on screen.
-            const shown = lowestToggle.checked ? circle.rescale(2n) ?? circle : circle;
-            if (drawNumeral(ctx, view, circle, String(shown.b), INK, metrics)) numbered++;
-          }
+        // `background: null` so the partition underneath survives. The renderer clears to
+        // the theme colour by default, which is right when it owns the canvas and wrong
+        // here — an opaque fill would erase the very thing the arrangement is drawn over
+        // to be compared against.
+        let stats = null;
+        if (showArrangement.checked && circles !== null) {
+          stats = drawCircles(ctx, circles, view, {
+            colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
+            background: null,
+          });
         }
 
         const over = drawGasket();
-        const circular = wanted.filter((r) => r.type === 'J').length;
+
         hud.textContent = [
-          `regions — the partition of ${viewMode.value === 'dual' ? '𝒥*' : '𝒥'} at generation ${generation}`,
+          seed === null && stats === null ? 'nothing drawn — turn on 𝒥, 𝒥* or the arrangement' : '',
+          seed === null ? '' : `partition of ${seed === 'T' ? '𝒥*' : '𝒥'} at generation ${generation}`,
           // The formula counts the whole partition; the walk builds only the part the
           // window can show. They agree until pruning starts, and the gap after that is
           // the point of the pruning rather than a discrepancy.
-          `${regions.length.toLocaleString()} of ${regionCount(generation, seedOf(viewMode.value), halvesToggle.checked).toLocaleString()} regions`,
-          `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
+          seed === null ? '' :
+            `${regions.length.toLocaleString()} of ${regionCount(generation, seed, halvesToggle.checked).toLocaleString()} regions`,
+          seed === null ? '' :
+            `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
+          stats === null ? '' :
+            `arrangement ${circles.count.toLocaleString()} circles, drew ${stats.drawn.toLocaleString()}`,
           // Worth saying out loud, because it explains why stepping the generation
           // eventually stops changing the picture: the walk has reached the resolution
           // floor, and everything deeper is smaller than a few pixels.
@@ -648,7 +665,7 @@
           gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])} ${PERMUTATIONS[Number(whichPermutation.value)]}: ${over.toLocaleString()} over the top` : '',
           `built ${built} ms`,
           `drew ${Math.round(performance.now() - t0)} ms`,
-          numbersToggle.checked
+          numbersToggle.checked && numbered > 0
             ? `${numbered.toLocaleString()} numbered${lowestToggle.checked ? ', lowest terms' : ''}`
             : '',
         ].filter(Boolean).join('   ');
@@ -667,8 +684,7 @@
       // a spot and flip between them, and you are looking at the same piece of the plane
       // at the same scale each time, which is the only way the comparison means anything.
       // `home()` still knows a frame per mode, for the 0 key.
-      viewMode.addEventListener('change', build);
-      for (const el of [filter, colorMode, numbersToggle]) {
+      for (const el of [colorMode, numbersToggle]) {
         el.addEventListener('change', () => { dirty = true; });
       }
       // Lowest terms renames the gaskets as well as the region numerals: same picture,
@@ -676,7 +692,7 @@
       lowestToggle.addEventListener('change', () => { refreshGasketNames(); dirty = true; });
       // These two rebuild rather than just repaint: the overlay is generated against the
       // current window, so there is nothing to draw until it has been.
-      for (const el of [gasketToggle, whichGasket, whichPermutation, halvesToggle]) {
+      for (const el of [gasketToggle, whichGasket, whichPermutation, halvesToggle, showArrangement]) {
         el.addEventListener('change', build);
       }
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
@@ -713,7 +729,7 @@
         into: document.getElementById('exports'),
         canvas,
         name: 'schmidt',
-        svg: () => (viewMode.value === 'circles' && circles
+        svg: () => (showArrangement.checked && circles
           ? { packing: circles, view, options: { colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke' } }
           : null),
       });
