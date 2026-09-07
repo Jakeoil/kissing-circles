@@ -65,6 +65,9 @@
         <select id="color">
           <option value="type">by region type</option>
           <option value="cycle">per family (circle + its triangles)</option>
+          <option value="mod24">by bend, mod 24</option>
+          <option value="norm">by Schmidt's norm N(F)</option>
+          <option value="depth">by generation</option>
         </select>
       </label>
       <label><input type="checkbox" id="halves" /> both halves</label>
@@ -149,6 +152,30 @@
       <p>It also answers a question the other views only argue about. The colouring cares
       about the curves and nothing else — not which family drew them, not which seed they
       descend from — so it is the same map however the arrangement is decomposed.</p>
+      <p><b>Colour</b> has five schemes. <b>Region type</b> and <b>per family</b> were the
+      original two — the family one hues every circle by a hash of its exact bend, and its
+      triangles a shade lighter, so a family keeps its colour through pan, zoom, stepping
+      and pruning because nothing renumbers.</p>
+      <p><b>By bend, mod 24</b> is chapter 4's residue, on the workbench's own ramp so a
+      class is the same colour in both places. It resolves through the <i>anchor</i>, as
+      <b>per family</b> does, and for the reason this lab exists to make: a triangular
+      region has no curvature of its own, its circumscribed circle passing through its
+      three vertices and being no side of it. Colouring a triangle by that circle broke
+      each circle's leftover area into pieces that did not match the circle they were cut
+      out of. The curvature a triangle belongs to is its nearest circular ancestor's. Look at what it shows: as the arrangement
+      carries them every bend is even, so only the <b>12 even residues</b> ever occur and
+      half the ramp never appears. Tick <b>lowest terms</b> and all <b>24</b> do. That is
+      the sharp difference from a packing, where the admissible classes are a proper subset
+      fixed by the quadratic form — the classic gasket reaches only 2, 3, 6, 11, 14, 15, 18
+      and 23, and no amount of looking further will produce the others. The arrangement, in
+      lowest terms, reaches every one.</p>
+      <p><b>By N(F)</b> is Schmidt's own measure, <code>|c|² + |d|² + |c+d|²</code> read off
+      the region's matrix. It never decreases under subdivision — Lemma 1.3(iv), and the
+      reason the pruning is allowed to use it — and runs from 2 to 2,702 by generation 6, so
+      it is bucketed by <code>log₂</code> and the bands read as how far down a region sits.
+      <b>By generation</b> is the region's own depth, which is not the generation you asked
+      for: a windowed walk returns regions stopped early at the resolution floor alongside
+      the frontier, so this is the one colouring that shows where the walk gave up.</p>
       <p><b>Curvatures</b> numbers the circular regions with their bend — Schmidt's
       <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
       the reason the Apollonian gasket sits inside this arrangement at exactly twice the
@@ -220,7 +247,8 @@
     <div id="hud">…</div>
 
     <script type="module">
-      import { regionsAt, geometry, regionCount, arrangement, regionCircle } from '../src/math/schmidt.js';
+      import { regionsAt, geometry, regionCount, arrangement, regionCircle, regionNorm } from '../src/math/schmidt.js';
+      import { theme as themeFor, BUCKETS } from '../src/render/palette.js';
       import { Viewport } from '../src/render/viewport.js';
       import { fillRegion, outlineRegion } from '../src/render/regions.js';
       import { drawNumeral, digitMetrics } from '../src/render/labels.js';
@@ -431,6 +459,15 @@
 
       const CIRCULAR = 'hsl(157 52% 46%)';
       const TRIANGULAR = 'hsl(330 46% 52%)';
+
+      /**
+       * The workbench's own ramp, so a residue is the same colour here as in chapter 4.
+       *
+       * 24 buckets with a 173° hue step, chosen to separate the residues a packing
+       * actually produces rather than to spread an open sequence prettily — see
+       * palette.js.
+       */
+      const RAMP = themeFor('dark').fills;
       const INK = '#0d1117';
 
       /**
@@ -448,6 +485,61 @@
        * Stepping then shows the structure growing instead of the whole picture
        * repainting. Lines — curvature 0, the half planes — get a hue like anything else.
        */
+      /**
+       * How a region is coloured.
+       *
+       * `type` and `cycle` are the original two. The three below were added because the
+       * partition has more to say about itself than which of two families a piece is in.
+       *
+       * **mod 24** is the residue chapter 4 is about, drawn on the workbench's own ramp so
+       * a class is the same colour in both places. Worth knowing what it shows here: as
+       * the arrangement carries them, every bend is even, so only the **12 even residues**
+       * ever appear. In lowest terms all **24** do — which is the sharp contrast with a
+       * packing, where the admissible classes are a proper subset fixed by the quadratic
+       * form and most residues are impossible however far you look.
+       *
+       * **N(F)** is Schmidt's own measure, `|c|² + |d|² + |c+d|²` from the region's
+       * matrix. It never decreases under subdivision (Lemma 1.3 iv), which is exactly why
+       * the pruning can use it, and it spans 2 to 2,702 by generation 6 — so it is
+       * bucketed by `log₂`, and the bands read as how far down the walk a region is.
+       *
+       * **Generation** is the region's own depth. Not the same as the generation asked
+       * for: a windowed walk returns regions stopped early at the resolution floor
+       * alongside the frontier, so this is the one colouring that shows where the walk
+       * gave up.
+       */
+      function colorOf(region) {
+        switch (colorMode.value) {
+          case 'type':
+            return region.type === 'J' ? CIRCULAR : TRIANGULAR;
+          case 'mod24': {
+            // Through the anchor, as `per family` already does. A triangular region has no
+            // curvature of its own — its circumscribed circle passes through its three
+            // vertices and is *not one of its sides*, which is the distinction this whole
+            // lab exists to make. Colouring a triangle by that circle breaks a circle's
+            // leftover area into pieces that do not match the circle they were cut out of.
+            // The curvature a triangle belongs to is its nearest circular ancestor's.
+            const c = regionCircle(region.anchor ?? region);
+            if (c === null) return 'hsl(0 0% 40%)';
+            // Through `rescale`, as the numerals do, rather than dividing the bend by two.
+            // Same answer here — 0 of 23,437 region circles has an odd bend, so it never
+            // refuses — but rescale checks divisibility where a bare `/ 2n` would truncate
+            // in silence if that ever stopped being true.
+            const shownCircle = lowestToggle.checked ? c.rescale(2n) ?? c : c;
+            return RAMP[Number(((shownCircle.b % 24n) + 24n) % 24n)];
+          }
+          case 'norm': {
+            const n = Number(regionNorm(region));
+            if (!(n > 0)) return 'hsl(0 0% 40%)';
+            return RAMP[Math.min(BUCKETS - 1, Math.floor(Math.log2(n)))];
+          }
+          case 'depth':
+            return RAMP[(region.depth ?? 0) % BUCKETS];
+          default:
+            return familyColor(region);
+        }
+      }
+
       const familyHues = new Map();
       function familyColor(region) {
         const anchor = region.anchor ?? region;
@@ -841,10 +933,7 @@
           for (const region of wanted) {
             const g = geometry(region);
             if (g === null) continue;
-            const fill =
-              colorMode.value === 'type'
-                ? region.type === 'J' ? CIRCULAR : TRIANGULAR
-                : familyColor(region);
+            const fill = colorOf(region);
             fillRegion(ctx, view, g, fill);
             drawn++;
             if (region.type === 'J') circular++;
@@ -949,6 +1038,8 @@
       }
       // Lowest terms renames the gaskets as well as the region numerals: same picture,
       // the primitive quadruple rather than the doubled one the arrangement carries.
+      // Lowest terms renames the gaskets, halves the region numerals, and — since the
+      // residue of a bend is not the residue of half of it — recolours mod 24 as well.
       lowestToggle.addEventListener('change', () => { refreshGasketNames(); dirty = true; });
       // These two rebuild rather than just repaint: the overlay is generated against the
       // current window, so there is nothing to draw until it has been.

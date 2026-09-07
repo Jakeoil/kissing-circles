@@ -80,6 +80,9 @@ export const JSTAR_INTERIOR = { x: 0.5, y: 0.9 };
  * @property {import('./mobius.js').Mobius} m
  * @property {'J'|'T'} type circular or triangular
  * @property {string} name Schmidt's label, e.g. `𝒱₂` or `C*`
+ * @property {number} [depth] how many subdivisions produced it; the seeds are 0. Not the
+ *   same as the generation a walk was asked for: `regionsAt` returns regions stopped early
+ *   at the resolution floor alongside the frontier, so a returned set holds several depths.
  * @property {boolean} [mirrored] whether this region lives in the lower half plane, as
  *   the reflection of `m`'s image in the real axis. The mirror is anti-holomorphic, so
  *   it cannot be folded into `m`: conjugating the matrix entrywise gives `m̄`, and
@@ -117,7 +120,7 @@ const LABELS = {
  */
 export function seed(type = 'J', mirrored = false) {
   const name = (type === 'T' ? '𝒥*' : '𝒥') + (mirrored ? '\u0304' : '');
-  return { m: IDENTITY, type: type === 'T' ? 'T' : 'J', name, mirrored };
+  return { m: IDENTITY, type: type === 'T' ? 'T' : 'J', name, mirrored, depth: 0 };
 }
 
 /**
@@ -141,6 +144,7 @@ export function subdivide(region) {
       type,
       name: LABELS[region.type][name],
       mirrored: region.mirrored === true,
+      depth: (region.depth ?? 0) + 1,
     };
     child.anchor = type === 'J' ? child : inherited;
     return child;
