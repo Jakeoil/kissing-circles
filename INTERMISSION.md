@@ -351,22 +351,84 @@ something structural is still open — it is the sharpest unanswered question in
 > always gives a two-colorable map of its regions: colour one region black, then flip
 > colour every time you cross a line.
 
-**This works for circles too, and it should be built.** The theorem is not special to
-lines: any arrangement of closed curves in the plane two-colours, because each curve
-divides the plane in two and crossing it flips a parity. Concretely, colour a point by
+**Built.** Two of them, in the arrangement layer's style dropdown: *two-colour* and
+*two-colour, translucent*. The theorem is not special to lines — any arrangement of closed
+curves in the plane two-colours, because each curve divides the plane in two and crossing
+it flips a parity. A circle is a Jordan curve like any other, and a line is a circle
+through infinity. Colour a point by
 
 ```
 parity of  #{ circles C in the arrangement : the point is inside C }
 ```
 
-with a fixed side chosen for each line. Crossing any one circle changes the count by
-exactly one, so adjacent faces always differ. The partition machinery already computes an
-interior point per region, so the mode is a parity count per region and a two-entry
-palette — no new geometry at all.
+with a fixed side chosen for each line, and the map falls out.
 
-It would also be the most direct possible answer to "is this one arrangement or two",
-since the colouring cares only about the curves and not at all about which family drew
-them.
+**The method predicted here was wrong twice, which is worth keeping.** This note said "the
+mode is a parity count per region and a two-entry palette — no new geometry at all."
+
+The first error is the one that matters: **the partition's regions are not the
+arrangement's faces.** A parity per region would have been constant across regions the
+arrangement genuinely cuts, and the picture would have been confidently wrong rather than
+obviously wrong. The second is arithmetic: per *pixel* is the right granularity, and at
+20,000 circles against a million pixels that is 2 × 10¹⁰ containment tests.
+
+What actually works is neither. Fill each disc with white under the `difference` blend and
+it inverts everything inside it, since |x − 1| = 1 − x. After every disc is filled, each
+pixel has been inverted once per circle containing it — which *is* the parity, computed by
+the compositor at fill rates. Checked against the arithmetic rather than trusted for
+looking right: sampling random points and independently counting gave 388 of 400, with the
+disagreements reading pixel values of 119 and 170 — intermediate greys, so antialiased
+edges. Excluding points within 2 px of a curve: **400 of 400**.
+
+**Opaque** puts it on the canvas directly, so its two colours are a colour and its
+photographic negative — `difference` against white is what makes the flip an involution,
+and that fixes one from the other. **Translucent** builds the same map on its own surface
+and washes it over what is already drawn, so the colours become a wash of white and a wash
+of black and the partition survives underneath, every region split into a lighter and a
+darker half. That is the mode worth having: the parity and the subdivision are different
+objects, and it is the only way to see both at once.
+
+**And it turned up a real defect, which Jake spotted and correctly diagnosed by eye** —
+the colours reversed when panning, and he guessed the criterion depended on the screen
+rather than on a fixed location in the plane.
+
+It did. `arrangement({bounds})` prunes by the window, so the circle *set* was
+screen-dependent. At the fixed world point `(0.5, 0.45)`, sliding the window gave 9, 10, 9
+circles containing it — parity 1, 0, 1. The asymmetry is the whole lesson: **a circle
+changes the parity of a point only by containing it**, so a circle dropped for being mostly
+off screen inverts everything inside it. Strokes tolerate windowing because a missing
+stroke is a missing arc somewhere you are not looking; parity cannot, because a local
+omission has a global consequence. So the two-colour modes build unwindowed, and stop at
+generation 7 — 19,600 circles at 6, 97,782 at 7, half a million at 8.
+
+A second bug was hiding behind the first, and the HUD gave it away: 160 circles before the
+first pan and 166 after. The style select was wired to repaint rather than rebuild, so
+choosing two-colour reused the windowed set built for strokes. The two styles are not one
+picture drawn two ways; they are two different sets.
+
+**The southern half is the exact negative of the northern, and one curve is responsible.**
+Jake noticed it with both halves on. It is not an artefact — it is forced.
+
+With the mirror built, the circle set is closed under conjugation, so `C ↦ conj(C)` is a
+bijection of the set that carries "circles containing `p`" onto "circles containing
+`conj(p)`". The two counts would therefore be *equal*, and the two halves would match —
+except for curves that are their own mirror. There are 45 of those at generation 4: the
+circles centred on `ℝ`, and the real line itself.
+
+A circle centred on `ℝ` is symmetric about it, so it contains `p` exactly when it contains
+`conj(p)`, and cancels. **The real line is the only self-conjugate curve that separates a
+point from its mirror image** — it contains exactly one of the pair. One flip, hence
+opposite parity, everywhere.
+
+Measured: `p` and `conj(p)` have opposite parity at 200 of 200 sample points, and the
+*same* parity at 200 of 200 once the real line is left out of the count.
+
+Which is a small pleasure — the two-colouring can tell the upper half plane from the lower,
+and it does it with the single curve that this whole construction is the orbit of.
+
+It does what it was hoped to do. The colouring cares about the curves and nothing else —
+not which family drew them, not which seed they descend from — so it is the same map
+however the arrangement is decomposed, and it settles that question rather than arguing it.
 
 > Alternating red greens, HUE_STEP = 173. What would happen if you used the golden angle
 > 137.507764°? (just a haha)
@@ -432,10 +494,29 @@ The intended end state:
 The workbench becomes a lab because that is what it always was — a lab in spirit, put at
 the front because it happened to be called `index`.
 
-`labs/outward.html` is the guinea pig: 253 lines, self-contained, no shared stylesheet,
-and small enough that getting the pattern wrong costs an afternoon rather than a week. The
-test that matters is the one the pentagrid notes flag as impossible to see from inside the
-repo — **delete the stylesheet and check it still draws.**
+`labs/outward.html` was the guinea pig: 253 lines, self-contained, no shared stylesheet,
+small enough that getting the pattern wrong cost an afternoon rather than a week. It
+works, and it passes the test the pentagrid notes flag as impossible to see from inside
+the repo — with the stylesheet deleted it still draws, sizes itself to its box, follows it
+on resize, and leaves nothing behind on `destroy()`. The page went 342 lines to 181.
+
+**The packing view was attempted next and reverted, and the reason is worth keeping.** The
+code worked — 1025 lines to 802, shared links still restored, the animation loop stopped on
+`destroy()` — but the seam was chosen while cutting rather than before. Three tells, all
+visible afterwards: a `setView` verb that existed for exactly one caller (restoring a
+shared link), `getPacking()` handing out live state because `describe`, `analyze` and
+export all need it, and the generation constants disappearing inside the module with no way
+for a consumer to tune them.
+
+The deeper point, which Jake made and which the pentagrid notes do not cover: **the
+workbench is not a document with a figure in it.** It is a full-bleed canvas with
+instrument panels floating on top. "The page decides where it goes and how big it is"
+degenerates to "everywhere", so the pattern's central question has no content there. The
+chapters embed figures in prose and are the truer test — smaller diffs, and a container
+that actually decides something.
+
+Prework first next time: agree the config and the verbs, and pick a consumer where the
+container means something.
 
 Two things already true and worth not re-discovering: our Pages site already serves `src/`
 with `access-control-allow-origin: *` and the right content type, and a page on another
@@ -453,11 +534,11 @@ duplication the pattern removes.
 
 ## The short list
 
-- Module-ise `outward` as the guinea pig; delete the stylesheet and check it still draws.
-- Then the packing view, then the Schmidt view; `index` becomes a teaser and a table of
-  contents.
-- Two-colour display mode for the arrangement — parity of containing circles, no new
-  geometry.
+- ~~Module-ise `outward` as the guinea pig.~~ **Done** — `src/view/outward.js`, and it
+  passes the test that cannot be run from inside this repo: it draws with the stylesheet
+  deleted.
+- The packing view, then the Schmidt view; `index` becomes a teaser and a table of
+  contents. **The packing view was attempted and reverted** — see below.
 - Rebuild chapter 3's symmetry figures on `permutations()`, so a flip can be watched
   instead of described.
 - A catalogue of quads by generation, quotiented by the eight permutations, and a check of
