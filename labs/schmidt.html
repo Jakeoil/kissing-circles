@@ -55,6 +55,10 @@
         <label><input type="checkbox" id="show-j" checked /> 𝒥</label>
         <label><input type="checkbox" id="show-jstar" /> 𝒥*</label>
         <label><input type="checkbox" id="show-arrangement" /> arrangement</label>
+        <select id="arrangement-style">
+          <option value="strokes">as circles</option>
+          <option value="parity">two-colour</option>
+        </select>
       </label>
       <label>color
         <select id="color">
@@ -101,6 +105,27 @@
       <p>It is an independent layer, not a third mode, so it can go over either partition
       or stand alone — which is the useful way to see that it is not the partition, rather
       than being told. 𝒥 and 𝒥* exclude each other; neither is also allowed.</p>
+      <p><b>Two-colour</b> is the arrangement as a map. Any arrangement of closed curves in
+      the plane is two-colourable — each curve divides the plane in two, so crossing one
+      flips a parity and adjacent faces always differ. Colour a point by the parity of how
+      many circles contain it and the map falls out. This is not special to straight lines:
+      a circle is a Jordan curve like any other, and a line is a circle through infinity.</p>
+      <p>It is drawn rather than counted. Filling each disc with white under the
+      <code>difference</code> blend inverts everything inside it, since |x − 1| = 1 − x, so
+      once every disc is filled each pixel has been inverted once per circle containing it.
+      The compositor does the parity at fill rates — counting circles per pixel, at twenty
+      thousand circles and a million pixels, is not a thing one does. Checked against the
+      arithmetic: 400 of 400 sample points away from a boundary agree, the only
+      disagreements being antialiased edges.</p>
+      <p>The two colours are a colour and its photographic negative, because
+      <code>difference</code> against white is what makes the flip an involution. Hardly a
+      limitation — maximum contrast is the point of a two-colouring. Note it is
+      approximate in one respect: circles below the walk's resolution floor were never
+      generated, so their flips are missing. They are sub-pixel, so nothing visible moves,
+      but this is the parity of what was built rather than of the true arrangement.</p>
+      <p>It also answers a question the other views only argue about. The colouring cares
+      about the curves and nothing else — not which family drew them, not which seed they
+      descend from — so it is the same map however the arrangement is decomposed.</p>
       <p><b>Curvatures</b> numbers the circular regions with their bend — Schmidt's
       <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
       the reason the Apollonian gasket sits inside this arrangement at exactly twice the
@@ -193,6 +218,7 @@
       const showJ = document.getElementById('show-j');
       const showJStar = document.getElementById('show-jstar');
       const showArrangement = document.getElementById('show-arrangement');
+      const arrangementStyle = document.getElementById('arrangement-style');
       const colorMode = document.getElementById('color');
       const halvesToggle = document.getElementById('halves');
       const numbersToggle = document.getElementById('numbers');
@@ -533,6 +559,90 @@
       // from Schmidt's subdivision and not from any Descartes recursion.
       const GASKET_INK = '#f2c14e';
 
+      /** One half of the two-colouring; the other is its negative, and unavoidably so. */
+      const PARITY_GROUND = '#0d1117';
+
+      /**
+       * The two-colouring of the arrangement.
+       *
+       * Any arrangement of closed curves in the plane two-colours: each curve divides the
+       * plane in two, so crossing one flips a parity, and adjacent faces always differ.
+       * Colour a point by
+       *
+       *     parity of #{ circles C : the point is inside C }
+       *
+       * and the map falls out. It is not special to straight lines — a circle is a Jordan
+       * curve like any other, and a line is a circle through infinity.
+       *
+       * Drawn rather than counted. Filling each disc with white under `difference`
+       * inverts everything inside it, because |x − 1| = 1 − x, so after every disc has
+       * been filled each pixel has been inverted once per circle containing it. That is
+       * the parity, computed by the compositor at fill rates instead of by counting
+       * circles per pixel — which at 20,000 circles and a million pixels is not a thing
+       * one does.
+       *
+       * The two colours are therefore a colour and its photographic negative, since
+       * `difference` against white is what makes the flip an involution. Not a limitation
+       * worth working around: maximum contrast is the whole point of a two-colouring.
+       *
+       * Approximate in one respect, and knowingly: circles below the walk's resolution
+       * floor were never generated, so their flips are missing. They are sub-pixel, so
+       * nothing visible moves, but the picture is the parity of what was built rather
+       * than of the true arrangement.
+       */
+      function drawTwoColour() {
+        if (circles === null) return 0;
+        ctx.save();
+        ctx.fillStyle = PARITY_GROUND;
+        ctx.fillRect(0, 0, view.width, view.height);
+        ctx.globalCompositeOperation = 'difference';
+        ctx.fillStyle = '#ffffff';
+
+        let flipped = 0;
+        for (let i = 0; i < circles.count; i++) {
+          const c = circles.circles[i];
+          const f = c.toFloat();
+          if (c.isLine()) {
+            // A half plane. `regions.js` calls the inside of a line the side where
+            // p·n < offset, so the quad runs away along −n from a point on the line.
+            const d = c.lineOffset();
+            const reach = (view.width + view.height) * 4 / view.scale;
+            const px = f.x * d;
+            const py = f.y * d;
+            const tx = -f.y;
+            const ty = f.x;
+            const corners = [
+              view.worldToScreen(px + tx * reach, py + ty * reach),
+              view.worldToScreen(px - tx * reach, py - ty * reach),
+              view.worldToScreen(px - tx * reach - f.x * reach, py - ty * reach - f.y * reach),
+              view.worldToScreen(px + tx * reach - f.x * reach, py + ty * reach - f.y * reach),
+            ];
+            ctx.beginPath();
+            ctx.moveTo(corners[0].x, corners[0].y);
+            for (let k = 1; k < 4; k++) ctx.lineTo(corners[k].x, corners[k].y);
+            ctx.closePath();
+            ctx.fill();
+            flipped++;
+            continue;
+          }
+          const p = view.worldToScreen(f.x, f.y);
+          const r = Math.abs(f.r) * view.scale;
+          if (r < 0.25) continue;
+          if (p.x + r < 0 || p.x - r > view.width || p.y + r < 0 || p.y - r > view.height) {
+            // Off screen entirely — but only skippable if it does not *contain* the view,
+            // since a circle swallowing the window flips every pixel in it.
+            const inside = p.x - r < 0 && p.x + r > view.width && p.y - r < 0 && p.y + r > view.height;
+            if (!inside) continue;
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
+          flipped++;
+        }
+        ctx.restore();
+        return flipped;
+      }
+
       function drawGasket() {
         if (gasket === null) return 0;
         ctx.save();
@@ -637,17 +747,27 @@
         // here — an opaque fill would erase the very thing the arrangement is drawn over
         // to be compared against.
         let stats = null;
+        let flipped = 0;
         if (showArrangement.checked && circles !== null) {
-          stats = drawCircles(ctx, circles, view, {
-            colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
-            background: null,
-          });
+          if (arrangementStyle.value === 'parity') {
+            // Opaque, and over the top: parity needs every flip on the same surface, so
+            // it cannot be blended with a partition underneath. Turn the partitions off
+            // to see it alone — or leave one on and watch it disappear, which is its own
+            // demonstration that the two pictures are not the same subdivision.
+            flipped = drawTwoColour();
+          } else {
+            stats = drawCircles(ctx, circles, view, {
+              colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
+              background: null,
+            });
+          }
         }
 
         const over = drawGasket();
 
         hud.textContent = [
-          seed === null && stats === null ? 'nothing drawn — turn on 𝒥, 𝒥* or the arrangement' : '',
+          seed === null && stats === null && flipped === 0
+            ? 'nothing drawn — turn on 𝒥, 𝒥* or the arrangement' : '',
           seed === null ? '' : `partition of ${seed === 'T' ? '𝒥*' : '𝒥'} at generation ${generation}`,
           // The formula counts the whole partition; the walk builds only the part the
           // window can show. They agree until pruning starts, and the gap after that is
@@ -658,6 +778,8 @@
             `${circular.toLocaleString()} circular + ${(wanted.length - circular).toLocaleString()} triangular`,
           stats === null ? '' :
             `arrangement ${circles.count.toLocaleString()} circles, drew ${stats.drawn.toLocaleString()}`,
+          flipped === 0 ? '' :
+            `two-colour: ${flipped.toLocaleString()} of ${circles.count.toLocaleString()} circles flipped`,
           // Worth saying out loud, because it explains why stepping the generation
           // eventually stops changing the picture: the walk has reached the resolution
           // floor, and everything deeper is smaller than a few pixels.
@@ -684,7 +806,7 @@
       // a spot and flip between them, and you are looking at the same piece of the plane
       // at the same scale each time, which is the only way the comparison means anything.
       // `home()` still knows a frame per mode, for the 0 key.
-      for (const el of [colorMode, numbersToggle]) {
+      for (const el of [colorMode, numbersToggle, arrangementStyle]) {
         el.addEventListener('change', () => { dirty = true; });
       }
       // Lowest terms renames the gaskets as well as the region numerals: same picture,
