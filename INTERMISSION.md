@@ -76,11 +76,34 @@ Jake's reading of the arrangement, recorded as given:
 > circles. But 𝒥* has an odd number; the axis splits the centre circle. A different
 > symmetry.
 
-**Confirmed: they cannot be separated, and it is one arrangement.** Not a matter of
-taste. Every circle the 𝒥* subdivision draws is already one of the arrangement's — all 90
-of them at generation 3, checked by exact key. There is no "𝒥 circle" and "𝒥* circle" to
-sort into piles; there is one set of curves and two different ways of cutting the plane
-along them. The partitions differ; the circles do not.
+**Retracted: they *can* be separated, and Jake was right.** I said they could not, and
+cited the wrong measurement to prove it — that every circle the 𝒥* subdivision draws is
+already one of the arrangement's, 90 of 90 at generation 3. True, and beside the point:
+that shows *containment*, not inseparability.
+
+The arrangement really is two families, and they are disjoint. Every circle in it is
+`m(ℝ)` for some region, and that region is either circular — in which case the circle is
+its **boundary** — or triangular, in which case the circle runs through the three tangency
+points and is **not a side of anything**. To generation 6, unoriented:
+
+| | circles |
+|---|---|
+| boundary of a circular region | 9,769 |
+| circumcircle of a triangular region | 9,831 |
+| **both** | **0** |
+
+Zero overlap in 19,600 circles, and nearly a 50/50 split — which is exactly Jake's "when I
+turn on 𝒥, *half* the lines of the arrangement are gone." The half that stays is the
+boundaries; the half that goes is the circumcircles, and those are precisely the ones he
+describes as "every circle with 3 tangents shows 3 circles crossing through the tangency
+points." That is what the circumcircle of a curvilinear triangle *is*.
+
+So his names are better than mine. The mish is the boundaries, the mash is the
+circumcircles, and a partition view is the mish alone. Worth being careful about one
+thing: this is *not* a split by which seed a circle descends from. 𝒥* subdivides into both
+types as well, so it draws from both families. The split is by the role a circle plays,
+not by its ancestry — which is why the earlier containment measurement said nothing about
+it.
 
 **Confirmed: 𝒥\* with both halves is missing the centre circle and has nothing outside
 the parallels.** Both follow from what 𝒥* *is* — the ideal triangle with vertices
@@ -206,9 +229,239 @@ that is the thing nobody knows until a glyph silently falls back to Georgia.
 
 ---
 
+## What the arrangement is indexed by
+
+Jake: *"It's a huge slew of circles, they are indexed somehow. What is the arrangement
+indexed by?"*
+
+**By the bottom row of the matrix.** Every circle is `m(ℝ)` for a word `m` in the seven
+generators, and writing `m = [[a, b], [c, d]]`, two facts hold, both checked:
+
+**Its curvature is `±2·Im(c·conj d)`.** Exact on all 19,600 circles to generation 6. `c`
+and `d` are Gaussian integers, so `Im(c·conj d)` is an ordinary integer — which is *why*
+every bend is even, and where the factor of two in the whole arrangement comes from. It is
+the 2 in `Im(w) = (w − w̄)/2i`, nothing to do with Apollonius. The top row `a, b` never
+enters.
+
+**The bottom row pins the circle up to a quarter turn and a lattice shift.** If two words
+share a bottom row then `m′·adj(m) = [[δ′, t], [0, δ]]`, which as a map is
+`z ↦ (δ′/δ)z + t/δ`. Both determinants are *units* — the generators are in `GL₂(ℤ[i])`, not
+`SL₂`: `V₁ V₂ V₃` have det 1 but `E₁ E₂ E₃` have det `i` and `C` has det `−i` — so `δ′/δ` is
+one of `1, i, −1, −i`. A quarter turn, then a Gaussian-integer translation. Checked: of
+1,223 bottom rows shared by two or more circles, all 1,223 fit, and all have equal radius.
+
+I got this wrong first time by assuming determinant 1, which predicted a pure translation;
+only 284 of the 1,223 fit that. The determinants of the generators are the correction.
+
+So the index is a point of `ℙ¹(ℤ[i])` — a Gaussian rational `c/d` — modulo the lattice's
+own symmetries. Which is the same D4-and-translations group that turns up in the
+permutations, arriving from the other direction.
+
+---
+
+## Congruent, equivalent, and the factor of two
+
+Jake: *"I like the term congruent, not as used in geometry — that would be similarity —
+but as in modular arithmetic. 7 ≡ 2 mod 5. Or 2/4 ≡ 1/2. Or 3² + 4² = 5² ≡ 6² + 8² = 10².
+The quads can be multiplied by any scalar to come up with a congruent map. How come the
+only time it comes up in practice is with this dastardly arrangement?"*
+
+**Equivalent is the safer word, and the reason is that both other words are already taken
+here.** *Congruent* means "same shape and size" in the geometry this project is doing, and
+*similar* means "same shape, any size" — which is precisely the relation between
+`(0,0,1,1)` and `(0,0,2,2)`, so calling it congruence inverts the sense. The clean phrase
+is what GLMWY use: the quadruples are **scalar multiples**, related by a **homothety**, and
+the class has one **primitive** representative.
+
+*Why it only bites here* has a clean answer. Scaling a quadruple is invisible as long as
+nothing else in the picture fixes a unit. A gasket on its own has no unit: any of its
+scalar multiples draws the same picture, and the primitive one is chosen by convention
+only. The arrangement **does** fix a unit — the lattice `ℤ[i]`, whose translations have
+length 1 — so the strip between consecutive horizontal lines is 1 tall, the circle in it
+has radius ½, and its bend is 2. The scaling stops being a free choice the moment there is
+a lattice to be commensurate with.
+
+> There are two sets of quads. The quads in lowest terms and the Schmidt quads, times 2.
+> Unfortunate. Too bad that's not resolvable.
+
+It is not resolvable, and it is worth saying why rather than filing it as bad luck: the
+two conventions are answering different questions. `gcd = 1` is the right normalisation if
+you are enumerating packings, because it makes the representative unique. Lattice-length 1
+is the right normalisation if you are running a continued-fraction algorithm on `ℤ[i]`,
+because the algorithm's steps *are* lattice operations. A single convention would have to
+break one of those. The honest fix is the one already in the lab: show both names for the
+same picture and let the reader keep whichever they arrived with.
+
+And it does throw a wrench into the continued-fraction reading, exactly as Jake says — the
+factor is a permanent seam between the two halves of this project.
+
+---
+
+## D4, D8, and a catalogue of quads
+
+> An expressed quad has an orientation and certain degrees of symmetry. Asymmetric quads
+> (3 unequal circles) appear multiple times in a mode, as vertical and horizontal flips.
+> Every quad is unique barring predictable rotations and reflections. A catalogue of gen 1,
+> gen 2, gen 3 quads can be built and they are all exclusive.
+
+This is the right shape for a lab and the machinery is already in place: `permutations()`
+gives the eight, and `Circle.translate` puts an image back where it belongs. What is
+missing is the **catalogue** — enumerate the quadruples that occur at each generation,
+quotient by the eight permutations plus lattice translation, and show one representative
+of each class with its multiplicity.
+
+Two things already known that the catalogue would have to agree with: distinct quadruples
+per round in a gasket go `2·3ⁿ⁻¹ + 1`, and the eight permutations collapse to fewer when a
+quadruple has a symmetry of its own — the strip, with its repeated pair, being the case to
+test against.
+
+The claim that they are *all exclusive* is the interesting one, and it is checkable rather
+than obvious. It is the natural next measurement.
+
+> (BTW! the symmetry page (whole numbers) gives piss poor examples of the symmetry. YOU
+> CAN DO BETTER)
+
+Noted, and fair. Chapter 3 argues for 8 orientations, 4 per dual, and then illustrates it
+with figures that do not let you *see* a flip happen. With `permutations()` now existing,
+the figure that chapter wants is one quadruple and a control that walks its orbit — the
+same eight the Schmidt lab already offers — so the reader watches the four numbers stay
+put while the picture turns. That is a rewrite of the figures, not of the prose.
+
+---
+
+## The odd circle
+
+> The circle left out of 𝒥*. This is literally the "odd" circle.
+
+The floor. 𝒥* is the ideal triangle with vertices `0, 1, ∞`, and the semicircle joining 0
+to 1 is its bottom side, so the disc beneath it is outside the region by definition — along
+with everything at `x < 0` or `x > 1`.
+
+The pun is doing real work, though, and it points at the asymmetry Jake noticed: 𝒥 splits
+into **seven** pieces and 𝒥* into **four**, so a mirror axis has a tangency to sit in
+for one and a circle to sit *on* for the other. Odd counts and even counts, and the odd one
+out is the one the axis cuts. Whether that is a coincidence of the generator choice or
+something structural is still open — it is the sharpest unanswered question in the lab.
+
+---
+
+## Fun with the arrangement
+
+> Two colour tiling as a display mode. An arrangement of intersecting lines in the plane
+> always gives a two-colorable map of its regions: colour one region black, then flip
+> colour every time you cross a line.
+
+**This works for circles too, and it should be built.** The theorem is not special to
+lines: any arrangement of closed curves in the plane two-colours, because each curve
+divides the plane in two and crossing it flips a parity. Concretely, colour a point by
+
+```
+parity of  #{ circles C in the arrangement : the point is inside C }
+```
+
+with a fixed side chosen for each line. Crossing any one circle changes the count by
+exactly one, so adjacent faces always differ. The partition machinery already computes an
+interior point per region, so the mode is a parity count per region and a two-entry
+palette — no new geometry at all.
+
+It would also be the most direct possible answer to "is this one arrangement or two",
+since the colouring cares only about the curves and not at all about which family drew
+them.
+
+> Alternating red greens, HUE_STEP = 173. What would happen if you used the golden angle
+> 137.507764°? (just a haha)
+
+We know exactly what happens, because it was tried and rejected — `palette.js` records it.
+The golden angle is the standard choice for spreading an open-ended sequence, and it is
+wrong here for a reason worth keeping: buckets are curvature mod 24, a packing uses only
+some of the 24 residues, and the golden angle happens to place residues 2 and 23 just 7.7°
+apart. Two of the commonest curvatures in the picture came out the same purple.
+
+For *depth* it would behave better and read worse: the red/green alternation would go, and
+with it the ability to see a generation at a glance. 173 is nearly a half turn, which is
+what makes consecutive generations oppose each other. The golden angle would scatter them
+handsomely and tell you nothing.
+
+---
+
+## A quad and a gasket
+
+Asked directly, so recorded here.
+
+A **quad** is four mutually tangent circles — one Descartes configuration, four rows,
+finite data. In this code it is `Circle[4]`, sixteen `BigInt`s, and `validateQuad` says
+whether it is one.
+
+A **gasket** is what you get by never stopping: the closure of a quad under the Apollonian
+group, every circle reachable by Vieta jumps. Infinite. In this code it is what
+`generate(quad, limits)` returns, and the limits are the only reason it terminates — a
+`Packing` is always a finite window onto an infinite object.
+
+The relation is **many-to-one, and that is the whole point**. Every Descartes quadruple
+sitting inside a gasket generates that same gasket, so a gasket has infinitely many quads
+and no distinguished one — until you impose a rule. The rule is the root quadruple:
+`a ≤ 0`, `a ≤ b ≤ c ≤ d`, `a + b + c ≥ d`, `gcd 1`. Every primitive integral packing has
+exactly **one**, which is what makes `labs/packings.html` an enumeration rather than a
+sample.
+
+Three consequences worth holding on to:
+
+- A quad has an orientation and a place; a gasket has a shape. The eight permutations move
+  a quad and leave the gasket the same set of circles.
+- Asking "is this gasket in the arrangement?" is meaningless without a placement, which is
+  how the classic gasket got recorded as *not* contained when it is.
+- `(5, 8, 12, 53)` is a perfectly good quad and not a root, because all four bends are
+  positive so nothing encloses anything. It is a quadruple *inside* the `(−3, 5, 8, 8)`
+  gasket, two Vieta steps in. A quad need not be a root; a gasket always has one.
+
+---
+
+## Modules, and the shape of the site
+
+The goal is the second of the two, not the first: **let someone put the picture in their
+own page**, with their own controls. Sharing a link is already free.
+
+The intended end state:
+
+| slot | what |
+|---|---|
+| `index.html` | the packing view as a teaser, then guidance — the story index as a table of contents, and the labs |
+| lab 1 | the packing view, module-ised out of the workbench |
+| lab 2 | the Schmidt arrangement, module-ised |
+
+The workbench becomes a lab because that is what it always was — a lab in spirit, put at
+the front because it happened to be called `index`.
+
+`labs/outward.html` is the guinea pig: 253 lines, self-contained, no shared stylesheet,
+and small enough that getting the pattern wrong costs an afternoon rather than a week. The
+test that matters is the one the pentagrid notes flag as impossible to see from inside the
+repo — **delete the stylesheet and check it still draws.**
+
+Two things already true and worth not re-discovering: our Pages site already serves `src/`
+with `access-control-allow-origin: *` and the right content type, and a page on another
+origin can already import the live math *and* render modules and draw with them — verified,
+413 circles. And we need no `dist/`, because we have no build step; `src/` is the
+distributable. The pentagrid notes need TypeScript compiled first, and we skip that whole
+row.
+
+What is *not* in place is the canvas-module shape itself: `draw(ctx, packing, view,
+options)` takes a context, not a container. Thirteen places build a `Viewport`, twelve
+hand-roll the same devicePixelRatio dance, eleven look up their own canvas. That is the
+duplication the pattern removes.
+
+---
+
 ## The short list
 
-- Move the Schmidt lab to the top of `labs/index.html`. It has earned it.
+- Module-ise `outward` as the guinea pig; delete the stylesheet and check it still draws.
+- Then the packing view, then the Schmidt view; `index` becomes a teaser and a table of
+  contents.
+- Two-colour display mode for the arrangement — parity of containing circles, no new
+  geometry.
+- Rebuild chapter 3's symmetry figures on `permutations()`, so a flip can be watched
+  instead of described.
+- A catalogue of quads by generation, quotiented by the eight permutations, and a check of
+  whether the classes really are exclusive.
 - Exact offsets before scaling, if deep zoom is ever to mean what Phase 5 claims.
 - More colour schemes; keep the family one exactly as it is.
 - Why does the mirror axis split a circle in 𝒥* and land on a tangency in 𝒥?
