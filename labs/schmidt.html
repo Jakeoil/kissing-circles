@@ -58,6 +58,7 @@
         <select id="arrangement-style">
           <option value="strokes">as circles</option>
           <option value="parity">two-colour</option>
+          <option value="parity-soft">two-colour, translucent</option>
         </select>
       </label>
       <label>color
@@ -117,12 +118,34 @@
       thousand circles and a million pixels, is not a thing one does. Checked against the
       arithmetic: 400 of 400 sample points away from a boundary agree, the only
       disagreements being antialiased edges.</p>
-      <p>The two colours are a colour and its photographic negative, because
-      <code>difference</code> against white is what makes the flip an involution. Hardly a
-      limitation — maximum contrast is the point of a two-colouring. Note it is
-      approximate in one respect: circles below the walk's resolution floor were never
-      generated, so their flips are missing. They are sub-pixel, so nothing visible moves,
-      but this is the parity of what was built rather than of the true arrangement.</p>
+      <p><b>Opaque</b> puts the map straight on the canvas, so its two colours are a colour
+      and its photographic negative — <code>difference</code> against white is what makes
+      the flip an involution, and that fixes one from the other. Hardly a limitation:
+      maximum contrast is the point of a two-colouring.</p>
+      <p><b>Translucent</b> builds the same map on a canvas of its own and washes it over
+      what is already drawn, so the two colours become a wash of white and a wash of black.
+      Where the mask is white a pixel is pulled toward white, where black toward black, and
+      the partition underneath survives in between — every region split into a lighter and
+      a darker half. That is the mode worth having, because the parity and the subdivision
+      are different objects and this is the only way to see both at once. The mask needs its
+      own surface: <code>difference</code> composites against whatever is beneath it, so
+      building it on top of the partition would take the parity of the partition's
+      <i>colours</i> rather than of the circles.</p>
+      <p><b>The window has to go, and that is not an optimisation.</b> Strokes are built
+      only for the visible window, because a circle whose arc is off screen contributes
+      nothing and pruning is what keeps deep generations drawable — a missing stroke is a
+      missing arc, a local error somewhere you are not looking. Parity cannot afford that.
+      A circle changes the parity of a point only by <i>containing</i> it, so a circle
+      dropped for being mostly off screen inverts everything inside it: a global
+      consequence from a local omission. Panning reversed the colours, and that was why. So
+      the two-colour modes build an <i>unwindowed</i> arrangement, whose circles depend on
+      the generation and nothing else, and the colouring becomes a property of the plane
+      rather than of the view.</p>
+      <p>What that costs: the whole generation gets built rather than the part on screen —
+      19,600 circles at generation 6, 97,782 at 7, half a million at 8 — so the two-colour
+      modes stop at 7 and say so. What is left approximate is only the drawing: a circle
+      under a quarter of a pixel is not filled, which can change the pixels that circle
+      covers and nothing else. Zoom in and back and the picture returns to itself.</p>
       <p>It also answers a question the other views only argue about. The colouring cares
       about the curves and nothing else — not which family drew them, not which seed they
       descend from — so it is the same map however the arrangement is decomposed.</p>
@@ -466,13 +489,35 @@
           bounds, minSize, maxRegions: MAX_REGIONS, from: seed,
           mirror: halvesToggle.checked,
         });
-        circles = !showArrangement.checked ? null : arrangement({
-          maxGeneration: generation,
-          maxCurvature: 4000n,
-          bounds,
-          minRadius: minSize / 2,
-          mirror: halvesToggle.checked,
-        });
+        // Two different asks, and the difference is not an optimisation.
+        //
+        // Strokes want the window: a circle whose arc is off screen contributes nothing,
+        // and pruning is what keeps deep generations drawable. A missing stroke is a
+        // missing arc — a local error, in a place you are not looking.
+        //
+        // Parity cannot have the window. A circle affects the parity of a point only by
+        // *containing* it, so a circle dropped for being mostly off screen inverts
+        // everything inside it — a global consequence from a local omission. Panning then
+        // reverses the colours, which is exactly what it did. So the parity modes build an
+        // unwindowed arrangement, whose circle set depends on the generation and nothing
+        // else, and the colouring becomes a property of the plane rather than of the view.
+        if (!showArrangement.checked) {
+          circles = null;
+        } else if (arrangementStyle.value.startsWith('parity')) {
+          circles = arrangement({
+            maxGeneration: Math.min(generation, PARITY_MAX_GEN),
+            maxCurvature: 4000n,
+            mirror: halvesToggle.checked,
+          });
+        } else {
+          circles = arrangement({
+            maxGeneration: generation,
+            maxCurvature: 4000n,
+            bounds,
+            minRadius: minSize / 2,
+            mirror: halvesToggle.checked,
+          });
+        }
         // The overlay is generated against the same window, but bounded by curvature and
         // depth as well. The strip is periodic — translating any circle by one unit gives
         // another of the same bend — so a `bounds` limit alone does not make it finite:
@@ -559,8 +604,20 @@
       // from Schmidt's subdivision and not from any Descartes recursion.
       const GASKET_INK = '#f2c14e';
 
-      /** One half of the two-colouring; the other is its negative, and unavoidably so. */
+      /** One half of the opaque two-colouring; the other is its negative, unavoidably. */
       const PARITY_GROUND = '#0d1117';
+
+      /** How hard the translucent wash pulls toward white and black. */
+      const PARITY_ALPHA = 0.42;
+
+      /**
+       * Deepest generation the two-colouring will build.
+       *
+       * It has to build unwindowed, so the cost is the whole generation rather than the
+       * part on screen: 19,600 circles at 6 and 97,782 at 7, against half a million at 8.
+       * Seven is where it stops being worth the wait.
+       */
+      const PARITY_MAX_GEN = 7;
 
       /**
        * The two-colouring of the arrangement.
@@ -590,14 +647,15 @@
        * nothing visible moves, but the picture is the parity of what was built rather
        * than of the true arrangement.
        */
-      function drawTwoColour() {
-        if (circles === null) return 0;
-        ctx.save();
-        ctx.fillStyle = PARITY_GROUND;
-        ctx.fillRect(0, 0, view.width, view.height);
-        ctx.globalCompositeOperation = 'difference';
-        ctx.fillStyle = '#ffffff';
+      /** Reused between frames; sized to the backing store, not the CSS box. */
+      let maskCanvas = null;
 
+      /**
+       * Fill every disc into `g`, which the caller has already set to `difference` over a
+       * black ground. Shared by both two-colour modes — the parity is the same picture
+       * either way, and only what happens to it afterwards differs.
+       */
+      function fillParity(g) {
         let flipped = 0;
         for (let i = 0; i < circles.count; i++) {
           const c = circles.circles[i];
@@ -617,28 +675,107 @@
               view.worldToScreen(px - tx * reach - f.x * reach, py - ty * reach - f.y * reach),
               view.worldToScreen(px + tx * reach - f.x * reach, py + ty * reach - f.y * reach),
             ];
-            ctx.beginPath();
-            ctx.moveTo(corners[0].x, corners[0].y);
-            for (let k = 1; k < 4; k++) ctx.lineTo(corners[k].x, corners[k].y);
-            ctx.closePath();
-            ctx.fill();
+            g.beginPath();
+            g.moveTo(corners[0].x, corners[0].y);
+            for (let k = 1; k < 4; k++) g.lineTo(corners[k].x, corners[k].y);
+            g.closePath();
+            g.fill();
             flipped++;
             continue;
           }
           const p = view.worldToScreen(f.x, f.y);
           const r = Math.abs(f.r) * view.scale;
           if (r < 0.25) continue;
-          if (p.x + r < 0 || p.x - r > view.width || p.y + r < 0 || p.y - r > view.height) {
-            // Off screen entirely — but only skippable if it does not *contain* the view,
-            // since a circle swallowing the window flips every pixel in it.
-            const inside = p.x - r < 0 && p.x + r > view.width && p.y - r < 0 && p.y + r > view.height;
-            if (!inside) continue;
-          }
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-          ctx.fill();
+          // Safe to skip: a circle failing any of these lies wholly to one side of the
+          // canvas, so it cannot contain a pixel of it. A circle that *swallows* the view
+          // passes all four and is drawn, which is the case that matters — it flips
+          // everything, and dropping it is what made the colours reverse when panning.
+          if (p.x + r < 0 || p.x - r > view.width) continue;
+          if (p.y + r < 0 || p.y - r > view.height) continue;
+          g.beginPath();
+          g.arc(p.x, p.y, r, 0, Math.PI * 2);
+          g.fill();
           flipped++;
         }
+        return flipped;
+      }
+
+      /**
+       * The two-colouring of the arrangement.
+       *
+       * Any arrangement of closed curves in the plane two-colours: each curve divides the
+       * plane in two, so crossing one flips a parity, and adjacent faces always differ.
+       * Colour a point by
+       *
+       *     parity of #{ circles C : the point is inside C }
+       *
+       * and the map falls out. It is not special to straight lines — a circle is a Jordan
+       * curve like any other, and a line is a circle through infinity.
+       *
+       * Drawn rather than counted. Filling each disc with white under `difference`
+       * inverts everything inside it, because |x − 1| = 1 − x, so after every disc has
+       * been filled each pixel has been inverted once per circle containing it. That is
+       * the parity, computed by the compositor at fill rates instead of by counting
+       * circles per pixel — which at 20,000 circles and a million pixels is not a thing
+       * one does.
+       *
+       * **Opaque** puts it straight on the canvas, so the two colours are a colour and its
+       * photographic negative: `difference` against white is what makes the flip an
+       * involution, and that fixes one from the other. No great loss, since maximum
+       * contrast is the point of a two-colouring.
+       *
+       * **Translucent** builds the same map on an offscreen canvas and lays it over what
+       * is already there at partial alpha, which turns the two colours into a wash of
+       * white and a wash of black. Where the mask is white a pixel is pulled toward white,
+       * where black toward black, and the partition underneath survives in between. That
+       * is the mode worth having: the parity and the subdivision are different objects, and
+       * this is the only way to see them at once.
+       *
+       * Approximate in one respect, and knowingly: circles below the walk's resolution
+       * floor were never generated, so their flips are missing. They are sub-pixel, so
+       * nothing visible moves, but the picture is the parity of what was built rather
+       * than of the true arrangement.
+       *
+       * @param {boolean} translucent
+       */
+      function drawTwoColour(translucent) {
+        if (circles === null) return 0;
+
+        if (!translucent) {
+          ctx.save();
+          ctx.fillStyle = PARITY_GROUND;
+          ctx.fillRect(0, 0, view.width, view.height);
+          ctx.globalCompositeOperation = 'difference';
+          ctx.fillStyle = '#ffffff';
+          const flipped = fillParity(ctx);
+          ctx.restore();
+          return flipped;
+        }
+
+        // The mask has to be its own surface: `difference` composites against whatever is
+        // underneath, so building it on top of the partition would take the parity of the
+        // partition's colours rather than of the circles.
+        if (maskCanvas === null) maskCanvas = document.createElement('canvas');
+        if (maskCanvas.width !== canvas.width || maskCanvas.height !== canvas.height) {
+          maskCanvas.width = canvas.width;
+          maskCanvas.height = canvas.height;
+        }
+        const dpr = window.devicePixelRatio || 1;
+        const g = maskCanvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.globalCompositeOperation = 'source-over';
+        g.fillStyle = '#000000';
+        g.fillRect(0, 0, view.width, view.height);
+        g.globalCompositeOperation = 'difference';
+        g.fillStyle = '#ffffff';
+        const flipped = fillParity(g);
+
+        ctx.save();
+        // Identity, so the mask lands on device pixels one for one rather than being
+        // scaled a second time by the transform already on the context.
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = PARITY_ALPHA;
+        ctx.drawImage(maskCanvas, 0, 0);
         ctx.restore();
         return flipped;
       }
@@ -749,12 +886,12 @@
         let stats = null;
         let flipped = 0;
         if (showArrangement.checked && circles !== null) {
-          if (arrangementStyle.value === 'parity') {
-            // Opaque, and over the top: parity needs every flip on the same surface, so
-            // it cannot be blended with a partition underneath. Turn the partitions off
-            // to see it alone — or leave one on and watch it disappear, which is its own
-            // demonstration that the two pictures are not the same subdivision.
-            flipped = drawTwoColour();
+          if (arrangementStyle.value.startsWith('parity')) {
+            // Opaque covers whatever is under it, because parity needs every flip on one
+            // surface. Translucent builds the same map offscreen and washes it over the
+            // top, so a partition underneath survives — which is the only way to see the
+            // two-colouring and the subdivision at the same time.
+            flipped = drawTwoColour(arrangementStyle.value === 'parity-soft');
           } else {
             stats = drawCircles(ctx, circles, view, {
               colorMode: 'depth', theme: 'dark', labels: false, style: 'stroke',
@@ -779,7 +916,8 @@
           stats === null ? '' :
             `arrangement ${circles.count.toLocaleString()} circles, drew ${stats.drawn.toLocaleString()}`,
           flipped === 0 ? '' :
-            `two-colour: ${flipped.toLocaleString()} of ${circles.count.toLocaleString()} circles flipped`,
+            `two-colour: ${flipped.toLocaleString()} of ${circles.count.toLocaleString()} circles flipped`
+            + (generation > PARITY_MAX_GEN ? `, built unwindowed at generation ${PARITY_MAX_GEN}` : ', unwindowed'),
           // Worth saying out loud, because it explains why stepping the generation
           // eventually stops changing the picture: the walk has reached the resolution
           // floor, and everything deeper is smaller than a few pixels.
@@ -806,7 +944,7 @@
       // a spot and flip between them, and you are looking at the same piece of the plane
       // at the same scale each time, which is the only way the comparison means anything.
       // `home()` still knows a frame per mode, for the 0 key.
-      for (const el of [colorMode, numbersToggle, arrangementStyle]) {
+      for (const el of [colorMode, numbersToggle]) {
         el.addEventListener('change', () => { dirty = true; });
       }
       // Lowest terms renames the gaskets as well as the region numerals: same picture,
@@ -814,7 +952,11 @@
       lowestToggle.addEventListener('change', () => { refreshGasketNames(); dirty = true; });
       // These two rebuild rather than just repaint: the overlay is generated against the
       // current window, so there is nothing to draw until it has been.
-      for (const el of [gasketToggle, whichGasket, whichPermutation, halvesToggle, showArrangement]) {
+      // arrangementStyle rebuilds rather than repaints: strokes want the windowed circle
+      // set and parity must have the unwindowed one, so they are not the same picture
+      // drawn two ways — they are two different sets.
+      for (const el of [gasketToggle, whichGasket, whichPermutation, halvesToggle,
+                        showArrangement, arrangementStyle]) {
         el.addEventListener('change', build);
       }
       noteToggle.addEventListener('click', () => { note.hidden = !note.hidden; });
