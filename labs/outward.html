@@ -14,8 +14,8 @@
       */
       html, body { margin: 0; height: 100%; background: #0d1117; color: #c9d1d9;
                    font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
-      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
-              touch-action: none; cursor: crosshair; }
+      /* Just a box. The canvas module inside it owns and positions its own canvas. */
+      #view { position: fixed; inset: 0; }
       .panel { position: fixed; background: #161b22ee; border: 1px solid #30363d;
                border-radius: 8px; padding: 10px 12px; backdrop-filter: blur(12px); }
       #controls { top: 12px; left: 12px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
@@ -42,7 +42,7 @@
     </style>
   </head>
   <body>
-    <canvas id="view"></canvas>
+    <div id="view"></div>
 
     <div id="controls" class="panel">
       <a href="./index.html">← labs</a>
@@ -86,16 +86,13 @@
     <div id="hud">…</div>
 
     <script type="module">
-      import { ROOTS, reflectQuad, validateQuad, primitiveForm } from '../src/math/descartes.js';
-      import { Packing } from '../src/math/packing.js';
-      import { Viewport } from '../src/render/viewport.js';
-      import { draw } from '../src/render/renderer.js';
-      import { theme as themeFor } from '../src/render/palette.js';
-      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+      // The page is a container, a config and some controls (MODULES.md). Everything
+      // that draws lives in src/view/outward.js; what is left here is the trail, the
+      // readout, and the buttons that drive the handle.
+      import { createOutwardView } from '../src/view/outward.js';
+      import { ROOTS, validateQuad, primitiveForm } from '../src/math/descartes.js';
       import { addExportButtons } from './exports.js';
 
-      const canvas = document.getElementById('view');
-      const ctx = canvas.getContext('2d');
       const hud = document.getElementById('hud');
       const trail = document.getElementById('trail');
       const startSelect = document.getElementById('start');
@@ -111,25 +108,6 @@
       }
       startSelect.value = 'apollonian';
 
-      const view = new Viewport(1, 1);
-      const palette = themeFor('dark');
-
-      /** The chain of quadruples visited, most recent last. */
-      let chain = [ROOTS.apollonian.quad];
-      /** Screen positions of the current quadruple's circles, for hit-testing. */
-      let hits = [];
-      let hovered = -1;
-      /**
-       * Which circle we arrived through, or -1 at the start.
-       *
-       * The move is an involution, so clicking this one goes straight back where you
-       * came from. Without a mark the undo looks exactly like an advance — which is
-       * what makes the strip appear to flip up and down instead of marching along,
-       * since its two lines are indistinguishable by eye. `reflectQuad` leaves the
-       * mirror at the index it was given, so the arrival circle is simply that index.
-       */
-      let arrivedThrough = -1;
-
       /**
        * The bends, ascending, kept as BigInt all the way to the string.
        *
@@ -143,200 +121,61 @@
       const label = (q) => '(' + bends(q).join(', ') + ')';
       const isStrip = (q) => q.filter((c) => c.b === 0n).length === 2;
 
-      /** Frame the quadruple: its bounding circle, or a fixed window when it has none. */
-      function frame(quad) {
-        const bounding = quad.find((c) => c.b < 0n);
-        if (bounding) {
-          const f = bounding.toFloat();
-          const r = Math.abs(f.r) * 1.08;
-          return { minX: f.x - r, minY: f.y - r, maxX: f.x + r, maxY: f.y + r };
-        }
-        // A strip has no bounding circle. Its orientation is whatever the reflection
-        // left it in — the first one out of (−1, 2, 2, 3) is vertical — so frame a
-        // square window round the finite circles rather than assuming it lies flat.
-        const finite = quad.filter((c) => c.b !== 0n).map((c) => c.toFloat());
-        if (finite.length === 0) return { minX: -2, minY: -2, maxX: 2, maxY: 2 };
-        const cx = finite.reduce((s, f) => s + f.x, 0) / finite.length;
-        const cy = finite.reduce((s, f) => s + f.y, 0) / finite.length;
-        const rr = Math.max(...finite.map((f) => Math.abs(f.r)));
-        const reach = 3.4 * rr;
-        return { minX: cx - reach, minY: cy - reach, maxX: cx + reach, maxY: cy + reach };
-      }
+      const outward = createOutwardView({
+        container: document.getElementById('view'),
+        quad: ROOTS.apollonian.quad,
+        showPacking: fillToggle.checked,
+        theme: 'dark',
+        onChange: report,
+      });
 
-      function resize() {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.round(canvas.clientWidth * dpr);
-        canvas.height = Math.round(canvas.clientHeight * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        view.resize(canvas.clientWidth, canvas.clientHeight);
-        render();
-      }
-
-      function render() {
-        const quad = chain[chain.length - 1];
-        view.fit(frame(quad), 0.06);
-
-        ctx.fillStyle = palette.background;
-        ctx.fillRect(0, 0, view.width, view.height);
-
-        // The packing this quadruple generates, faint, for context: the outward move is
-        // easier to read when you can see what it is turning inside out.
-        if (fillToggle.checked) {
-          const pk = new Packing(quad, {
-            minRadius: view.worldRadius(0.6),
-            bounds: view.visibleBounds(0.2),
-          });
-          pk.grow(Infinity);
-          ctx.save();
-          ctx.globalAlpha = 0.32;
-          draw(ctx, pk, view, { colorMode: 'curvature', theme: 'dark', labels: false });
-          ctx.restore();
-        }
-
-        // The four circles of the quadruple itself, on top and unmissable.
-        hits = [];
-        const metrics = digitMetrics(ctx);
-        quad.forEach((c, i) => {
-          const f = c.toFloat();
-          if (!Number.isFinite(f.r)) {
-            // A line: draw it across the view.
-            const nx = f.x;
-            const ny = f.y;
-            const d = c.lineOffset();
-            const reach = (view.width + view.height) / view.scale;
-            const a = view.worldToScreen(nx * d - ny * reach, ny * d + nx * reach);
-            const b = view.worldToScreen(nx * d + ny * reach, ny * d - nx * reach);
-            // Bright enough to read as one of the four, not as scenery — a line is a
-            // circle of bend 0 here and is just as clickable as the others.
-            ctx.strokeStyle = i === hovered ? '#ffd479' : (i === arrivedThrough ? '#8b949e' : '#7ee2b8');
-            ctx.lineWidth = i === hovered ? 4 : 2.5;
-            if (i === arrivedThrough) ctx.setLineDash([7, 6]);
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            hits.push({ i, line: true, nx, ny, d });
-            return;
-          }
-          const p = view.worldToScreen(f.x, f.y);
-          const sr = Math.abs(f.r) * view.scale;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, sr, 0, Math.PI * 2);
-          const came = i === arrivedThrough;
-          ctx.strokeStyle = i === hovered ? '#ffd479'
-            : came ? '#8b949e' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)];
-          ctx.lineWidth = i === hovered ? 3.5 : 2;
-          if (came) ctx.setLineDash([7, 6]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          if (i === hovered) { ctx.fillStyle = 'rgba(255, 212, 121, 0.12)'; ctx.fill(); }
-          drawNumeral(ctx, view, c, String(c.b),
-            i === hovered ? '#ffd479' : palette.fills[Number(((c.b % 24n) + 24n) % 24n)], metrics);
-          hits.push({ i, line: false, x: p.x, y: p.y, r: sr });
-        });
-
-        // The trail.
+      /** Everything the page draws, from the state the handle hands back. */
+      function report(state) {
         trail.replaceChildren();
-        chain.forEach((q, k) => {
+        state.chain.forEach((q, k) => {
           const div = document.createElement('div');
           const primitive = primitiveForm(q.map((c) => c.b));
           div.textContent = `${String(k).padStart(2)}  ${label(q)}`
             + (isStrip(q) ? '   ← the strip' : '')
             + (primitive.factor > 1n ? `   imprimitive, ${primitive.factor}×` : '');
-          if (k === chain.length - 1) div.className = 'now';
+          if (k === state.chain.length - 1) div.className = 'now';
           else if (isStrip(q)) div.className = 'strip';
           trail.append(div);
         });
         trail.scrollTop = trail.scrollHeight;
 
-        backButton.disabled = chain.length < 2;
+        backButton.disabled = !state.canGoBack;
 
-        const v = validateQuad(quad);
+        const v = validateQuad(state.quad);
         hud.textContent = [
-          `step ${chain.length - 1}`,
-          label(quad),
+          `step ${state.step}`,
+          label(state.quad),
           v.ok ? 'valid Descartes quadruple' : 'INVALID — ' + (v.errors[0] ?? ''),
-          isStrip(quad) ? 'a strip: the two lines move it up or down, either circle drops back in' : '',
-          arrivedThrough >= 0 ? 'the dashed circle is the one you came through — it goes back' : '',
+          isStrip(state.quad) ? 'a strip: the two lines move it up or down, either circle drops back in' : '',
+          state.arrivedThrough >= 0 ? 'the dashed circle is the one you came through — it goes back' : '',
           'click a circle to turn the quadruple inside out through it',
         ].filter(Boolean).join('   ·   ');
       }
 
-      function pick(sx, sy) {
-        // Nearest boundary wins, so a small circle inside a big one is still reachable.
-        let best = -1;
-        let bestD = 14;
-        for (const h of hits) {
-          const d = h.line
-            ? Math.abs((sx - view.tx) / view.scale * h.nx + (sy - view.ty) / view.yScale * h.ny - h.d) * view.scale
-            : Math.abs(Math.hypot(sx - h.x, sy - h.y) - h.r);
-          if (d < bestD) { bestD = d; best = h.i; }
-        }
-        return best;
-      }
-
-      canvas.addEventListener('pointermove', (e) => {
-        const r = canvas.getBoundingClientRect();
-        const next = pick(e.clientX - r.left, e.clientY - r.top);
-        if (next !== hovered) { hovered = next; render(); }
-      });
-      canvas.addEventListener('pointerleave', () => { if (hovered !== -1) { hovered = -1; render(); } });
-      canvas.addEventListener('click', (e) => {
-        const r = canvas.getBoundingClientRect();
-        const i = pick(e.clientX - r.left, e.clientY - r.top);
-        if (i < 0) return;
-        const out = reflectQuad(chain[chain.length - 1], i);
-        if (!validateQuad(out).ok) return;
-        chain.push(out);
-        arrivedThrough = i;
-        hovered = -1;
-        render();
-      });
-
-      backButton.addEventListener('click', () => {
-        if (chain.length > 1) chain.pop();
-        arrivedThrough = -1;
-        render();
-      });
-      document.getElementById('reset').addEventListener('click', () => {
-        chain = [ROOTS[startSelect.value].quad];
-        arrivedThrough = -1;
-        render();
-      });
-      startSelect.addEventListener('change', () => {
-        chain = [ROOTS[startSelect.value].quad];
-        arrivedThrough = -1;
-        render();
-      });
-      fillToggle.addEventListener('change', render);
+      backButton.addEventListener('click', () => outward.back());
+      document.getElementById('reset').addEventListener('click',
+        () => outward.reset(ROOTS[startSelect.value].quad));
+      startSelect.addEventListener('change',
+        () => outward.reset(ROOTS[startSelect.value].quad));
+      fillToggle.addEventListener('change',
+        () => outward.set({ showPacking: fillToggle.checked }));
       document.getElementById('note-toggle').addEventListener('click', () => {
         note.hidden = !note.hidden;
       });
+
       addExportButtons({
         into: document.getElementById('exports'),
-        canvas,
+        canvas: outward.getCanvas(),
         name: 'outward',
-        // The quadruple as a packing-shaped object: toSVG only ever reads these fields.
-        svg: () => {
-          const quad = chain[chain.length - 1];
-          const f = quad.map((c) => c.toFloat());
-          return {
-            packing: {
-              circles: quad, count: 4,
-              x: Float64Array.from(f.map((v) => v.x)),
-              y: Float64Array.from(f.map((v) => v.y)),
-              r: Float64Array.from(f.map((v) => v.r)),
-              depth: Int32Array.from([0, 0, 0, 0]),
-            },
-            view,
-            options: { colorMode: 'curvature', theme: 'dark', labels: true },
-          };
-        },
+        svg: () => outward.exportSpec(),
       });
 
-      window.addEventListener('resize', resize);
-      resize();
+      report(outward.getState());
     </script>
   </body>
 </html>
