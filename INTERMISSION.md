@@ -63,7 +63,7 @@ version being beaten would be our own.
 > defaults it has the most development. Held back by generation, it is Soddy on steroids.
 > It is the spirit of Asmus Schmidt, but some of the objects are mysteries.
 
-Agreed, and it should be moved to the top of `labs/index.html`.
+Agreed, and it now is the first entry in `labs/index.html`.
 
 ### The mish and the mash
 
