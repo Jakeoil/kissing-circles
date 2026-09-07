@@ -318,6 +318,63 @@ test against.
 The claim that they are *all exclusive* is the interesting one, and it is checkable rather
 than obvious. It is the natural next measurement.
 
+**Built** — `labs/catalog.html`. Every region carries a Descartes quadruple, and there
+are two ways it does: a **circular** region with its three circular children, a
+**triangular** region's three sides with the circle inscribed in it. Both hold at every
+generation without exception, so the number of quadruples is exactly the number of
+regions. Generation 0 checks out: 𝒥 with its three circular children is `(0, 0, 2, 2)`,
+the strip.
+
+**The exclusivity claim is true, but only under the restrictions Jake named.** Unrestricted
+it fails — generation 2 has 10 distinct bend-multisets of which only 7 are new. Restrict to
+the first strip, primitive form, and the family of the two circles, and *distinct here*
+equals *new here* at every generation: 4 and 4, 18 and 18, 84 and 84, 405 and 405. No
+quadruple ever recurs. The restrictions are not tidying, they are the conditions that make
+the statement hold.
+
+Two of the three cost nothing, which is worth recording. The **first strip** holds exactly
+`5ⁿ` of the `(3·5ⁿ − 1)/2` regions and contains all 831 distinct quadruples, so restricting
+to it only stops the occurrence counts from counting translates. **Primitive** merges no
+rows either, since every quadruple here has factor exactly 2. Only the third restriction
+removes anything.
+
+The duplication among the seven children of 𝒥 is stronger than the musing supposed — they
+give only **three** distinct sets:
+
+| family | | distinct to gen 5 |
+|---|---|---|
+| `𝒱₂` = `𝒱₃` | the two circles | 512 |
+| `ℰ₁` = `C` | the middle pieces | 318 |
+| `𝒱₁` = `ℰ₂` = `ℰ₃` | the outer pieces | 177 |
+
+and the first two are **disjoint**: 512 + 318 + the seed's own `(0, 0, 1, 1)` is the entire
+831. The outer 177 are contained in the others and add nothing at all.
+
+### Still to do here
+
+**Index by the walk back to a zero-curvature quadruple.** Jake's suggestion, and it is
+right: every quad can be walked backwards to a circle of curvature zero. Measured over all
+831, and it needed correcting twice before it came out. With `reflectQuad` alone — the dual
+Apollonian generator — only 217 of 831 arrive, and a breadth-first search to depth 7 gives
+*exactly* the greedy answer, which made a wrong conclusion look settled. It was the wrong
+search: the Apollonian and dual Apollonian generators together are what generate the
+super-Apollonian group. With both:
+
+| steps to a zero bend | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| quadruples | 17 | 32 | 72 | 159 | 302 | 249 |
+
+**831 of 831, none further than five moves.** That distance is a far better index than the
+bend-multiset: it is canonical, independent of placement, generation and of which family
+found the quadruple. As a column it is cheap — about 7 ms each. As *the* index it wants the
+path and not only its length, which is the piece not yet done.
+
+**D8 quads, in both mish and mash.** Jake's, and deliberately left unresolved rather than
+guessed at after two narrow tests. The `from circular` and `from triangular` columns are
+already the mish/mash split at the level of regions. The open question is whether a
+quadruple's eight permutations cross that divide or respect it — and whether the catalogue
+would be better indexed by D8 orbit than by bends.
+
 > (BTW! the symmetry page (whole numbers) gives piss poor examples of the symmetry. YOU
 > CAN DO BETTER)
 
@@ -541,8 +598,12 @@ duplication the pattern removes.
   contents. **The packing view was attempted and reverted** — see below.
 - Rebuild chapter 3's symmetry figures on `permutations()`, so a flip can be watched
   instead of described.
-- A catalogue of quads by generation, quotiented by the eight permutations, and a check of
-  whether the classes really are exclusive.
+- ~~A catalogue of quads by generation, and a check of whether the classes really are
+  exclusive.~~ **Done** — `labs/catalog.html`. The check came out *no*, in an interesting
+  way: every region carries a quadruple (a circular region with its three circular
+  children, a triangular one with its three sides and its inscribed circle), so the
+  *placements* are exclusive by construction — but the bends are not. 4,687 quadruples
+  through generation 5, and 831 distinct sets of four numbers.
 - Exact offsets before scaling, if deep zoom is ever to mean what Phase 5 claims.
 - More colour schemes; keep the family one exactly as it is.
 - Why does the mirror axis split a circle in 𝒥* and land on a tangency in 𝒥?

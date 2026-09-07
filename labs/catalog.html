@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>lab — a catalogue of quadruples</title>
+    <link rel="icon" href="data:," />
+    <style>
+      /*
+        A lab page (plan.md §7.1). Jake's question: every quad is unique barring
+        predictable rotations and reflections, so a catalogue of the quadruples at each
+        Schmidt generation can be built, and they should all be exclusive.
+
+        Building it turned up more structure than the question assumed — every region
+        carries a quadruple, of either type — and one correction, which the table makes
+        plain: exclusive holds for placements and fails for bends.
+      */
+      html, body { margin: 0; min-height: 100%; background: #0d1117; color: #c9d1d9;
+                   font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
+      main { max-width: 76rem; margin: 0 auto; padding: 1rem 1.25rem 4rem; }
+      a { color: #7ee2b8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      h1 { font-size: 1.35rem; margin: .6rem 0 .3rem; }
+      h2 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+      p.lede { color: #8b949e; max-width: 48rem; line-height: 1.6; }
+      .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 1rem 0 .6rem; }
+      input, select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d;
+                      border-radius: 5px; padding: 4px 8px; font: inherit; }
+      input[type=text] { font-family: ui-monospace, Menlo, monospace; width: 15rem; }
+      label { color: #8b949e; display: flex; gap: 6px; align-items: center; }
+      table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      th { text-align: right; color: #8b949e; font-weight: 600; padding: .4rem .55rem;
+           border-bottom: 1px solid #30363d; white-space: nowrap; cursor: pointer; }
+      th:first-child, td:first-child { text-align: left; }
+      th.on { color: #f0f6fc; }
+      td { text-align: right; padding: .3rem .55rem; border-bottom: 1px solid #161b22;
+           font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+      tr:hover td { background: #161b22; }
+      td.bends a { color: #f0f6fc; }
+      .tag { color: #8b949e; }
+      .tag.root { color: #7ee2b8; }
+      #count { color: #8b949e; }
+      table.summary { width: auto; margin-bottom: .5rem; }
+      table.summary th { cursor: default; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="./index.html">← labs</a> · <a href="../index.html">Workbench</a> ·
+        <a href="./schmidt.html">Schmidt subdivision</a></nav>
+      <h1>A catalogue of quadruples</h1>
+      <p class="lede">
+        Every region of Schmidt's subdivision carries a Descartes quadruple, and there are
+        two ways it does so. A <b>circular</b> region together with its three circular
+        children is one; a <b>triangular</b> region's three sides together with the circle
+        inscribed in it is the other. Both hold at every generation without exception, so
+        the number of quadruples is exactly the number of regions. Generation 0 is a fair
+        check on that: 𝒥 with its three circular children is
+        <code>(0, 0, 2, 2)</code> — the strip.
+      </p>
+      <p class="lede">
+        <b>Three restrictions, and two of them are free.</b> Occurrences are counted in the
+        <b>first strip</b> only — the arrangement is periodic with period 1, so a region
+        outside <code>0 ≤ x &lt; 1</code> is a translate of one inside and carries the very
+        same four numbers. The strip holds exactly <code>5ⁿ</code> of the
+        <code>(3·5ⁿ − 1)/2</code> regions and loses nothing: all 831 quadruples occur in it.
+        And <b>primitive</b> costs nothing either, since every quadruple here has factor
+        exactly 2 and dividing it out merges no rows.
+      </p>
+      <p class="lede">
+        The third restriction is real. The seven children of 𝒥 give only <b>three</b>
+        distinct sets of quadruples, because they duplicate: 𝒱₂ and 𝒱₃ are the two circles
+        and are translates of one another, ℰ₁ and C are the middle pieces, 𝒱₁ and ℰ₂ and ℰ₃
+        the outer ones. To generation 5 the circles give <b>512</b> and the middle
+        <b>318</b> — and those two are <i>disjoint</i>, so together with the seed's own
+        <code>(0, 0, 1, 1)</code> they are the entire catalogue. The outer 177 are contained
+        in them and add nothing at all. So <b>from</b> defaults to the two circles, which is
+        the family worth reading, and widening it costs nothing but rows.
+      </p>
+      <p class="lede">
+        Bends are shown primitive by default; unticking shows them as the arrangement
+        carries them, which is twice the primitive form
+        — every curvature here is even, so every quadruple has a factor of 2 to divide out.
+        <b>Lowest terms</b> shows the primitive names instead. Following a row always opens
+        the <i>primitive</i> quadruple in the designer either way, because that is the one
+        that can be placed: a packing is put on the Gaussian integers in lowest terms, and
+        asking for <code>(−2, 4, 4, 6)</code> is correctly refused where
+        <code>(−1, 2, 2, 3)</code> — the same packing at twice the size — is not. Of the
+        831 quadruples here, 830 place; the one that does not is
+        <code>(−137, 282, 283, 330)</code>, which falls under the placement gap the
+        packings lab already records. Checked once offline rather than on load, since
+        trying all 831 takes 25 seconds.
+      </p>
+
+      <h2>By generation</h2>
+      <table class="summary" id="summary"></table>
+      <p class="lede">
+        <b>Watch <i>distinct here</i> against <i>new here</i>.</b> On the two circles they
+        are the same number at every generation — 4 and 4, 18 and 18, 84 and 84, 405 and
+        405 — which says that no quadruple ever recurs: each generation contributes only
+        quadruples never seen before. That is the exclusivity the page was built to test,
+        and <b>it holds</b>.
+      </p>
+      <p class="lede">
+        Switch <b>from</b> to everything and it stops holding: 10 distinct at generation 2
+        of which 7 are new, 40 and 30, 177 and 137. So the restrictions are not tidying —
+        they are the conditions under which the claim is true. Drop any of them and the same
+        four numbers start turning up twice.
+      </p>
+
+      <div class="bar">
+        <input id="q" type="text" placeholder="a bend, or  root  /  circular  /  triangular" spellcheck="false" />
+        <label>from
+          <select id="family">
+            <option value="circles" selected>the two circles</option>
+            <option value="middle">the middle pieces</option>
+            <option value="outer">the outer pieces</option>
+            <option value="all">everything</option>
+          </select>
+        </label>
+        <label>through generation
+          <select id="upto">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="lowest" checked /> primitive</label>
+        <span id="count"></span>
+      </div>
+
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </main>
+
+    <script type="module">
+      import { seed, subdivide, regionCircle, geometry } from '../src/math/schmidt.js';
+      import { validateQuad, primitiveForm } from '../src/math/descartes.js';
+      import { Circle } from '../src/math/circle.js';
+
+      const MAX_GEN = 5;
+
+      const rowsBox = document.getElementById('rows');
+      const headBox = document.getElementById('head');
+      const summaryBox = document.getElementById('summary');
+      const search = document.getElementById('q');
+      const upto = document.getElementById('upto');
+      const family = document.getElementById('family');
+      const lowestToggle = document.getElementById('lowest');
+      const countBox = document.getElementById('count');
+
+      /** The same circle with its inside and outside swapped. */
+      const flip = (c) => new Circle(-c.bbar, -c.b, c.bz.scale(-1n));
+
+      /**
+       * A valid Descartes quadruple from these four circles, or null.
+       *
+       * The four are geometrically right but not necessarily *oriented* right: a quadruple
+       * with an enclosing circle needs that one to carry the negative bend, and which of
+       * the four it is depends on how the region was built. Rather than reason about it,
+       * try each in turn — `validateQuad` is the authority and there are only four.
+       */
+      function orient(quad) {
+        if (validateQuad(quad).ok) return quad;
+        for (let i = 0; i < 4; i++) {
+          const alt = quad.slice();
+          alt[i] = flip(quad[i]);
+          if (validateQuad(alt).ok) return alt;
+        }
+        return null;
+      }
+
+      /**
+       * The quadruple a region carries.
+       *
+       * Circular: the region's own circle, plus its three circular children — the classic
+       * configuration of three mutually tangent circles inside a fourth.
+       *
+       * Triangular: the region's three sides, which are mutually tangent by construction,
+       * plus the circle inscribed in it. That inscribed circle is the region's single
+       * circular child, so both cases come out of `subdivide` and neither needs geometry
+       * invented for it.
+       */
+      function quadOf(region) {
+        const kids = subdivide(region);
+        const circular = kids.filter((k) => k.type === 'J').map(regionCircle);
+        if (region.type === 'J') {
+          const own = regionCircle(region);
+          if (own === null || circular.length !== 3 || !circular.every(Boolean)) return null;
+          return orient([own, ...circular]);
+        }
+        const g = geometry(region);
+        if (g === null || g.sides.length !== 3 || circular.length !== 1 || !circular[0]) return null;
+        return orient([...g.sides, circular[0]]);
+      }
+
+      const ascending = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+      /** Build the whole catalogue once. 5,856 regions to generation 5, about 125 ms. */
+      function build() {
+        /** @type {Map<string, any>} */
+        const byBends = new Map();
+        /**
+         * Which generation-1 family a region descends from.
+         *
+         * The seven children of 𝒥 give only three distinct sets of quadruples, because
+         * they come in duplicate groups: 𝒱₂ and 𝒱₃ are the two circles and are translates
+         * of one another, ℰ₁ and C are the two middle pieces, and 𝒱₁, ℰ₂ and ℰ₃ are the
+         * outer ones. Measured to generation 5: the circles give 512, the middle 318 —
+         * and those two are *disjoint*, so with the seed's own (0,0,1,1) they are the whole
+         * catalogue — while the outer 177 are contained in them and add nothing.
+         */
+        const FAMILY = {
+          '𝒱₂': 'circles', '𝒱₃': 'circles',
+          'ℰ₁': 'middle', 'C': 'middle',
+          '𝒱₁': 'outer', 'ℰ₂': 'outer', 'ℰ₃': 'outer',
+        };
+        let regions = [{ region: seed(), family: 'seed' }];
+
+        for (let gen = 0; gen <= MAX_GEN; gen++) {
+          for (const { region, family: fam } of regions) {
+            const quad = quadOf(region);
+            if (quad === null) continue;
+            const bends = quad.map((c) => c.b).sort(ascending);
+            const key = bends.join(',');
+            let entry = byBends.get(key);
+            if (entry === undefined) {
+              const primitive = primitiveForm(bends);
+              const [a, b, c, d] = primitive.curvatures;
+              entry = {
+                key, bends, primitive,
+                // GLMWY: a root has a non-positive first bend, and the other three must
+                // reach it — a + b + c ≥ d. gcd 1 comes free from primitiveForm.
+                root: a <= 0n && a + b + c >= d,
+                // Per family, because an entry can belong to more than one and the
+                // columns have to follow whichever is being asked for.
+                fam: {},
+              };
+              byBends.set(key, entry);
+            }
+            // Counted in the first strip only. The arrangement is periodic with period 1,
+            // so a region outside 0 ≤ x < 1 is a translate of one inside it and its
+            // quadruple is the very same four numbers. Counting those would be counting
+            // copies. The strip holds exactly 5ⁿ of the (3·5ⁿ − 1)/2 regions, and loses
+            // nothing: all 831 distinct quadruples occur inside it.
+            const g = geometry(region);
+            if (g === null || !(g.interior.x >= 0 && g.interior.x < 1)) continue;
+            const slot = entry.fam[fam] ??
+              (entry.fam[fam] = { counts: new Array(MAX_GEN + 1).fill(0), J: 0, T: 0 });
+            slot.counts[gen]++;
+            if (region.type === 'J') slot.J++; else slot.T++;
+          }
+          if (gen < MAX_GEN) {
+            regions = regions.flatMap(({ region, family: fam }) =>
+              subdivide(region).map((child) => ({
+                region: child,
+                // Generation 1 is where a family is decided; below that it is inherited.
+                family: gen === 0 ? FAMILY[child.name] ?? 'outer' : fam,
+              })));
+          }
+        }
+        return [...byBends.values()];
+      }
+
+      const t0 = performance.now();
+      const entries = build();
+      const built = Math.round(performance.now() - t0);
+
+      /**
+       * The rows of a family, as one array per generation.
+       *
+       * `seed` is folded in wherever it is asked for: 𝒥's own quadruple is the ancestor of
+       * everything and belongs to no child.
+       */
+      function slice(entry, want) {
+        const parts = [];
+        for (const [name, slot] of Object.entries(entry.fam)) {
+          if (want === 'all' || name === want || name === 'seed') parts.push(slot);
+        }
+        return parts;
+      }
+
+      function summarise(want, limit) {
+        const rows = [];
+        let cumulative = 0;
+        const seenEver = new Set();
+        for (let gen = 0; gen <= limit; gen++) {
+          let quads = 0;
+          let distinct = 0;
+          let fresh = 0;
+          for (const e of entries) {
+            let n = 0;
+            for (const slot of slice(e, want)) n += slot.counts[gen];
+            if (n === 0) continue;
+            quads += n;
+            distinct++;
+            if (!seenEver.has(e.key)) { fresh++; seenEver.add(e.key); }
+          }
+          cumulative = seenEver.size;
+          rows.push({ gen, quads, distinct, fresh, cumulative });
+        }
+        return rows;
+      }
+
+      function drawSummary(want, limit) {
+        summaryBox.replaceChildren();
+        const head = document.createElement('tr');
+        for (const h of ['generation', 'quadruples', 'distinct here', 'new here', 'cumulative']) {
+          const th = document.createElement('th');
+          th.textContent = h;
+          head.append(th);
+        }
+        summaryBox.append(head);
+        for (const r of summarise(want, limit)) {
+          const tr = document.createElement('tr');
+          for (const v of [r.gen, r.quads, r.distinct, r.fresh, r.cumulative]) {
+            const td = document.createElement('td');
+            td.textContent = v.toLocaleString();
+            tr.append(td);
+          }
+          summaryBox.append(tr);
+        }
+      }
+
+      // ---------------------------------------------------------------- the table
+
+      const COLUMNS = [
+        { key: 'label', name: 'quadruple' },
+        { key: 'first', name: 'first at', title: 'earliest generation it appears' },
+        { key: 'total', name: 'occurrences', title: 'how many regions carry it, through the chosen generation' },
+        { key: 'fromJ', name: 'from circular' },
+        { key: 'fromT', name: 'from triangular' },
+        { key: 'factor', name: 'factor', title: 'the homothety taking it to its primitive form' },
+      ];
+      let sortKey = 'first';
+      let asc = true;
+
+      /** The bends as shown: the arrangement's own, or the primitive ones. */
+      function shown(entry) {
+        return lowestToggle.checked ? entry.primitive.curvatures : entry.bends;
+      }
+
+      function matches(entry, query) {
+        const t = query.trim().toLowerCase();
+        if (!t) return true;
+        if (t === 'root') return entry.root;
+        if (t === 'circular') return entry.fromJ > 0 && entry.fromT === 0;
+        if (t === 'triangular') return entry.fromT > 0 && entry.fromJ === 0;
+        if (t === 'both') return entry.fromJ > 0 && entry.fromT > 0;
+        if (/^-?\d+$/.test(t)) {
+          const n = BigInt(t);
+          return shown(entry).some((b) => b === n || b === -n);
+        }
+        return ('(' + shown(entry).join(', ') + ')').includes(t);
+      }
+
+      function render() {
+        const limit = Number(upto.value);
+
+        headBox.replaceChildren();
+        for (const c of COLUMNS) {
+          const th = document.createElement('th');
+          th.textContent = c.name + (sortKey === c.key ? (asc ? ' ▲' : ' ▼') : '');
+          if (c.title) th.title = c.title;
+          if (sortKey === c.key) th.className = 'on';
+          th.addEventListener('click', () => {
+            if (sortKey === c.key) asc = !asc;
+            else { sortKey = c.key; asc = true; }
+            render();
+          });
+          headBox.append(th);
+        }
+
+        // Recount against the chosen depth rather than filtering the totals: an entry that
+        // first appears at generation 5 should simply not be here when you ask for 3.
+        const want = family.value;
+        drawSummary(want, limit);
+
+        const visible = [];
+        for (const e of entries) {
+          const parts = slice(e, want);
+          if (parts.length === 0) continue;
+          let total = 0, fromJ = 0, fromT = 0, first = -1;
+          for (let g = 0; g <= limit; g++) {
+            let n = 0;
+            for (const slot of parts) n += slot.counts[g];
+            if (n > 0 && first < 0) first = g;
+            total += n;
+          }
+          if (total === 0) continue;
+          for (const slot of parts) { fromJ += slot.J; fromT += slot.T; }
+          visible.push({
+            e,
+            label: '(' + shown(e).join(', ') + ')',
+            first, total, fromJ, fromT,
+            factor: Number(e.primitive.factor),
+          });
+        }
+
+        const filtered = visible.filter((r) => matches(r.e, search.value)).sort((x, y) => {
+          const a = x[sortKey], b = y[sortKey];
+          const cmp = typeof a === 'string' ? a.localeCompare(b) : a - b;
+          return asc ? cmp : -cmp;
+        });
+
+        rowsBox.replaceChildren();
+        for (const r of filtered) {
+          const tr = document.createElement('tr');
+          for (const c of COLUMNS) {
+            const td = document.createElement('td');
+            if (c.key === 'label') {
+              td.className = 'bends';
+              const a = document.createElement('a');
+              // Always the primitive form, whatever the toggle says. The designer places a
+              // quadruple by putting it on the Gaussian integers, and only the primitive
+              // one sits there — ask it for (−2, 4, 4, 6) and it correctly refuses, while
+              // (−1, 2, 2, 3) is the same packing at twice the size and places fine. So the
+              // row can show the arrangement's own doubled bends while the link hands over
+              // the form that can actually be built.
+              a.href = './quad.html#q' + r.e.primitive.curvatures.join('_');
+              a.title = 'open (' + r.e.primitive.curvatures.join(', ') + ') in the designer';
+              a.textContent = r.label;
+              td.append(a);
+              if (r.e.root) {
+                const tag = document.createElement('span');
+                tag.className = 'tag root';
+                tag.textContent = '  a root';
+                td.append(tag);
+              }
+            } else {
+              td.textContent = r[c.key].toLocaleString();
+            }
+            tr.append(td);
+          }
+          rowsBox.append(tr);
+        }
+
+        countBox.textContent =
+          `${filtered.length.toLocaleString()} of ${visible.length.toLocaleString()} distinct quadruples` +
+          `   ·   catalogued in ${built} ms`;
+      }
+
+      search.addEventListener('input', render);
+      upto.addEventListener('change', render);
+      family.addEventListener('change', render);
+      lowestToggle.addEventListener('change', render);
+      render();
+    </script>
+  </body>
+</html>
