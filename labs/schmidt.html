@@ -67,12 +67,12 @@
           <option value="cycle">per family (circle + its triangles)</option>
           <option value="mod24">by bend, mod 24</option>
           <option value="norm">by Schmidt's norm N(F)</option>
-          <option value="depth">by generation</option>
+          <option value="depth">by generation of its circle</option>
         </select>
       </label>
       <label><input type="checkbox" id="halves" /> both halves</label>
-      <label><input type="checkbox" id="numbers" /> curvatures</label>
-      <label><input type="checkbox" id="lowest" /> lowest terms (÷2)</label>
+      <label><input type="checkbox" id="numbers" checked /> curvatures</label>
+      <label><input type="checkbox" id="lowest" checked /> lowest terms (÷2)</label>
       <label><input type="checkbox" id="gasket" /> gasket overlay
         <select id="which-gasket"></select>
         <select id="which-permutation"></select>
@@ -156,26 +156,44 @@
       original two — the family one hues every circle by a hash of its exact bend, and its
       triangles a shade lighter, so a family keeps its colour through pan, zoom, stepping
       and pruning because nothing renumbers.</p>
-      <p><b>By bend, mod 24</b> is chapter 4's residue, on the workbench's own ramp so a
-      class is the same colour in both places. It resolves through the <i>anchor</i>, as
+      <p><b>By bend, mod 24</b> is chapter 4's residue — though on a ramp of this page's
+      own, for a reason worth knowing. The workbench steps hue by 173° per class, chosen to
+      separate the eight residues a classic packing actually reaches. But
+      <code>173 × 2 ≡ −14 (mod 360)</code>, so when only the <i>even</i> residues occur —
+      which is every bend as the arrangement carries them — classes land 14° apart and the
+      picture collapses into a single arc from red through magenta to blue. Here the step is
+      75°, which is <code>360 × 5/24</code>: 15° apart across all 24, 30° across the twelve
+      evens, the most either set can be given. A residue is therefore <i>not</i> the same
+      colour here as in chapter 4 — the two pages are colouring different objects. It resolves through the <i>anchor</i>, as
       <b>per family</b> does, and for the reason this lab exists to make: a triangular
       region has no curvature of its own, its circumscribed circle passing through its
       three vertices and being no side of it. Colouring a triangle by that circle broke
       each circle's leftover area into pieces that did not match the circle they were cut
-      out of. The curvature a triangle belongs to is its nearest circular ancestor's. Look at what it shows: as the arrangement
+      out of. The curvature a triangle belongs to is its nearest circular ancestor's. So do
+      <b>N(F)</b> and <b>generation</b>, for the same reason. Look at what it shows: as the arrangement
       carries them every bend is even, so only the <b>12 even residues</b> ever occur and
       half the ramp never appears. Tick <b>lowest terms</b> and all <b>24</b> do. That is
       the sharp difference from a packing, where the admissible classes are a proper subset
       fixed by the quadratic form — the classic gasket reaches only 2, 3, 6, 11, 14, 15, 18
       and 23, and no amount of looking further will produce the others. The arrangement, in
       lowest terms, reaches every one.</p>
+      <p>Bend 0 is drawn <b>white</b>, off the ramp entirely, because those are the lines —
+      half planes, circles through infinity — and they are a different kind of object from
+      every disc in the picture. It keys on the residue rather than the bend, so 24 and 48
+      are white too; that keeps the promise the scheme makes, which is that a class is one
+      colour.</p>
       <p><b>By N(F)</b> is Schmidt's own measure, <code>|c|² + |d|² + |c+d|²</code> read off
       the region's matrix. It never decreases under subdivision — Lemma 1.3(iv), and the
       reason the pruning is allowed to use it — and runs from 2 to 2,702 by generation 6, so
-      it is bucketed by <code>log₂</code> and the bands read as how far down a region sits.
-      <b>By generation</b> is the region's own depth, which is not the generation you asked
-      for: a windowed walk returns regions stopped early at the resolution floor alongside
-      the frontier, so this is the one colouring that shows where the walk gave up.</p>
+      it is bucketed by <code>log₂</code> and the bands read as how far down a region sits.</p>
+      <p><b>By generation of its circle</b> is when the circle a region belongs to was born.
+      Not the region's own depth: a walk returns its whole frontier at the generation you
+      asked for, so that number is the same for nearly all of them — 3,959 of 3,959 at
+      generation 5 — and colouring by it gives one flat colour. The anchor's depth is the
+      quantity that varies. It reads as red and green alternating, which is not an accident
+      and not a fault: the ramp steps 173° per bucket, almost a half turn, so consecutive
+      generations land nearly opposite each other. The same effect makes a generation legible
+      at a glance in the arrangement.</p>
       <p><b>Curvatures</b> numbers the circular regions with their bend — Schmidt's
       <code>ρ(F)</code>. Every one is even, which is his <code>ρ(F) ∈ 2ℕ₀</code>, and
       the reason the Apollonian gasket sits inside this arrangement at exactly twice the
@@ -250,8 +268,9 @@
       import { regionsAt, geometry, regionCount, arrangement, regionCircle, regionNorm } from '../src/math/schmidt.js';
       import { theme as themeFor, BUCKETS } from '../src/render/palette.js';
       import { Viewport } from '../src/render/viewport.js';
-      import { fillRegion, outlineRegion } from '../src/render/regions.js';
-      import { drawNumeral, digitMetrics } from '../src/render/labels.js';
+      import { fillRegion, outlineRegions } from '../src/render/regions.js';
+      import { drawNumeral, digitMetrics, setNumeralFont, resetFontMetrics } from '../src/render/labels.js';
+      import { ensureLoaded } from '../src/render/fonts.js';
       import { REAL_LINE } from '../src/math/schmidt.js';
       import { draw as drawCircles } from '../src/render/renderer.js';
       import { addExportButtons } from './exports.js';
@@ -467,7 +486,35 @@
        * actually produces rather than to spread an open sequence prettily — see
        * palette.js.
        */
-      const RAMP = themeFor('dark').fills;
+      /**
+       * A ramp of this lab's own, for the mod-24 scheme.
+       *
+       * The workbench's `HUE_STEP` is 173°, chosen by searching for the multiplier that
+       * best separates the residues an Apollonian *packing* produces — the classic gasket
+       * reaches only 2, 3, 6, 11, 14, 15, 18 and 23, and 173 spreads those eight by 28° at
+       * the closest. It is the right choice there and the wrong one here, because the
+       * arrangement's residues are a different set.
+       *
+       * `173 × 2 = 346 ≡ −14 (mod 360)`. So when only the even residues occur — which is
+       * every bend as the arrangement carries them — consecutive classes step by 14° and
+       * the whole picture collapses into one arc from red through magenta to blue. Six
+       * colour families out of eleven, and measured on the rendered pixels: magenta 41%,
+       * red 17%, pink 13%, violet 13%.
+       *
+       * 75° is `360 × 5 / 24`, and since 5 and 24 are coprime it walks all 24 buckets. It
+       * is optimal for both sets this page can show: 15° apart across all 24 — the most
+       * 24 hues can be — and 30° across the twelve evens, which is likewise the most. The
+       * cost is that a residue is no longer the same colour as in chapter 4. Worth it: the
+       * two pages are colouring different objects, and the arrangement was unreadable.
+       */
+      const LAB_HUE_STEP = 75;
+      const RAMP = Array.from({ length: BUCKETS }, (_, i) =>
+        // Same saturation and lightness as the dark theme's fills, alternation included,
+        // so this sits beside the rest of the project rather than looking imported.
+        `hsl(${(i * LAB_HUE_STEP) % 360} 62% ${58 + (i % 2 === 0 ? 0 : -4)}%)`);
+
+      /** Bend 0 — the lines. Off the ramp on purpose; they are not discs. */
+      const ZERO_BEND = '#f0f6fc';
       const INK = '#0d1117';
 
       /**
@@ -509,32 +556,42 @@
        * gave up.
        */
       function colorOf(region) {
+        // Everything but region type resolves through the anchor — the nearest circular
+        // ancestor, or the region itself when it is circular. A circular region's leftover
+        // area is its four triangular children, and they have to read as part of the circle
+        // they were cut out of or the picture breaks each circle into mismatched crescents.
+        const anchor = region.anchor ?? region;
         switch (colorMode.value) {
           case 'type':
             return region.type === 'J' ? CIRCULAR : TRIANGULAR;
           case 'mod24': {
-            // Through the anchor, as `per family` already does. A triangular region has no
-            // curvature of its own — its circumscribed circle passes through its three
-            // vertices and is *not one of its sides*, which is the distinction this whole
-            // lab exists to make. Colouring a triangle by that circle breaks a circle's
-            // leftover area into pieces that do not match the circle they were cut out of.
-            // The curvature a triangle belongs to is its nearest circular ancestor's.
-            const c = regionCircle(region.anchor ?? region);
+            const c = regionCircle(anchor);
             if (c === null) return 'hsl(0 0% 40%)';
             // Through `rescale`, as the numerals do, rather than dividing the bend by two.
             // Same answer here — 0 of 23,437 region circles has an odd bend, so it never
             // refuses — but rescale checks divisibility where a bare `/ 2n` would truncate
             // in silence if that ever stopped being true.
             const shownCircle = lowestToggle.checked ? c.rescale(2n) ?? c : c;
-            return RAMP[Number(((shownCircle.b % 24n) + 24n) % 24n)];
+            const residue = Number(((shownCircle.b % 24n) + 24n) % 24n);
+            // Bend 0 in white. These are the lines — half planes, circles through
+            // infinity — and they are a different kind of object from every disc in the
+            // picture, so they get a colour that is not on the ramp at all. It is the
+            // residue and not the bend, so bend 24 and 48 are white too; that keeps the
+            // promise the scheme makes, which is that a class is one colour.
+            return residue === 0 ? ZERO_BEND : RAMP[residue];
           }
           case 'norm': {
-            const n = Number(regionNorm(region));
+            const n = Number(regionNorm(anchor));
             if (!(n > 0)) return 'hsl(0 0% 40%)';
             return RAMP[Math.min(BUCKETS - 1, Math.floor(Math.log2(n)))];
           }
           case 'depth':
-            return RAMP[(region.depth ?? 0) % BUCKETS];
+            // The anchor's depth, not the region's. A walk returns its whole frontier at
+            // the generation asked for, so a region's own depth is the same number for
+            // nearly all of them — 3,959 of 3,959 at generation 5 — and colouring by it
+            // gives one flat colour. The anchor's depth is when the circle this region
+            // belongs to was born, which is the quantity that actually varies.
+            return RAMP[(anchor.depth ?? 0) % BUCKETS];
           default:
             return familyColor(region);
         }
@@ -928,6 +985,7 @@
         let drawn = 0;
         let numbered = 0;
         let circular = 0;
+        let outlined = 0;
 
         if (seed !== null) {
           for (const region of wanted) {
@@ -939,14 +997,14 @@
             if (region.type === 'J') circular++;
           }
 
-          // Outlines afterwards, so a later fill cannot bury a shared edge. Skipped when
-          // there are too many to see individually anyway.
-          if (wanted.length <= 1000) {
-            for (const region of wanted) {
-              const g = geometry(region);
-              if (g !== null) outlineRegion(ctx, view, g, INK, 1);
-            }
-          }
+          // Outlines afterwards, so a later fill cannot bury a shared edge.
+          //
+          // There used to be a cap here: no outlines at all above a thousand regions,
+          // which is why they appeared at some zoom levels and not others. The cap was
+          // there because each region stroked its own sides — 54,685 `stroke()` calls at
+          // generation 6. `outlineRegions` puts every side in one path and deduplicates
+          // shared boundaries, so the cap is not needed.
+          outlined = outlineRegions(ctx, view, wanted.map(geometry), INK, 1);
 
           // Only the circular regions get a number. A circular region *is* a disc, so
           // its bend goes in its centre by exactly the rules the workbench uses. A
@@ -1010,6 +1068,7 @@
           // Worth saying out loud, because it explains why stepping the generation
           // eventually stops changing the picture: the walk has reached the resolution
           // floor, and everything deeper is smaller than a few pixels.
+          outlined === 0 ? '' : `${outlined.toLocaleString()} curves outlined`,
           `nothing below ${RESOLUTION} px`,
           gasket ? `gasket ${gasketLabel(GASKETS[whichGasket.value])} ${PERMUTATIONS[Number(whichPermutation.value)]}: ${over.toLocaleString()} over the top` : '',
           `built ${built} ms`,
@@ -1095,6 +1154,26 @@
         if (dirty) { dirty = false; paint(); }
         requestAnimationFrame(frame);
       }
+
+      /**
+       * Latin Modern Roman, oldstyle — the face TeX has set mathematics in since 1978, and
+       * the one this page's numbers want. Set as a page default rather than a control:
+       * the workbench and the chapters offer a choice and remember it, a lab states what
+       * it is for.
+       *
+       * Applied twice on purpose. `setNumeralFont` immediately, so the stack is right from
+       * the first frame and `font-display: swap` paints a fallback in the correct metrics;
+       * then again once the webfont has actually arrived, because the digit metrics
+       * measured against the fallback are wrong for it and every numeral is sized from
+       * those.
+       */
+      const NUMERAL_FACE = 'lmroman-onum';
+      setNumeralFont(NUMERAL_FACE);
+      ensureLoaded(NUMERAL_FACE).then(() => {
+        setNumeralFont(NUMERAL_FACE);
+        resetFontMetrics();
+        dirty = true;
+      });
 
       resize();
       view.fit(home(), 0.04);

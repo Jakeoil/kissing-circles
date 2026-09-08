@@ -108,6 +108,73 @@ export function fillRegion(ctx, view, geometry, fill) {
 }
 
 /**
+ * Outline many regions at once, in a single path.
+ *
+ * `outlineRegion` is right for a figure with a dozen regions in it: it saves, strokes each
+ * side, restores. It is the wrong shape for a partition, where the counts are different by
+ * three orders of magnitude — at generation 6 that is 54,685 separate `stroke()` calls,
+ * which is why the lab had to refuse to draw outlines at all above a thousand regions.
+ *
+ * Two savings, and the second is the larger. Every side goes into **one** path and is
+ * stroked once, so the draw calls collapse to a single one. And boundaries are **shared**:
+ * a curve between two regions is a side of both, and a triangular region's three sides are
+ * each some neighbour's too, which comes to 2.8 curves drawn for every distinct one. They
+ * are deduplicated by exact key, so each curve is stroked exactly once.
+ *
+ * Sub-pixel circles are skipped. Unlike a fill, an outline that small contributes nothing
+ * but a smudge.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./viewport.js').Viewport} view
+ * @param {Iterable<{sides: import('../math/circle.js').Circle[]}>} geometries
+ * @param {string} stroke
+ * @param {number} [width]
+ * @returns {number} how many distinct curves were drawn
+ */
+export function outlineRegions(ctx, view, geometries, stroke, width = 1) {
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+
+  const drawn = new Set();
+  const reach = (view.width + view.height) * 4 / view.scale;
+
+  for (const geometry of geometries) {
+    if (geometry === null) continue;
+    for (const boundary of geometry.sides) {
+      const key = boundary.key();
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+
+      const f = boundary.toFloat();
+      if (boundary.isLine()) {
+        const d = boundary.lineOffset();
+        const a = view.worldToScreen(f.x * d - f.y * reach, f.y * d + f.x * reach);
+        const b = view.worldToScreen(f.x * d + f.y * reach, f.y * d - f.x * reach);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        continue;
+      }
+
+      const c = view.worldToScreen(f.x, f.y);
+      const r = Math.abs(f.r) * view.scale;
+      if (r < 0.4) { drawn.delete(key); continue; }
+      if (c.x + r < 0 || c.x - r > view.width) { drawn.delete(key); continue; }
+      if (c.y + r < 0 || c.y - r > view.height) { drawn.delete(key); continue; }
+      // `arc` continues the current subpath, so without this every circle is joined to
+      // the last one by a chord across the picture.
+      ctx.moveTo(c.x + r, c.y);
+      ctx.arc(c.x, c.y, r, 0, TAU);
+    }
+  }
+
+  ctx.stroke();
+  ctx.restore();
+  return drawn.size;
+}
+
+/**
  * Outline a region's boundary curves, which is what makes the partition legible once
  * the fills are down.
  *
