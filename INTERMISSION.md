@@ -589,6 +589,73 @@ duplication the pattern removes.
 
 ---
 
+## What SVG would entail
+
+Jake wondered what changing the circles to SVG would cost. Measured rather than guessed,
+in Chrome, drawing the arrangement.
+
+**Performance is not the objection.** I expected DOM node counts to be the wall and they
+are not:
+
+| generation | circles | build | first paint | pan | size |
+|---|---|---|---|---|---|
+| 5 | 3,926 | 4 ms | 10 ms | 7 ms/frame | 163 KB |
+| 6 | 19,421 | 19 ms | 34 ms | 7 ms/frame | 801 KB |
+| 7 | 82,220 | 89 ms | 140 ms | 7 ms/frame | 3.3 MB |
+
+Panning through `viewBox` is 7 ms a frame at every size, because the browser does the
+transform and nothing is rebuilt. Against canvas at 5 ms for the same generation-6 draw,
+SVG is roughly ten times slower and still comfortably interactive.
+
+**Deep zoom is the objection, and it is fatal to the easy version.** Two circles 100
+user-units apart, magnified by `viewBox`:
+
+| magnification | gap rendered | |
+|---|---|---|
+| 1e0 – 1e6 | 100.000 px | ok |
+| **1e9** | 0.000 px | the transform collapses, `ctm.a` reverts to 1 |
+| 1e12, 1e15 | 0.000 px | same |
+
+Not gradual degradation — an abrupt cliff at 1e9, where Chrome gives up on the viewBox
+transform and renders the elements at zero size. Canvas degrades *gracefully* over the
+same range: ±0.016 px at scale 2e14, ±1 px at 1.2e16. So for this project's central
+claim — that exact arithmetic lets you zoom past where floating point fails — the naive
+SVG port is **three to six orders of magnitude worse**.
+
+The fix is available and it costs the thing that made SVG attractive: recompute every
+`cx`, `cy`, `r` in screen space each frame from the exact rationals, and write them as
+attribute strings. Then precision equals canvas, but the browser is no longer doing the
+transform and 82,000 attribute strings are being rewritten per frame. At that point it is
+canvas with extra steps and a DOM.
+
+**What would genuinely be won**, and it is not nothing:
+
+- **Hit testing for free.** Pointer events on elements, in place of `packing.pick` and the
+  hand-rolled `pick` in every lab.
+- **One code path for view and export.** `toSVG` exists and duplicates the renderer's
+  decisions; a live SVG view would make the export a serialisation rather than a
+  reimplementation.
+- **Text without measuring.** The careful `digitMetrics` work — measuring where digits
+  actually sit because `textBaseline: middle` centres the em box rather than the glyphs —
+  is canvas-specific.
+
+**What would break**, and I have not measured these:
+
+- **The two-colour map** is `globalCompositeOperation = 'difference'`, one disc at a time
+  on one surface. SVG has `mix-blend-mode: difference`, but whether 20,000 blended elements
+  composite at any speed is untested.
+- **Region fills** clip to an intersection of discs and half planes. In SVG that is a
+  `<clipPath>` per region — thousands of them, nested — and clip paths are the slow path in
+  every renderer I know of.
+
+**The reading.** SVG is a plausible choice for a *figure* — a chapter's illustration, a
+few hundred circles, where hit testing and text are worth having and nobody zooms to 1e12.
+It is the wrong choice for the workbench, whose whole argument is the zoom. Which suggests
+the split is not "canvas or SVG" but "which of these pages is a document and which is an
+instrument" — the same distinction that made the packing-view module go wrong.
+
+---
+
 ## The short list
 
 - ~~Module-ise `outward` as the guinea pig.~~ **Done** — `src/view/outward.js`, and it

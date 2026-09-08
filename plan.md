@@ -1382,6 +1382,31 @@ not-contained on a single missing circle of radius 0.012 at the window edge; wit
 not claimed either way. With both halves built, all eight permutations of both bounded
 gaskets land fully, checked to bend 60 with no post-hoc conjugation of the comparison set.
 
+### 8.8 Outlining a partition is a different problem from outlining a region
+
+`outlineRegion` saves, strokes each side, restores. That is right for a chapter figure with
+a dozen regions in it, and wrong for a partition by three orders of magnitude: at generation
+6 it is **54,685 separate `stroke()` calls**. The lab had a cap — no outlines at all above a
+thousand regions — which is why outlines appeared at some zoom levels and vanished at
+others, reported as "only certain zoom levels finish them".
+
+`outlineRegions` (plural) fixes it with two changes, the second the larger:
+
+- **One path, one stroke.** Every side goes into a single path.
+- **Shared boundaries drawn once.** A curve between two regions is a side of both, and a
+  triangular region's three sides are each some neighbour's too — **2.8 curves drawn for
+  every distinct one**. Deduplicated by exact key.
+
+The cap is gone. Generation 5 outlines 2,958 curves in 12 ms, generation 6 13,448 in 62 ms,
+generation 7 41,378 in 539 ms.
+
+Two traps worth recording. `ctx.arc` continues the current subpath, so without a `moveTo`
+before each circle every one is joined to the last by a chord across the picture. And the
+opaque two-colour map covers the whole canvas, so anything drawn beneath it is work thrown
+away — skipping the buried partition took generation 6 from 58 ms to 5 ms. That skip
+immediately broke the readout, because `circular` was tallied inside the loop it skipped;
+counts that describe what was *built* must not be computed inside code that draws.
+
 ### 8.5 What this does not answer
 
 - ~~Whether the arrangement is *legible*.~~ **Answered by `labs/schmidt.html`, and the
