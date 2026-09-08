@@ -984,17 +984,26 @@
 
         let drawn = 0;
         let numbered = 0;
-        let circular = 0;
+        // Counted here rather than in the drawing loop, which the opaque two-colour map
+        // skips: the readout describes the partition that was *built*, and it is built
+        // either way.
+        const circular = wanted.reduce((n, r) => n + (r.type === 'J' ? 1 : 0), 0);
         let outlined = 0;
 
-        if (seed !== null) {
+        // The opaque two-colour map covers the whole canvas, so anything drawn under it is
+        // work thrown away — at generation 7 that is 41,378 curves outlined and then
+        // painted over. The translucent one is a different matter: the partition showing
+        // through it is the entire point of that mode.
+        const buried = showArrangement.checked && circles !== null
+          && arrangementStyle.value === 'parity';
+
+        if (seed !== null && !buried) {
           for (const region of wanted) {
             const g = geometry(region);
             if (g === null) continue;
             const fill = colorOf(region);
             fillRegion(ctx, view, g, fill);
             drawn++;
-            if (region.type === 'J') circular++;
           }
 
           // Outlines afterwards, so a later fill cannot bury a shared edge.
